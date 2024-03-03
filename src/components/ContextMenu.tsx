@@ -25,6 +25,7 @@ interface Props {
 
 export default function ContextMenu({ hide }: Props) {
   const abortController = useStore((state) => state.abortController);
+  const modelSettings = useStore((state) => state.modelSettings);
   const { setGenerationState, updateContext } = useStore((state) => state);
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
@@ -42,19 +43,19 @@ export default function ContextMenu({ hide }: Props) {
       parent.insertAfter(newParagraphNode);
       console.log("fetching with context", context, text);
       setGenerationState("loading");
-      fetch("http://localhost:11434/api/generate", {
+      fetch(modelSettings.endpoint, {
         signal: abortController?.signal,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "rose",
+          model: modelSettings.model,
           prompt: text,
           context,
           options: {
-            temperature: 1.2,
-            stop: ["user:"],
+            temperature: modelSettings.temperature,
+            stop: modelSettings.stop,
           },
         }),
       })

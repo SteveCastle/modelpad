@@ -111,8 +111,8 @@ export function Toolbar() {
 
   return (
     <>
-      <div className="toolbar" ref={menuRef}>
-        <div className="toolbar-left">
+      <div className="toolbar">
+        <div className="toolbar-left" ref={menuRef}>
           <button
             className="item"
             onClick={() => {

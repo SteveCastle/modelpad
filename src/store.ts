@@ -2,6 +2,13 @@ import { ulid } from "ulid";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+export type ModelSettings = {
+  endpoint: string;
+  model: string;
+  temperature: number;
+  stop: string[];
+};
+
 export type Story = {
   id: string;
   title: string;
@@ -12,6 +19,7 @@ export type Story = {
 type LoadingStates = "idle" | "loading" | "generating" | "error";
 
 type State = {
+  modelSettings: ModelSettings;
   stories: Story[];
   activeStoryId: string;
   abortController?: AbortController;
@@ -27,6 +35,13 @@ type State = {
   createStory: () => void;
 };
 
+const defaultSettings: ModelSettings = {
+  endpoint: "http://localhost:11434/api/generate",
+  model: "rose",
+  temperature: 1,
+  stop: ["user:"],
+};
+
 const defaultStories: Story[] = [
   {
     id: ulid(),
@@ -40,6 +55,7 @@ export const useStore = create<State>()(
   persist(
     (set, get) => ({
       stories: defaultStories,
+      modelSettings: defaultSettings,
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
       generationState: "idle",

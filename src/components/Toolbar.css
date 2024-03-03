@@ -9,13 +9,13 @@
 .App .toolbar .toolbar-left {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
 }
 
 .App .toolbar .toolbar-left .style-tools {
   display: flex;
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
   margin-left: 20px;
 }
 
@@ -76,6 +76,7 @@
   cursor: pointer;
   transition: background-color 0.2s ease;
   background-color: var(--toolbar-bg-color);
+  width: 55px;
 }
 
 .App .toolbar .item:hover {
@@ -84,13 +85,13 @@
 
 .drop-down-menu {
   position: absolute;
-  top: 60px;
+  top: 64px;
   left: 0px;
   z-index: 100;
   width: 200px;
   display: flex;
   flex-direction: column;
-  border-radius: 2px;
+  border-radius: 0 2px 2px 2px;
   background-color: rgb(52, 52, 52);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
   padding: 4px 0;
@@ -101,21 +102,18 @@
 }
 
 .drop-down-menu.file {
-  top: 60px;
-  left: 0px;
+  left: 4px;
   height: auto;
   opacity: 1;
 }
 
 .drop-down-menu.edit {
-  top: 60px;
   left: 55px;
   height: auto;
   opacity: 1;
 }
 
 .drop-down-menu.view {
-  top: 60px;
   left: 110px;
   height: auto;
   opacity: 1;

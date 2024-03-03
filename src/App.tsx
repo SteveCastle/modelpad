@@ -14,6 +14,7 @@ import { useStore, Story } from "./store";
 import { UpdateDocumentPlugin } from "./components/UpdateDocumentPlugin";
 import { Tab } from "./components/Tab";
 import { Toolbar } from "./components/Toolbar";
+import { useEffect } from "react";
 
 const theme = {
   ltr: "ltr",
@@ -21,6 +22,16 @@ const theme = {
   placeholder: "editor-placeholder",
   input: "editor-input",
   paragraph: "editor-paragraph",
+  text: {
+    bold: "editor-text-bold",
+    italic: "editor-text-italic",
+    overflowed: "editor-text-overflowed",
+    hashtag: "editor-text-hashtag",
+    underline: "editor-text-underline",
+    strikethrough: "editor-text-strikethrough",
+    underlineStrikethrough: "editor-text-underlineStrikethrough",
+    code: "editor-text-code",
+  },
 };
 
 const editorConfig = {
@@ -33,9 +44,14 @@ const editorConfig = {
 };
 
 function App() {
-  const { setActive, closeStory, createStory, updateStory, stories } = useStore(
-    (state) => state
-  );
+  const {
+    setActive,
+    closeStory,
+    createStory,
+    updateStory,
+    stories,
+    cancelGeneration,
+  } = useStore((state) => state);
 
   const activeStoryId = useStore((state) => state.activeStoryId);
   const debouncedOnChange = useDebouncedCallback(
@@ -53,11 +69,17 @@ function App() {
       ? JSON.stringify(activeStory.content)
       : undefined;
 
+  // If activeStory changes cancel generation
+  useEffect(() => {
+    cancelGeneration();
+  }, [activeStoryId]);
+
   return (
     <div className="App">
       <div className="tabs">
         {stories.map((story: Story) => (
           <Tab
+            key={story.id}
             story={story}
             activeStoryId={activeStoryId}
             setActive={setActive}
