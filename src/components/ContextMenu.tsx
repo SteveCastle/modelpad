@@ -16,7 +16,6 @@ import {
 } from "lexical";
 import "./ContextMenu.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useState } from "react";
 import { useStore } from "../store";
 
 interface Props {
@@ -26,8 +25,11 @@ interface Props {
 
 export default function ContextMenu({ hide }: Props) {
   const abortController = useStore((state) => state.abortController);
-  const { setGenerationState } = useStore((state) => state);
-  const [context, setContext] = useState<number[] | undefined>(undefined);
+  const { setGenerationState, updateContext } = useStore((state) => state);
+  const stories = useStore((state) => state.stories);
+  const activeStoryId = useStore((state) => state.activeStoryId);
+  const activeStory = stories.find((s) => s.id === activeStoryId);
+  const context = activeStory?.context;
   const [editor] = useLexicalComposerContext();
   function generate() {
     editor.update(() => {
@@ -39,6 +41,7 @@ export default function ContextMenu({ hide }: Props) {
       const newParagraphNode = $createParagraphNode();
       parent.insertAfter(newParagraphNode);
       console.log("fetching with context", context, text);
+      setGenerationState("loading");
       fetch("http://localhost:11434/api/generate", {
         signal: abortController?.signal,
         method: "POST",
@@ -81,7 +84,7 @@ export default function ContextMenu({ hide }: Props) {
                       });
                     }
                     if (json.context) {
-                      setContext(json.context);
+                      updateContext(activeStoryId, json.context);
                       setGenerationState("idle");
                       console.log("set context", json.context);
                     }

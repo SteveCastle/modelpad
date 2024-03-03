@@ -1,0 +1,136 @@
+.App .toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background-color: var(--toolbar-bg-color);
+}
+
+.App .toolbar .toolbar-left {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.App .toolbar .toolbar-left .style-tools {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-left: 20px;
+}
+
+.App .toolbar .toolbar-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.App .toolbar .toolbar-right .context {
+  cursor: pointer;
+}
+
+.App .toolbar .toolbar-right .status {
+  height: 10px;
+  border-radius: 50%;
+  width: 10px;
+  margin: 0 1rem;
+}
+
+.App .toolbar .toolbar-right .generation-state {
+  font-size: 0.8rem;
+  padding: 0 2rem 0 0;
+  color: rgba(255, 255, 255, 0.457);
+  text-transform: capitalize;
+}
+
+.App .toolbar .toolbar-right .status.idle {
+  background-color: rgb(63, 200, 74);
+}
+
+.App .toolbar .toolbar-right .status.loading {
+  background-color: rgb(166, 200, 63);
+}
+
+.App .toolbar .toolbar-right .status.generating {
+  background-color: rgb(200, 63, 63);
+}
+
+.App .toolbar .toolbar-right .status.error {
+  background-color: rgb(200, 63, 63);
+}
+
+.App .toolbar .toolbar-right .cancel-button {
+  cursor: pointer;
+  text-transform: capitalize;
+  margin: 0 1rem;
+}
+
+.App .toolbar .item {
+  display: flex;
+  border: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 1rem;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  background-color: var(--toolbar-bg-color);
+}
+
+.App .toolbar .item:hover {
+  background-color: var(--hovered-toolbar-bg-color);
+}
+
+.drop-down-menu {
+  position: absolute;
+  top: 60px;
+  left: 0px;
+  z-index: 100;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 2px;
+  background-color: rgb(52, 52, 52);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  padding: 4px 0;
+  margin: 0;
+  overflow-y: hidden;
+  height: 0;
+  opacity: 0;
+}
+
+.drop-down-menu.file {
+  top: 60px;
+  left: 0px;
+  height: auto;
+  opacity: 1;
+}
+
+.drop-down-menu.edit {
+  top: 60px;
+  left: 55px;
+  height: auto;
+  opacity: 1;
+}
+
+.drop-down-menu.view {
+  top: 60px;
+  left: 110px;
+  height: auto;
+  opacity: 1;
+}
+
+.drop-down-menu button {
+  background-color: transparent;
+  color: var(--text-color);
+  border: none;
+  padding: 8px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.drop-down-menu button:hover {
+  background-color: var(--hovered-toolbar-bg-color);
+}

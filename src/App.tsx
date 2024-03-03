@@ -13,6 +13,7 @@ import ContextMenu from "./components/ContextMenu";
 import { useStore, Story } from "./store";
 import { UpdateDocumentPlugin } from "./components/UpdateDocumentPlugin";
 import { Tab } from "./components/Tab";
+import { Toolbar } from "./components/Toolbar";
 
 const theme = {
   ltr: "ltr",
@@ -32,18 +33,11 @@ const editorConfig = {
 };
 
 function App() {
-  const {
-    setActive,
-    closeStory,
-    createStory,
-    cancelGeneration,
-    updateStory,
-    stories,
-    generationState,
-  } = useStore((state) => state);
+  const { setActive, closeStory, createStory, updateStory, stories } = useStore(
+    (state) => state
+  );
 
   const activeStoryId = useStore((state) => state.activeStoryId);
-
   const debouncedOnChange = useDebouncedCallback(
     (state) => {
       updateStory(activeStoryId, state);
@@ -76,22 +70,13 @@ function App() {
           </button>
         </div>
       </div>
-      <div className="toolbar">
-        <button className="item">File</button>
-        <button className="item">Edit</button>
-        <button className="item">View</button>
-        {generationState === "generating" ? (
-          <button className="item" onClick={() => cancelGeneration()}>
-            Cancel
-          </button>
-        ) : null}
-      </div>
       <LexicalComposer
         initialConfig={{
           ...editorConfig,
           editorState: activeContent,
         }}
       >
+        <Toolbar />
         <RichTextPlugin
           contentEditable={<ContentEditable className="editor-input" />}
           placeholder={null}

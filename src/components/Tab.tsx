@@ -19,6 +19,10 @@ export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
       className={["tab", story.id === activeStoryId ? "active" : ""].join(" ")}
       key={story.id}
       onClick={() => setActive(story.id)}
+      onAuxClick={(e) => {
+        e.preventDefault();
+        closeStory(story.id);
+      }}
     >
       <span
         contentEditable={editingTitle}

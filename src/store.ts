@@ -6,18 +6,23 @@ export type Story = {
   id: string;
   title: string;
   content: string | undefined;
+  context?: number[];
 };
+
+type LoadingStates = "idle" | "loading" | "generating" | "error";
 
 type State = {
   stories: Story[];
   activeStoryId: string;
   abortController?: AbortController;
-  generationState: "idle" | "generating" | "error";
-  setGenerationState: (state: "idle" | "generating" | "error") => void;
+  generationState: LoadingStates;
+  setGenerationState: (state: LoadingStates) => void;
   cancelGeneration: () => void;
   setActive: (id: string) => void;
   updateStory: (id: string, content: string) => void;
   updateTitle: (id: string, title: string) => void;
+  updateContext: (id: string, context: number[]) => void;
+  clearContext: (id: string) => void;
   closeStory: (id: string) => void;
   createStory: () => void;
 };
@@ -27,6 +32,7 @@ const defaultStories: Story[] = [
     id: ulid(),
     title: "Untitled",
     content: undefined,
+    context: undefined,
   },
 ];
 
@@ -37,7 +43,7 @@ export const useStore = create<State>()(
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
       generationState: "idle",
-      setGenerationState: (state: "idle" | "generating" | "error") => {
+      setGenerationState: (state: LoadingStates) => {
         set(() => ({
           generationState: state,
         }));
@@ -65,6 +71,20 @@ export const useStore = create<State>()(
         set(() => ({
           stories: get().stories.map((s) =>
             s.id === id ? { ...s, title } : s
+          ),
+        }));
+      },
+      updateContext: (id: string, context: number[]) => {
+        set(() => ({
+          stories: get().stories.map((s) =>
+            s.id === id ? { ...s, context } : s
+          ),
+        }));
+      },
+      clearContext: (id: string) => {
+        set(() => ({
+          stories: get().stories.map((s) =>
+            s.id === id ? { ...s, context: undefined } : s
           ),
         }));
       },
@@ -101,7 +121,7 @@ export const useStore = create<State>()(
     }),
     {
       name: "editor",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         stories: state.stories,
         activeStoryId: state.activeStoryId,
