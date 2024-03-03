@@ -1,0 +1,41 @@
+.context-menu {
+  background-color: var(--context-menu-bg-color);
+  display: flex;
+  border-radius: 4px;
+  position: absolute;
+
+  /* Avoid layout interference */
+  width: max-content;
+  top: 0;
+  left: 0;
+}
+
+.context-menu button {
+  border: none;
+  flex: 1 1 auto;
+  background-color: transparent;
+  color: var(--text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin: 0;
+  padding: 8px 1rem;
+}
+/* The first and last button should have rounded corners in the context menu */
+.context-menu button:first-child {
+  border-radius: 4px 0 0 4px;
+}
+
+.context-menu button:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.context-menu button:hover {
+  background-color: var(--hovered-button-bg-color);
+}
+
+.context-menu button svg {
+  height: 16px;
+}

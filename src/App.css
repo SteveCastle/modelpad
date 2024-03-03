@@ -1,0 +1,159 @@
+.App {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.App .tabs {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  align-items: center;
+  background-color: var(--tabs-bg-color);
+}
+
+.App .tabs .tab {
+  height: 22px;
+
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: row;
+  margin: 0.2rem 0.2rem 0 0;
+  border-radius: 4px 4px 0 0;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 1rem 0.3rem 1rem;
+  color: var(--text-color);
+  cursor: pointer;
+  min-width: 200px;
+  transition: background-color 0.2s ease;
+  user-select: none;
+}
+
+.App .tabs .tab .close {
+  border: none;
+  background-color: transparent;
+  display: flex;
+  opacity: 0;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  padding: 3px;
+  border-radius: 4px;
+}
+
+.App .tabs .tab .close:hover {
+  background-color: var(--hovered-button-bg-color);
+}
+
+.App .tabs .tab .close svg {
+  fill: var(--text-color);
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+}
+
+.App .tabs .tab.active {
+  background-color: var(--active-tab-bg-color);
+}
+
+.App .tabs .tab.active .close {
+  opacity: 1;
+}
+
+.App .tabs .tab:hover {
+  background-color: var(--hovered-tab-bg-color);
+}
+
+.App .tabs .tab:hover .close {
+  opacity: 1;
+}
+
+.App .tabs .tab.active:hover {
+  background-color: var(--active-tab-bg-color);
+}
+
+.App .tabs .add {
+  font-size: 0.8rem;
+  display: flex;
+  flex-direction: row;
+  margin: 0.2rem 0.2rem 0 0;
+  border-radius: 4px 4px 0 0;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0 0.3rem 0;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  height: 22px;
+}
+
+.App .tabs .add .button {
+  border: none;
+  background-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin: 0;
+  padding: 3px 1rem;
+}
+
+.App .tabs .add .button svg {
+  fill: var(--text-color);
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+}
+
+.App .tabs .add:hover {
+  background-color: var(--hovered-tab-bg-color);
+}
+
+.App .toolbar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background-color: var(--toolbar-bg-color);
+}
+
+.App .toolbar .item {
+  display: flex;
+  border: none;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 1rem;
+  color: var(--text-color);
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  background-color: var(--toolbar-bg-color);
+}
+
+.App .toolbar .item:hover {
+  background-color: var(--hovered-toolbar-bg-color);
+}
+
+.editor-input {
+  height: 100%;
+  width: 100%;
+  padding: 0 1rem;
+  outline: none;
+  caret-color: rgb(195, 133, 1);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.editor-paragraph {
+  margin: 1rem 0;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-color);
+}
