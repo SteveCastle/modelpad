@@ -8,6 +8,7 @@ import {
   BarsArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import {
+  $createParagraphNode,
   $createTextNode,
   $getSelection,
   $isRangeSelection,
@@ -16,6 +17,7 @@ import {
 import "./ContextMenu.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useState } from "react";
+import { useStore } from "../store";
 
 interface Props {
   editor: LexicalEditor;
@@ -23,19 +25,22 @@ interface Props {
 }
 
 export default function ContextMenu({ hide }: Props) {
+  const abortController = useStore((state) => state.abortController);
+  const { setGenerationState } = useStore((state) => state);
   const [context, setContext] = useState<number[] | undefined>(undefined);
   const [editor] = useLexicalComposerContext();
   function generate() {
-    const editorState = editor.getEditorState();
-    editorState.read(() => {
+    editor.update(() => {
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) return;
       const text = selection.getTextContent();
       const node = selection.anchor.getNode();
       const parent = node.getParent();
-      console.log(parent);
+      const newParagraphNode = $createParagraphNode();
+      parent.insertAfter(newParagraphNode);
       console.log("fetching with context", context, text);
       fetch("http://localhost:11434/api/generate", {
+        signal: abortController?.signal,
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,6 +49,10 @@ export default function ContextMenu({ hide }: Props) {
           model: "rose",
           prompt: text,
           context,
+          options: {
+            temperature: 1.2,
+            stop: ["user:"],
+          },
         }),
       })
         .then((response) => {
@@ -51,6 +60,7 @@ export default function ContextMenu({ hide }: Props) {
             throw new Error("Invalid response");
           }
           const reader = response.body.getReader();
+          setGenerationState("generating");
           return new ReadableStream({
             start(controller) {
               function push() {
@@ -67,11 +77,12 @@ export default function ContextMenu({ hide }: Props) {
                     if (parent && response) {
                       editor.update(() => {
                         const textNode = $createTextNode(response);
-                        parent.append(textNode);
+                        newParagraphNode.append(textNode);
                       });
                     }
                     if (json.context) {
                       setContext(json.context);
+                      setGenerationState("idle");
                       console.log("set context", json.context);
                     }
                   } catch (e) {

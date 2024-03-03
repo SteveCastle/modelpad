@@ -2,7 +2,7 @@ import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
-import { XMarkIcon, PlusIcon } from "@heroicons/react/24/solid";
+import { PlusIcon } from "@heroicons/react/24/solid";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { useDebouncedCallback } from "use-debounce";
@@ -12,6 +12,7 @@ import { FloatingMenuPlugin } from "./components/FloatingMenuPlugin";
 import ContextMenu from "./components/ContextMenu";
 import { useStore, Story } from "./store";
 import { UpdateDocumentPlugin } from "./components/UpdateDocumentPlugin";
+import { Tab } from "./components/Tab";
 
 const theme = {
   ltr: "ltr",
@@ -31,15 +32,20 @@ const editorConfig = {
 };
 
 function App() {
-  const { setActive, closeStory, createStory, updateStory, stories } = useStore(
-    (state) => state
-  );
+  const {
+    setActive,
+    closeStory,
+    createStory,
+    cancelGeneration,
+    updateStory,
+    stories,
+    generationState,
+  } = useStore((state) => state);
 
   const activeStoryId = useStore((state) => state.activeStoryId);
 
   const debouncedOnChange = useDebouncedCallback(
     (state) => {
-      console.log(state.toJSON());
       updateStory(activeStoryId, state);
     },
     1000,
@@ -47,7 +53,6 @@ function App() {
       maxWait: 1000,
     }
   );
-  console.log("activeStoryId", activeStoryId);
   const activeStory = stories.find((s) => s.id === activeStoryId);
   const activeContent =
     activeStory && activeStory.content
@@ -58,24 +63,12 @@ function App() {
     <div className="App">
       <div className="tabs">
         {stories.map((story: Story) => (
-          <a
-            className={["tab", story.id === activeStoryId ? "active" : ""].join(
-              " "
-            )}
-            key={story.id}
-            onClick={() => setActive(story.id)}
-          >
-            {story.title}
-            <button
-              className="close"
-              onClick={(e) => {
-                e.stopPropagation();
-                closeStory(story.id);
-              }}
-            >
-              <XMarkIcon />
-            </button>
-          </a>
+          <Tab
+            story={story}
+            activeStoryId={activeStoryId}
+            setActive={setActive}
+            closeStory={closeStory}
+          />
         ))}
         <div className="add">
           <button className="button" onClick={() => createStory()}>
@@ -87,6 +80,11 @@ function App() {
         <button className="item">File</button>
         <button className="item">Edit</button>
         <button className="item">View</button>
+        {generationState === "generating" ? (
+          <button className="item" onClick={() => cancelGeneration()}>
+            Cancel
+          </button>
+        ) : null}
       </div>
       <LexicalComposer
         initialConfig={{

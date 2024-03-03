@@ -11,8 +11,13 @@ export type Story = {
 type State = {
   stories: Story[];
   activeStoryId: string;
+  abortController?: AbortController;
+  generationState: "idle" | "generating" | "error";
+  setGenerationState: (state: "idle" | "generating" | "error") => void;
+  cancelGeneration: () => void;
   setActive: (id: string) => void;
   updateStory: (id: string, content: string) => void;
+  updateTitle: (id: string, title: string) => void;
   closeStory: (id: string) => void;
   createStory: () => void;
 };
@@ -30,6 +35,20 @@ export const useStore = create<State>()(
     (set, get) => ({
       stories: defaultStories,
       activeStoryId: defaultStories[0].id,
+      abortController: new AbortController(),
+      generationState: "idle",
+      setGenerationState: (state: "idle" | "generating" | "error") => {
+        set(() => ({
+          generationState: state,
+        }));
+      },
+      cancelGeneration: () => {
+        get().abortController?.abort();
+        set(() => ({
+          abortController: new AbortController(),
+          generationState: "idle",
+        }));
+      },
       setActive: (id: string) => {
         set(() => ({
           activeStoryId: id,
@@ -39,6 +58,13 @@ export const useStore = create<State>()(
         set(() => ({
           stories: get().stories.map((s) =>
             s.id === id ? { ...s, content } : s
+          ),
+        }));
+      },
+      updateTitle: (id: string, title: string) => {
+        set(() => ({
+          stories: get().stories.map((s) =>
+            s.id === id ? { ...s, title } : s
           ),
         }));
       },
