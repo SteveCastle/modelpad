@@ -2,10 +2,7 @@
 import {
   SparklesIcon,
   ArrowPathIcon,
-  ChatBubbleLeftRightIcon,
   ArrowsPointingInIcon,
-  Bars3BottomLeftIcon,
-  BarsArrowDownIcon,
 } from "@heroicons/react/24/outline";
 import {
   $createParagraphNode,
@@ -18,10 +15,37 @@ import "./ContextMenu.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useStore } from "../store";
 
+type PromptGenerator = (text: string) => string;
+type PromptTypeKeys = "newScene" | "rewrite" | "summarize";
+
 interface Props {
   editor: LexicalEditor;
   hide: () => void;
 }
+
+const promptGenerators: Record<PromptTypeKeys, PromptGenerator> = {
+  newScene: (text: string) => {
+    return `Write a new scene based on the following prompt:
+     ${text}
+
+     BEGIN SCENE:
+     `;
+  },
+  rewrite: (text: string) => {
+    return `after the heading ALTERNATE VERSION: write an alternate version of this text:
+     ${text}
+
+     ALTERNATE VERSION:
+     `;
+  },
+  summarize: (text: string) => {
+    return `Summarize the following text:
+     ${text}
+
+     BEGIN SUMMARY:
+     `;
+  },
+};
 
 export default function ContextMenu({ hide }: Props) {
   const abortController = useStore((state) => state.abortController);
@@ -32,7 +56,7 @@ export default function ContextMenu({ hide }: Props) {
   const activeStory = stories.find((s) => s.id === activeStoryId);
   const context = activeStory?.context;
   const [editor] = useLexicalComposerContext();
-  function generate() {
+  function generate(promptTypeKey: PromptTypeKeys) {
     editor.update(() => {
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) return;
@@ -41,7 +65,8 @@ export default function ContextMenu({ hide }: Props) {
       const parent = node.getParent();
       const newParagraphNode = $createParagraphNode();
       parent.insertAfter(newParagraphNode);
-      console.log("fetching with context", context, text);
+      const prompt = promptGenerators[promptTypeKey](text);
+      console.log("fetching with context", context, prompt);
       setGenerationState("loading");
       fetch(modelSettings.endpoint, {
         signal: abortController?.signal,
@@ -51,8 +76,8 @@ export default function ContextMenu({ hide }: Props) {
         },
         body: JSON.stringify({
           model: modelSettings.model,
-          prompt: text,
-          context,
+          prompt,
+          context: promptTypeKey === "newScene" ? context : undefined,
           options: {
             temperature: modelSettings.temperature,
             stop: modelSettings.stop,
@@ -116,7 +141,7 @@ export default function ContextMenu({ hide }: Props) {
         type="button"
         onClick={() => {
           hide();
-          generate();
+          generate("newScene");
         }}
       >
         <SparklesIcon aria-hidden="true" />
@@ -124,14 +149,7 @@ export default function ContextMenu({ hide }: Props) {
       <button
         type="button"
         onClick={() => {
-          hide();
-        }}
-      >
-        <BarsArrowDownIcon aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        onClick={() => {
+          generate("rewrite");
           hide();
         }}
       >
@@ -140,21 +158,11 @@ export default function ContextMenu({ hide }: Props) {
       <button
         type="button"
         onClick={() => {
+          generate("summarize");
           hide();
         }}
       >
         <ArrowsPointingInIcon aria-hidden="true" />
-      </button>
-      <button type="button" onClick={() => {}}>
-        <Bars3BottomLeftIcon aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          hide();
-        }}
-      >
-        <ChatBubbleLeftRightIcon aria-hidden="true" />
       </button>
     </span>
   );

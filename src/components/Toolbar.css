@@ -10,6 +10,7 @@
   display: flex;
   flex-direction: row;
   align-items: stretch;
+  flex: 10 1 0;
 }
 
 .App .toolbar .toolbar-left .style-tools {
@@ -17,6 +18,8 @@
   flex-direction: row;
   align-items: stretch;
   margin-left: 20px;
+  flex: 10 1 0;
+  justify-content: center;
 }
 
 .App .toolbar .toolbar-right {
@@ -24,16 +27,33 @@
   flex-direction: row;
   align-items: center;
 }
+.App .toolbar .toolbar-right .model {
+  cursor: pointer;
+  margin: 0 1rem;
+}
 
 .App .toolbar .toolbar-right .context {
   cursor: pointer;
+}
+
+.App .toolbar .toolbar-right .cancel-button {
+  cursor: pointer;
+  text-transform: capitalize;
+  margin: 0 1rem;
+}
+
+.App .toolbar .toolbar-right .cancel-button:disabled {
+  cursor: not-allowed;
+  text-transform: capitalize;
+  margin: 0 1rem;
 }
 
 .App .toolbar .toolbar-right .status {
   height: 10px;
   border-radius: 50%;
   width: 10px;
-  margin: 0 1rem;
+  display: inline-block;
+  margin: 0 0.6em 0 0.1rem;
 }
 
 .App .toolbar .toolbar-right .generation-state {
@@ -57,12 +77,6 @@
 
 .App .toolbar .toolbar-right .status.error {
   background-color: rgb(200, 63, 63);
-}
-
-.App .toolbar .toolbar-right .cancel-button {
-  cursor: pointer;
-  text-transform: capitalize;
-  margin: 0 1rem;
 }
 
 .App .toolbar .item {

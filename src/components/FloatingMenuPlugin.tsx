@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { offset } from "@floating-ui/dom";
+
 import { createPortal } from "react-dom";
 import {
   $getSelection,
@@ -43,7 +45,10 @@ export function FloatingMenuPlugin({
 
     if (!domRange || !ref.current || isPointerDown) return setCoords(undefined);
 
-    computePosition(domRange, ref.current, { placement: "top" })
+    computePosition(domRange, ref.current, {
+      placement: "top",
+      middleware: [offset(30)],
+    })
       .then((pos: { x: number; y: number }) => {
         setCoords({ x: pos.x, y: pos.y - 10 });
       })

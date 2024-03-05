@@ -17,63 +17,14 @@ type MenuOptions = {
   [key: string]: { label: string; action: () => void }[];
 };
 
-const menuOptions: MenuOptions = {
-  file: [
-    {
-      label: "New",
-      action: () => {},
-    },
-    {
-      label: "Open",
-      action: () => {},
-    },
-    {
-      label: "Save",
-      action: () => {},
-    },
-  ],
-  edit: [
-    {
-      label: "Undo",
-      action: () => {},
-    },
-    {
-      label: "Redo",
-      action: () => {},
-    },
-    {
-      label: "Cut",
-      action: () => {},
-    },
-    {
-      label: "Copy",
-      action: () => {},
-    },
-    {
-      label: "Paste",
-      action: () => {},
-    },
-  ],
-  view: [
-    {
-      label: "Zoom In",
-      action: () => {},
-    },
-    {
-      label: "Zoom Out",
-      action: () => {},
-    },
-    {
-      label: "Reset Zoom",
-      action: () => {},
-    },
-  ],
-};
-
 export function Toolbar() {
-  const { cancelGeneration, clearContext, generationState } = useStore(
-    (state) => state
-  );
+  const {
+    cancelGeneration,
+    clearContext,
+    generationState,
+    modelSettings,
+    createStory,
+  } = useStore((state) => state);
   const [editor] = useLexicalComposerContext();
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
@@ -88,6 +39,63 @@ export function Toolbar() {
 
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const menuOptions: MenuOptions = {
+    file: [
+      {
+        label: "New",
+        action: () => {
+          console.log("new");
+          createStory();
+        },
+      },
+      {
+        label: "Open",
+        action: () => {},
+      },
+      {
+        label: "Save",
+        action: () => {},
+      },
+    ],
+    edit: [
+      {
+        label: "Undo",
+        action: () => {},
+      },
+      {
+        label: "Redo",
+        action: () => {},
+      },
+      {
+        label: "Cut",
+        action: () => {},
+      },
+      {
+        label: "Copy",
+        action: () => {},
+      },
+      {
+        label: "Paste",
+        action: () => {},
+      },
+    ],
+    view: [
+      {
+        label: "Zoom In",
+        action: () => {},
+      },
+      {
+        label: "Zoom Out",
+        action: () => {},
+      },
+      {
+        label: "Reset Zoom",
+        action: () => {},
+      },
+    ],
+  };
+
   useOnClickOutside(menuRef, () => setActiveMenu(null));
   useEffect(() => {
     const unregisterListener = editor.registerUpdateListener(
@@ -112,7 +120,7 @@ export function Toolbar() {
   return (
     <>
       <div className="toolbar">
-        <div className="toolbar-left" ref={menuRef}>
+        <div className="toolbar-left">
           <button
             className="item"
             onClick={() => {
@@ -200,6 +208,13 @@ export function Toolbar() {
         </div>
         <div className="toolbar-right">
           <button
+            className={`model ${generationState}`}
+            onClick={() => {
+              clearContext(activeStoryId);
+            }}
+            disabled={generationState !== "idle"}
+          >{`${modelSettings.model}`}</button>
+          <button
             className={`context ${generationState}`}
             onClick={() => {
               clearContext(activeStoryId);
@@ -208,25 +223,25 @@ export function Toolbar() {
           >{`${
             activeStory?.context?.length ? activeStory.context?.length : "0"
           }/4096`}</button>
-          <div className={`status ${generationState}`}></div>
-          {generationState !== "idle" ? (
-            <button
-              className="cancel-button"
-              onClick={() => cancelGeneration()}
-            >
-              {`Cancel ${generationState}`}
-            </button>
-          ) : (
-            <span className="generation-state">{generationState}</span>
-          )}
+          <button
+            className="cancel-button"
+            onClick={() => cancelGeneration()}
+            disabled={generationState === "idle"}
+          >
+            <span className={`status ${generationState}`}></span>
+            {`${generationState === "idle" ? "" : "Cancel "}${generationState}`}
+          </button>
         </div>
       </div>
-      <div className={cx("drop-down-menu", activeMenu)}>
+      <div className={cx("drop-down-menu", activeMenu)} ref={menuRef}>
         {menuOptions[activeMenu || "file"].map((option) => (
           <button
             key={option.label}
             className="item"
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              console.log("clicked", option.label);
               option.action();
               setActiveMenu(null);
             }}
