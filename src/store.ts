@@ -24,6 +24,10 @@ type State = {
   activeStoryId: string;
   abortController?: AbortController;
   generationState: LoadingStates;
+  availableModels: string[];
+  setAvailableModels: (models: string[]) => void;
+  changeModel: (model: string) => void;
+  cycleModel: () => void;
   setGenerationState: (state: LoadingStates) => void;
   cancelGeneration: () => void;
   setActive: (id: string) => void;
@@ -55,10 +59,30 @@ export const useStore = create<State>()(
   persist(
     (set, get) => ({
       stories: defaultStories,
+      availableModels: ["rose", "mixtral"],
       modelSettings: defaultSettings,
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
       generationState: "idle",
+      setAvailableModels: (models: string[]) => {
+        set(() => ({
+          availableModels: models,
+        }));
+      },
+      changeModel: (model: string) => {
+        set(() => ({
+          modelSettings: { ...get().modelSettings, model },
+        }));
+      },
+      cycleModel: () => {
+        const models = get().availableModels;
+        const currentModel = get().modelSettings.model;
+        const currentIndex = models.indexOf(currentModel);
+        const nextIndex = (currentIndex + 1) % models.length;
+        set(() => ({
+          modelSettings: { ...get().modelSettings, model: models[nextIndex] },
+        }));
+      },
       setGenerationState: (state: LoadingStates) => {
         set(() => ({
           generationState: state,

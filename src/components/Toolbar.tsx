@@ -24,6 +24,7 @@ export function Toolbar() {
     generationState,
     modelSettings,
     createStory,
+    cycleModel,
   } = useStore((state) => state);
   const [editor] = useLexicalComposerContext();
   const stories = useStore((state) => state.stories);
@@ -103,7 +104,6 @@ export function Toolbar() {
         editorState.read(() => {
           const selection = $getSelection();
           if (!$isRangeSelection(selection)) return;
-          console.log("selection", selection.hasFormat("bold"));
           setTextFormat({
             isBold: selection.hasFormat("bold"),
             isCode: selection.hasFormat("code"),
@@ -169,6 +169,7 @@ export function Toolbar() {
               aria-label="Format text as bold"
               active={textFormat.isBold}
               onClick={() => {
+                editor.focus();
                 editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold");
               }}
             />
@@ -177,6 +178,7 @@ export function Toolbar() {
               aria-label="Format text as italics"
               active={textFormat.isItalic}
               onClick={() => {
+                editor.focus();
                 editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic");
               }}
             />
@@ -185,6 +187,7 @@ export function Toolbar() {
               aria-label="Format text to underlined"
               active={textFormat.isUnderline}
               onClick={() => {
+                editor.focus();
                 editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline");
               }}
             />
@@ -193,6 +196,7 @@ export function Toolbar() {
               aria-label="Format text with a strikethrough"
               active={textFormat.isStrikethrough}
               onClick={() => {
+                editor.focus();
                 editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough");
               }}
             />
@@ -201,6 +205,7 @@ export function Toolbar() {
               aria-label="Format text with inline code"
               active={textFormat.isCode}
               onClick={() => {
+                editor.focus();
                 editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code");
               }}
             />
@@ -211,6 +216,7 @@ export function Toolbar() {
             className={`model ${generationState}`}
             onClick={() => {
               clearContext(activeStoryId);
+              cycleModel();
             }}
             disabled={generationState !== "idle"}
           >{`${modelSettings.model}`}</button>
