@@ -279,5 +279,3 @@ const useOnClickOutside = (ref: any, handler: any) => {
     };
   }, [ref, handler]);
 };
-
-export default useOnClickOutside;

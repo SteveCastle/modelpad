@@ -72,7 +72,7 @@ function App() {
   // If activeStory changes cancel generation
   useEffect(() => {
     cancelGeneration();
-  }, [activeStoryId]);
+  }, [activeStoryId, cancelGeneration]);
 
   return (
     <div className="App">

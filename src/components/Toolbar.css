@@ -26,6 +26,8 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+  justify-content: flex-end;
+  min-width: 250px;
 }
 .App .toolbar .toolbar-right .model {
   cursor: pointer;
