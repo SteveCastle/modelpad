@@ -7,6 +7,7 @@ import {
 import {
   $createParagraphNode,
   $createTextNode,
+  $getRoot,
   $getSelection,
   $isRangeSelection,
   LexicalEditor,
@@ -32,14 +33,10 @@ const promptGenerators: Record<PromptTypeKeys, PromptGenerator> = {
      `;
   },
   rewrite: (text: string) => {
-    return `after the heading ALTERNATE VERSION: write an alternate version of this text:
-     ${text}
-
-     ALTERNATE VERSION:
-     `;
+    return `${text}`;
   },
   summarize: (text: string) => {
-    return `Summarize the following text:
+    return `A summary of the following text:
      ${text}
 
      BEGIN SUMMARY:
@@ -58,17 +55,16 @@ export default function ContextMenu({ hide }: Props) {
   const [editor] = useLexicalComposerContext();
   function generate(promptTypeKey: PromptTypeKeys) {
     editor.update(() => {
+      const root = $getRoot();
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) return;
       const text = selection.getTextContent();
-      const node = selection.anchor.getNode();
-      const parent = node.getParent();
       const newParagraphNode = $createParagraphNode();
-      parent.insertAfter(newParagraphNode);
+      root.append(newParagraphNode);
       const prompt = promptGenerators[promptTypeKey](text);
       console.log("fetching with context", context, prompt);
       setGenerationState("loading");
-      fetch(modelSettings.endpoint, {
+      fetch(`${modelSettings.endpoint}/generate`, {
         signal: abortController?.signal,
         method: "POST",
         headers: {
@@ -103,7 +99,7 @@ export default function ContextMenu({ hide }: Props) {
                   try {
                     const json = JSON.parse(chunk);
                     const response = json.response;
-                    if (parent && response) {
+                    if (newParagraphNode && response) {
                       editor.update(() => {
                         const textNode = $createTextNode(response);
                         newParagraphNode.append(textNode);

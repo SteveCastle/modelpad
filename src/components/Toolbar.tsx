@@ -1,10 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import cx from "classnames";
 import { $getSelection, $isRangeSelection, FORMAT_TEXT_COMMAND } from "lexical";
+import { $wrapNodes } from "@lexical/selection";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import {
+  $convertFromMarkdownString,
+  $convertToMarkdownString,
+  TRANSFORMERS,
+} from "@lexical/markdown";
+import { $createCodeNode, $isCodeNode } from "@lexical/code";
 import { useStore } from "../store";
 import { IconButton } from "./IconButton";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import "./Toolbar.css";
+
 type TextFormattingState = {
   isBold: boolean;
   isCode: boolean;
@@ -26,6 +34,7 @@ export function Toolbar() {
     createStory,
     cycleModel,
   } = useStore((state) => state);
+
   const [editor] = useLexicalComposerContext();
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
@@ -46,17 +55,70 @@ export function Toolbar() {
       {
         label: "New",
         action: () => {
-          console.log("new");
-          createStory();
+          createStory("Untitled");
         },
       },
       {
         label: "Open",
-        action: () => {},
+        action: () => {
+          async function getFile() {
+            // Open file picker and destructure the result the first handle
+            const [fileHandle] = await window.showOpenFilePicker({
+              types: [
+                {
+                  description: "Markdown file",
+                  accept: {
+                    "text/markdown": [".md"],
+                    "text/plain": [".txt"],
+                  },
+                },
+              ],
+            });
+            const file = await fileHandle.getFile();
+            createStory(file.name);
+            const markDown = await file.text();
+            console.log("creating story");
+            editor.update(() => {
+              console.log("applying markdown");
+              $convertFromMarkdownString(markDown, TRANSFORMERS);
+            });
+          }
+          getFile();
+        },
       },
       {
         label: "Save",
-        action: () => {},
+        action: () => {
+          async function saveFile() {
+            // create a new handle
+            const newHandle = await window.showSaveFilePicker({
+              suggestedName: activeStory?.title
+                ? `${activeStory.title.toLocaleLowerCase()}.md`
+                : "new.md",
+              types: [
+                {
+                  description: "Markdown file",
+                  accept: {
+                    "text/markdown": [".md"],
+                    "text/plain": [".txt"],
+                  },
+                },
+              ],
+            });
+
+            // create a FileSystemWritableFileStream to write to
+            const writableStream = await newHandle.createWritable();
+            let markdown = "";
+            editor.update(() => {
+              markdown = $convertToMarkdownString(TRANSFORMERS);
+            });
+            await writableStream.write(markdown);
+
+            // close the file and write the contents to disk.
+            await writableStream.close();
+          }
+          saveFile();
+        },
       },
     ],
     edit: [
@@ -106,7 +168,9 @@ export function Toolbar() {
           if (!$isRangeSelection(selection)) return;
           setTextFormat({
             isBold: selection.hasFormat("bold"),
-            isCode: selection.hasFormat("code"),
+            isCode:
+              $isCodeNode(selection.getNodes()[0].getParent()) ||
+              $isCodeNode(selection.getNodes()[0]),
             isItalic: selection.hasFormat("italic"),
             isStrikethrough: selection.hasFormat("strikethrough"),
             isUnderline: selection.hasFormat("underline"),
@@ -207,6 +271,13 @@ export function Toolbar() {
               onClick={() => {
                 editor.focus();
                 editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code");
+                editor.update(() => {
+                  const selection = $getSelection();
+
+                  if ($isRangeSelection(selection)) {
+                    $wrapNodes(selection, () => $createCodeNode());
+                  }
+                });
               }}
             />
           </div>

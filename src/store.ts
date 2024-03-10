@@ -4,7 +4,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 export type ModelSettings = {
   endpoint: string;
-  model: string;
+  model: string | null;
   temperature: number;
   stop: string[];
 };
@@ -36,12 +36,12 @@ type State = {
   updateContext: (id: string, context: number[]) => void;
   clearContext: (id: string) => void;
   closeStory: (id: string) => void;
-  createStory: () => void;
+  createStory: (title: string) => void;
 };
 
 const defaultSettings: ModelSettings = {
-  endpoint: "http://localhost:11434/api/generate",
-  model: "rose",
+  endpoint: "http://localhost:11434/api",
+  model: null,
   temperature: 1,
   stop: ["user:"],
 };
@@ -59,7 +59,7 @@ export const useStore = create<State>()(
   persist(
     (set, get) => ({
       stories: defaultStories,
-      availableModels: ["rose", "mixtral"],
+      availableModels: [],
       modelSettings: defaultSettings,
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
@@ -67,6 +67,12 @@ export const useStore = create<State>()(
       setAvailableModels: (models: string[]) => {
         set(() => ({
           availableModels: models,
+          modelSettings: {
+            ...get().modelSettings,
+            model: get().modelSettings.model
+              ? get().modelSettings.model
+              : models[0],
+          },
         }));
       },
       changeModel: (model: string) => {
@@ -77,7 +83,7 @@ export const useStore = create<State>()(
       cycleModel: () => {
         const models = get().availableModels;
         const currentModel = get().modelSettings.model;
-        const currentIndex = models.indexOf(currentModel);
+        const currentIndex = currentModel ? models.indexOf(currentModel) : 0;
         const nextIndex = (currentIndex + 1) % models.length;
         set(() => ({
           modelSettings: { ...get().modelSettings, model: models[nextIndex] },
@@ -148,12 +154,12 @@ export const useStore = create<State>()(
           };
         });
       },
-      createStory: () => {
+      createStory: (title: string) => {
         const newId = ulid();
         set(() => ({
           stories: [
             ...get().stories,
-            { title: "Untitled", id: newId, content: "" },
+            { title: title ? title : "Untitled", id: newId, content: "" },
           ],
           activeStoryId: newId,
         }));
@@ -165,6 +171,7 @@ export const useStore = create<State>()(
       partialize: (state) => ({
         stories: state.stories,
         activeStoryId: state.activeStoryId,
+        modelSettings: state.modelSettings,
       }),
     }
   )

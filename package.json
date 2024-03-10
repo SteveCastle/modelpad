@@ -13,6 +13,7 @@
     "@floating-ui/dom": "^1.6.3",
     "@heroicons/react": "^2.1.1",
     "@lexical/react": "^0.13.1",
+    "@types/filesystem": "^0.0.35",
     "classnames": "^2.5.1",
     "lexical": "^0.13.1",
     "react": "^18.2.0",
