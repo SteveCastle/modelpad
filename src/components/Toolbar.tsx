@@ -31,6 +31,7 @@ export function Toolbar() {
     clearContext,
     generationState,
     modelSettings,
+    host,
     createStory,
     cycleModel,
   } = useStore((state) => state);
@@ -283,6 +284,7 @@ export function Toolbar() {
           </div>
         </div>
         <div className="toolbar-right">
+          <span className="server">{host}</span>
           <button
             className={`model ${generationState}`}
             onClick={() => {

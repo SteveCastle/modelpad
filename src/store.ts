@@ -3,7 +3,6 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
 export type ModelSettings = {
-  endpoint: string;
   model: string | null;
   temperature: number;
   stop: string[];
@@ -19,6 +18,7 @@ export type Story = {
 type LoadingStates = "idle" | "loading" | "generating" | "error";
 
 type State = {
+  host: string;
   modelSettings: ModelSettings;
   stories: Story[];
   activeStoryId: string;
@@ -40,7 +40,6 @@ type State = {
 };
 
 const defaultSettings: ModelSettings = {
-  endpoint: "http://localhost:11434/api",
   model: null,
   temperature: 1,
   stop: ["user:"],
@@ -59,6 +58,7 @@ export const useStore = create<State>()(
   persist(
     (set, get) => ({
       stories: defaultStories,
+      host: "http://localhost:11434",
       availableModels: [],
       modelSettings: defaultSettings,
       activeStoryId: defaultStories[0].id,
@@ -171,6 +171,7 @@ export const useStore = create<State>()(
       partialize: (state) => ({
         stories: state.stories,
         activeStoryId: state.activeStoryId,
+        host: state.host,
         modelSettings: state.modelSettings,
       }),
     }

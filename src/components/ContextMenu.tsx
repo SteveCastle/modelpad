@@ -33,7 +33,11 @@ const promptGenerators: Record<PromptTypeKeys, PromptGenerator> = {
      `;
   },
   rewrite: (text: string) => {
-    return `${text}`;
+    return `A Rewording of this text:
+     ${text}
+
+     ALTERNATE VERSION:
+     `;
   },
   summarize: (text: string) => {
     return `A summary of the following text:
@@ -46,6 +50,7 @@ const promptGenerators: Record<PromptTypeKeys, PromptGenerator> = {
 
 export default function ContextMenu({ hide }: Props) {
   const abortController = useStore((state) => state.abortController);
+  const host = useStore((state) => state.host);
   const modelSettings = useStore((state) => state.modelSettings);
   const { setGenerationState, updateContext } = useStore((state) => state);
   const stories = useStore((state) => state.stories);
@@ -64,7 +69,7 @@ export default function ContextMenu({ hide }: Props) {
       const prompt = promptGenerators[promptTypeKey](text);
       console.log("fetching with context", context, prompt);
       setGenerationState("loading");
-      fetch(`${modelSettings.endpoint}/generate`, {
+      fetch(`${host}/api/generate`, {
         signal: abortController?.signal,
         method: "POST",
         headers: {

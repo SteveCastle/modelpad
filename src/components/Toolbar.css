@@ -22,20 +22,27 @@
   justify-content: center;
 }
 
+.App .toolbar .toolbar-right .server {
+  font-size: 0.8rem;
+  padding: 0 2rem 0 0;
+  color: rgba(255, 255, 255, 0.457);
+}
+
 .App .toolbar .toolbar-right {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
-  min-width: 315px;
 }
 .App .toolbar .toolbar-right .model {
   cursor: pointer;
   margin: 0 1rem;
+  min-width: 150px;
 }
 
 .App .toolbar .toolbar-right .context {
   cursor: pointer;
+  min-width: 90px;
 }
 
 .App .toolbar .toolbar-right .cancel-button {

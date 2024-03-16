@@ -121,8 +121,9 @@ const editorConfig = {
   ],
 };
 
-const getModels = (endpoint: string) => async () => {
-  const res = await fetch(`${endpoint}/tags`);
+const getModels = (host: string) => async () => {
+  console.log(host);
+  const res = await fetch(`${host}/api/tags`);
   return res.json();
 };
 
@@ -157,10 +158,11 @@ function App() {
   useEffect(() => {
     cancelGeneration();
   }, [activeStoryId, cancelGeneration]);
-  const endpoint = useStore((state) => state.modelSettings.endpoint);
+  const host = useStore((state) => state.host);
+  console.log("host", host);
   const { data } = useQuery({
-    queryKey: ["models", endpoint],
-    queryFn: getModels(endpoint),
+    queryKey: ["models", host],
+    queryFn: getModels(host),
     onSuccess: (data) => {
       const modelNames = data.models.map((model: Model) => model.name);
       setAvailableModels(modelNames);
