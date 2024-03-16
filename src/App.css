@@ -12,11 +12,12 @@
   align-items: center;
   align-items: center;
   background-color: var(--tabs-bg-color);
+  justify-content: flex-start;
 }
 
 .App .tabs .tab {
   height: 22px;
-
+  flex: 1 1 0;
   font-size: 0.8rem;
   display: flex;
   flex-direction: row;
@@ -24,12 +25,18 @@
   border-radius: 4px 4px 0 0;
   justify-content: space-between;
   align-items: center;
-  padding: 0.2rem 1rem 0.3rem 1rem;
+  padding: 0.2rem 0.4rem 0.3rem 1rem;
   color: var(--text-color);
   cursor: pointer;
-  min-width: 200px;
+  min-width: 20px;
   transition: background-color 0.2s ease;
   user-select: none;
+}
+
+.App .tabs .tab .editable-title {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .App .tabs .tab .close {

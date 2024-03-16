@@ -136,6 +136,7 @@ function App() {
     setAvailableModels,
     stories,
     cancelGeneration,
+    generationState,
   } = useStore((state) => state);
 
   const activeStoryId = useStore((state) => state.activeStoryId);
@@ -156,11 +157,13 @@ function App() {
 
   // If activeStory changes cancel generation
   useEffect(() => {
-    cancelGeneration();
-  }, [activeStoryId, cancelGeneration]);
+    if (generationState === "ready") {
+      cancelGeneration();
+    }
+  }, [activeStoryId, cancelGeneration, generationState]);
   const host = useStore((state) => state.host);
   console.log("host", host);
-  const { data } = useQuery({
+  useQuery({
     queryKey: ["models", host],
     queryFn: getModels(host),
     onSuccess: (data) => {
@@ -168,8 +171,6 @@ function App() {
       setAvailableModels(modelNames);
     },
   });
-
-  if (!data) return <div>Loading...</div>;
 
   return (
     <div className="App">

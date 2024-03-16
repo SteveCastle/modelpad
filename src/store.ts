@@ -15,7 +15,12 @@ export type Story = {
   context?: number[];
 };
 
-type LoadingStates = "idle" | "loading" | "generating" | "error";
+type LoadingStates =
+  | "ready"
+  | "loading"
+  | "generating"
+  | "error"
+  | "no-connection";
 
 type State = {
   host: string;
@@ -63,10 +68,11 @@ export const useStore = create<State>()(
       modelSettings: defaultSettings,
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
-      generationState: "idle",
+      generationState: "no-connection",
       setAvailableModels: (models: string[]) => {
         set(() => ({
           availableModels: models,
+          generationState: "ready",
           modelSettings: {
             ...get().modelSettings,
             model: get().modelSettings.model
@@ -90,15 +96,17 @@ export const useStore = create<State>()(
         }));
       },
       setGenerationState: (state: LoadingStates) => {
+        console.log("setting generation state", state);
         set(() => ({
           generationState: state,
         }));
       },
       cancelGeneration: () => {
         get().abortController?.abort();
+        console.log("canceling generation");
         set(() => ({
           abortController: new AbortController(),
-          generationState: "idle",
+          generationState: "ready",
         }));
       },
       setActive: (id: string) => {

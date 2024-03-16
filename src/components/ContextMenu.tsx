@@ -112,7 +112,7 @@ export default function ContextMenu({ hide }: Props) {
                     }
                     if (json.context) {
                       updateContext(activeStoryId, json.context);
-                      setGenerationState("idle");
+                      setGenerationState("ready");
                       console.log("set context", json.context);
                     }
                   } catch (e) {

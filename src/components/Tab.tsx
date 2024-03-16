@@ -20,8 +20,10 @@ export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
       key={story.id}
       onClick={() => setActive(story.id)}
       onAuxClick={(e) => {
-        e.preventDefault();
-        closeStory(story.id);
+        if (e.button == 1) {
+          e.preventDefault();
+          closeStory(story.id);
+        }
       }}
     >
       <span

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import cx from "classnames";
+import { useQueryClient } from "react-query";
 import { $getSelection, $isRangeSelection, FORMAT_TEXT_COMMAND } from "lexical";
 import { $wrapNodes } from "@lexical/selection";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
@@ -26,6 +27,7 @@ type MenuOptions = {
 };
 
 export function Toolbar() {
+  const queryClient = useQueryClient();
   const {
     cancelGeneration,
     clearContext,
@@ -35,7 +37,7 @@ export function Toolbar() {
     createStory,
     cycleModel,
   } = useStore((state) => state);
-
+  console.log("generationState", generationState);
   const [editor] = useLexicalComposerContext();
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
@@ -284,31 +286,41 @@ export function Toolbar() {
           </div>
         </div>
         <div className="toolbar-right">
-          <span className="server">{host}</span>
+          <button className="server">{host}</button>
           <button
             className={`model ${generationState}`}
             onClick={() => {
               clearContext(activeStoryId);
               cycleModel();
             }}
-            disabled={generationState !== "idle"}
-          >{`${modelSettings.model}`}</button>
+            disabled={generationState !== "ready"}
+          >{`${modelSettings.model ? modelSettings.model : "None"}`}</button>
           <button
             className={`context ${generationState}`}
             onClick={() => {
               clearContext(activeStoryId);
             }}
-            disabled={generationState !== "idle"}
+            disabled={generationState !== "ready"}
           >{`${
             activeStory?.context?.length ? activeStory.context?.length : "0"
           }/4096`}</button>
           <button
             className="cancel-button"
-            onClick={() => cancelGeneration()}
-            disabled={generationState === "idle"}
+            onClick={() => {
+              generationState === "no-connection"
+                ? () => {
+                    queryClient.refetchQueries("models");
+                  }
+                : cancelGeneration();
+            }}
+            disabled={generationState === "ready"}
           >
             <span className={`status ${generationState}`}></span>
-            {`${generationState === "idle" ? "" : "Cancel "}${generationState}`}
+            {`${
+              generationState === "ready" || generationState === "no-connection"
+                ? ""
+                : "Cancel "
+            }${generationState}`}
           </button>
         </div>
       </div>
