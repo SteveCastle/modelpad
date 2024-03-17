@@ -13,6 +13,7 @@ import { $createCodeNode, $isCodeNode } from "@lexical/code";
 import { useStore } from "../store";
 import { IconButton } from "./IconButton";
 import "./Toolbar.css";
+import ModelSettings from "./ModelSettings";
 
 type TextFormattingState = {
   isBold: boolean;
@@ -32,10 +33,9 @@ export function Toolbar() {
     cancelGeneration,
     clearContext,
     generationState,
-    modelSettings,
+    model,
     host,
     createStory,
-    cycleModel,
   } = useStore((state) => state);
   console.log("generationState", generationState);
   const [editor] = useLexicalComposerContext();
@@ -287,14 +287,7 @@ export function Toolbar() {
         </div>
         <div className="toolbar-right">
           <button className="server">{host}</button>
-          <button
-            className={`model ${generationState}`}
-            onClick={() => {
-              clearContext(activeStoryId);
-              cycleModel();
-            }}
-            disabled={generationState !== "ready"}
-          >{`${modelSettings.model ? modelSettings.model : "None"}`}</button>
+          {model && <ModelSettings model={model} />}
           <button
             className={`context ${generationState}`}
             onClick={() => {

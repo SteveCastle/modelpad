@@ -2,10 +2,23 @@ import { ulid } from "ulid";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
-export type ModelSettings = {
-  model: string | null;
+type ModelSettings = {
+  mirostat: 0 | 1 | 2;
+  mirostat_eta: number;
+  mirostat_tau: number;
+  num_ctx: number;
+  num_gqa: number;
+  num_gpu: number;
+  num_thread: number;
+  repeat_last_n: number;
+  repeat_penalty: number;
   temperature: number;
+  seed: number;
   stop: string[];
+  tfs_z: number;
+  num_predict: number;
+  top_k: number;
+  top_p: number;
 };
 
 export type Story = {
@@ -25,6 +38,7 @@ type LoadingStates =
 type State = {
   host: string;
   modelSettings: ModelSettings;
+  model: string | null;
   stories: Story[];
   activeStoryId: string;
   abortController?: AbortController;
@@ -45,9 +59,22 @@ type State = {
 };
 
 const defaultSettings: ModelSettings = {
-  model: null,
-  temperature: 1,
-  stop: ["user:"],
+  mirostat: 0, // Mirostat disabled
+  mirostat_eta: 0.1, // Learning rate for feedback response
+  mirostat_tau: 5.0, // Balance between coherence and diversity
+  num_ctx: 4096, // Context window size (given as default 2048, but seems like a typo based on context)
+  num_gqa: 1, // Number of GQA groups in the transformer layer
+  num_gpu: 50, // Number of layers to send to GPU(s)
+  num_thread: 8, // Number of threads for computation
+  repeat_last_n: 64, // How far back to look to prevent repetition
+  repeat_penalty: 1.1, // Penalty strength for repetitions
+  temperature: 1.2, // Model temperature for creativity
+  seed: 0, // Random number seed for generation consistency
+  stop: ["User:"], // Stop sequence for generation
+  tfs_z: 1, // Tail free sampling setting
+  num_predict: -1, // Maximum number of tokens to predict
+  top_k: 40, // Reduces probability of generating nonsense
+  top_p: 0.9, // Works with top-k for text diversity
 };
 
 const defaultStories: Story[] = [
@@ -65,6 +92,7 @@ export const useStore = create<State>()(
       stories: defaultStories,
       host: "http://localhost:11434",
       availableModels: [],
+      model: null,
       modelSettings: defaultSettings,
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
@@ -73,26 +101,21 @@ export const useStore = create<State>()(
         set(() => ({
           availableModels: models,
           generationState: "ready",
-          modelSettings: {
-            ...get().modelSettings,
-            model: get().modelSettings.model
-              ? get().modelSettings.model
-              : models[0],
-          },
+          model: get().model ? get().model : models[0],
         }));
       },
       changeModel: (model: string) => {
         set(() => ({
-          modelSettings: { ...get().modelSettings, model },
+          model,
         }));
       },
       cycleModel: () => {
         const models = get().availableModels;
-        const currentModel = get().modelSettings.model;
+        const currentModel = get().model;
         const currentIndex = currentModel ? models.indexOf(currentModel) : 0;
         const nextIndex = (currentIndex + 1) % models.length;
         set(() => ({
-          modelSettings: { ...get().modelSettings, model: models[nextIndex] },
+          model: models[nextIndex],
         }));
       },
       setGenerationState: (state: LoadingStates) => {
@@ -180,6 +203,7 @@ export const useStore = create<State>()(
         stories: state.stories,
         activeStoryId: state.activeStoryId,
         host: state.host,
+        model: state.model,
         modelSettings: state.modelSettings,
       }),
     }
