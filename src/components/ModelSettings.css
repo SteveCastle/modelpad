@@ -1,0 +1,91 @@
+.ModelSettings {
+  background-color: var(--context-menu-bg-color);
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.setting .control-group {
+  margin-bottom: 10px;
+}
+
+.setting.select-setting .control-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.setting label {
+  margin-right: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.setting.select-setting .control-group button {
+  flex: 1 1 0;
+  margin: 4px;
+  padding: 4px;
+  border: none;
+  background-color: palevioletred;
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.setting.select-setting .control-group button:hover {
+  background-color: rebeccapurple;
+}
+
+.setting.select-setting .control-group button:disabled {
+  background-color: #9549ff;
+  cursor: not-allowed;
+}
+
+.setting.number-setting {
+  display: flex;
+  justify-content: space-between;
+  margin: 1rem;
+}
+
+.setting.number-setting label {
+  flex: 1 1 0;
+}
+
+.setting.number-setting input {
+  margin-right: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  flex: 1 1 0;
+  padding: 4px;
+  border: none;
+  background-color: palevioletred;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.setting.number-setting input:focus {
+  background-color: rebeccapurple;
+}
+
+.available-models {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin: 1rem 0;
+}
+
+.available-models button {
+  flex: 1 1 0;
+  margin: 4px;
+  padding: 4px;
+  border: none;
+  background-color: rgb(181, 181, 181);
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.available-models button.active {
+  background-color: #9549ff;
+}

@@ -134,6 +134,7 @@ function App() {
     createStory,
     updateStory,
     setAvailableModels,
+    setGenerationState,
     stories,
     cancelGeneration,
     generationState,
@@ -160,18 +161,22 @@ function App() {
     if (generationState === "ready") {
       cancelGeneration();
     }
-  }, [activeStoryId, cancelGeneration, generationState]);
+  }, [activeStoryId]);
   const host = useStore((state) => state.host);
   console.log("host", host);
   useQuery({
     queryKey: ["models", host],
     queryFn: getModels(host),
+    onError: (e) => {
+      console.log("error", e);
+      setGenerationState("no-connection");
+      setAvailableModels([]);
+    },
     onSuccess: (data) => {
       const modelNames = data.models.map((model: Model) => model.name);
       setAvailableModels(modelNames);
     },
   });
-
   return (
     <div className="App">
       <div className="tabs">

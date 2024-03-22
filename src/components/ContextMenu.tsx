@@ -51,7 +51,7 @@ const promptGenerators: Record<PromptTypeKeys, PromptGenerator> = {
 export default function ContextMenu({ hide }: Props) {
   const abortController = useStore((state) => state.abortController);
   const host = useStore((state) => state.host);
-  const { modelSettings, model } = useStore((state) => state);
+  const { model, modelSettings } = useStore((state) => state);
   const { setGenerationState, updateContext } = useStore((state) => state);
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);

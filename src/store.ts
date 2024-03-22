@@ -2,29 +2,40 @@ import { ulid } from "ulid";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+type Server = {
+  host: string;
+  name: string;
+};
+
+type AvailableServers = {
+  free: Server[];
+  my: Server[];
+  hosted: Server[];
+};
+
 type ModelSettings = {
-  mirostat: 0 | 1 | 2;
-  mirostat_eta: number;
-  mirostat_tau: number;
-  num_ctx: number;
-  num_gqa: number;
-  num_gpu: number;
-  num_thread: number;
-  repeat_last_n: number;
-  repeat_penalty: number;
-  temperature: number;
-  seed: number;
-  stop: string[];
-  tfs_z: number;
-  num_predict: number;
-  top_k: number;
-  top_p: number;
+  mirostat?: 0 | 1 | 2;
+  mirostat_eta?: number;
+  mirostat_tau?: number;
+  num_ctx?: number;
+  num_gqa?: number;
+  num_gpu?: number;
+  num_thread?: number;
+  repeat_last_n?: number;
+  repeat_penalty?: number;
+  temperature?: number;
+  seed?: number;
+  stop?: string[];
+  tfs_z?: number;
+  num_predict?: number;
+  top_k?: number;
+  top_p?: number;
 };
 
 export type Story = {
   id: string;
   title: string;
-  content: string | undefined;
+  content?: string;
   context?: number[];
 };
 
@@ -37,14 +48,17 @@ type LoadingStates =
 
 type State = {
   host: string;
-  modelSettings: ModelSettings;
   model: string | null;
   stories: Story[];
   activeStoryId: string;
   abortController?: AbortController;
   generationState: LoadingStates;
   availableModels: string[];
+  availableServers: AvailableServers;
+  modelSettings: ModelSettings;
+  setHost: (host: string) => void;
   setAvailableModels: (models: string[]) => void;
+  updateModelSettings: (settings: ModelSettings) => void;
   changeModel: (model: string) => void;
   cycleModel: () => void;
   setGenerationState: (state: LoadingStates) => void;
@@ -59,22 +73,13 @@ type State = {
 };
 
 const defaultSettings: ModelSettings = {
-  mirostat: 0, // Mirostat disabled
+  mirostat: 2, // Mirostat disabled
   mirostat_eta: 0.1, // Learning rate for feedback response
   mirostat_tau: 5.0, // Balance between coherence and diversity
-  num_ctx: 4096, // Context window size (given as default 2048, but seems like a typo based on context)
-  num_gqa: 1, // Number of GQA groups in the transformer layer
-  num_gpu: 50, // Number of layers to send to GPU(s)
-  num_thread: 8, // Number of threads for computation
-  repeat_last_n: 64, // How far back to look to prevent repetition
-  repeat_penalty: 1.1, // Penalty strength for repetitions
   temperature: 1.2, // Model temperature for creativity
-  seed: 0, // Random number seed for generation consistency
-  stop: ["User:"], // Stop sequence for generation
-  tfs_z: 1, // Tail free sampling setting
-  num_predict: -1, // Maximum number of tokens to predict
-  top_k: 40, // Reduces probability of generating nonsense
-  top_p: 0.9, // Works with top-k for text diversity
+  top_p: 0.9, // Top p sampling
+  top_k: 40, // Top k sampling
+  repeat_penalty: 1.0, // Penalty for repeating
 };
 
 const defaultStories: Story[] = [
@@ -86,22 +91,69 @@ const defaultStories: Story[] = [
   },
 ];
 
+const defaultAvailableServers: AvailableServers = {
+  free: [
+    {
+      host: "http://localhost:11435",
+      name: "AWS",
+    },
+  ],
+  my: [
+    {
+      host: "http://localhost:11434",
+      name: "Localhost",
+    },
+    {
+      host: "http://localhost:11435",
+      name: "AWS",
+    },
+  ],
+  hosted: [
+    {
+      host: "http://localhost:11436",
+      name: "AWS",
+    },
+    {
+      host: "http://localhost:11437",
+      name: "AWS",
+    },
+  ],
+};
+
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
       stories: defaultStories,
       host: "http://localhost:11434",
       availableModels: [],
+      availableServers: defaultAvailableServers,
       model: null,
       modelSettings: defaultSettings,
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
       generationState: "no-connection",
+      setHost: (host: string) => {
+        set(() => ({
+          host,
+          generationState: "no-connection",
+          availableModels: [],
+          model: null,
+        }));
+      },
       setAvailableModels: (models: string[]) => {
         set(() => ({
           availableModels: models,
-          generationState: "ready",
+          generationState:
+            get().generationState === "no-connection"
+              ? "ready"
+              : get().generationState,
           model: get().model ? get().model : models[0],
+        }));
+      },
+      updateModelSettings: (settings: ModelSettings) => {
+        //Merge the input settings with the current settings
+        set(() => ({
+          modelSettings: { ...get().modelSettings, ...settings },
         }));
       },
       changeModel: (model: string) => {
@@ -190,7 +242,12 @@ export const useStore = create<State>()(
         set(() => ({
           stories: [
             ...get().stories,
-            { title: title ? title : "Untitled", id: newId, content: "" },
+            {
+              title: title ? title : "Untitled",
+              id: newId,
+              content: "",
+              modelSettings: defaultSettings,
+            },
           ],
           activeStoryId: newId,
         }));

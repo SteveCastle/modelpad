@@ -10,10 +10,12 @@ import {
   TRANSFORMERS,
 } from "@lexical/markdown";
 import { $createCodeNode, $isCodeNode } from "@lexical/code";
+import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { useStore } from "../store";
 import { IconButton } from "./IconButton";
 import "./Toolbar.css";
 import ModelSettings from "./ModelSettings";
+import ServerSelect from "./ServerSelect";
 
 type TextFormattingState = {
   isBold: boolean;
@@ -29,15 +31,10 @@ type MenuOptions = {
 
 export function Toolbar() {
   const queryClient = useQueryClient();
-  const {
-    cancelGeneration,
-    clearContext,
-    generationState,
-    model,
-    host,
-    createStory,
-  } = useStore((state) => state);
-  console.log("generationState", generationState);
+  const { cancelGeneration, clearContext, model, createStory } = useStore(
+    (state) => state
+  );
+  const generationState = useStore((state) => state.generationState);
   const [editor] = useLexicalComposerContext();
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
@@ -286,7 +283,7 @@ export function Toolbar() {
           </div>
         </div>
         <div className="toolbar-right">
-          <button className="server">{host}</button>
+          <ServerSelect />
           {model && <ModelSettings model={model} />}
           <button
             className={`context ${generationState}`}
@@ -337,23 +334,3 @@ export function Toolbar() {
     </>
   );
 }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const useOnClickOutside = (ref: any, handler: any) => {
-  useEffect(() => {
-    const listener = (event: Event) => {
-      if (!ref.current || ref.current.contains(event.target)) {
-        return;
-      }
-      handler(event);
-    };
-
-    document.addEventListener("mousedown", listener);
-    document.addEventListener("touchstart", listener);
-
-    return () => {
-      document.removeEventListener("mousedown", listener);
-      document.removeEventListener("touchstart", listener);
-    };
-  }, [ref, handler]);
-};

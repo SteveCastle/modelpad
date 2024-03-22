@@ -28,7 +28,7 @@ export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
     >
       <span
         contentEditable={editingTitle}
-        className="editable-title"
+        className={["editable-title", editingTitle ? "editing" : ""].join(" ")}
         onDoubleClick={() => setEditingTitle(true)}
         onBlur={(e) => {
           updateTitle(story.id, e.currentTarget.textContent || "");
