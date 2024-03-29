@@ -45,21 +45,27 @@ export default function ServerSelect() {
           <h3>Free Servers</h3>
           <div className="server-list free-servers">
             {availableServers.free.map((server) => (
-              <div className="server" key={server.host}>
+              <button
+                className={`server ${server.host === host ? "active" : ""}`}
+                key={server.host}
+                disabled={server.host === host}
+                onClick={() => setHost(server.host, server.providerKey)}
+              >
                 {server.name}
-              </div>
+              </button>
             ))}
           </div>
           <h3>My Servers</h3>
           <div className="server-list my-servers">
             {availableServers.my.map((server) => (
-              <div
+              <button
                 key={server.host}
                 className={`server ${server.host === host ? "active" : ""}`}
-                onClick={() => setHost(server.host)}
+                disabled={server.host === host}
+                onClick={() => setHost(server.host, server.providerKey)}
               >
                 {server.name}
-              </div>
+              </button>
             ))}
           </div>
           <h3>Hosted Servers</h3>

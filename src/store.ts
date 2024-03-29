@@ -4,6 +4,7 @@ import { persist, createJSONStorage } from "zustand/middleware";
 
 type Server = {
   host: string;
+  providerKey: string;
   name: string;
 };
 
@@ -13,7 +14,7 @@ type AvailableServers = {
   hosted: Server[];
 };
 
-type ModelSettings = {
+export type ModelSettings = {
   mirostat?: 0 | 1 | 2;
   mirostat_eta?: number;
   mirostat_tau?: number;
@@ -48,6 +49,7 @@ type LoadingStates =
 
 type State = {
   host: string;
+  providerKey: string;
   model: string | null;
   stories: Story[];
   activeStoryId: string;
@@ -56,7 +58,7 @@ type State = {
   availableModels: string[];
   availableServers: AvailableServers;
   modelSettings: ModelSettings;
-  setHost: (host: string) => void;
+  setHost: (host: string, providerKey: string) => void;
   setAvailableModels: (models: string[]) => void;
   updateModelSettings: (settings: ModelSettings) => void;
   changeModel: (model: string) => void;
@@ -80,6 +82,7 @@ const defaultSettings: ModelSettings = {
   top_p: 0.9, // Top p sampling
   top_k: 40, // Top k sampling
   repeat_penalty: 1.0, // Penalty for repeating
+  stop: ["user:"],
 };
 
 const defaultStories: Story[] = [
@@ -94,30 +97,19 @@ const defaultStories: Story[] = [
 const defaultAvailableServers: AvailableServers = {
   free: [
     {
-      host: "http://localhost:11435",
-      name: "AWS",
+      host: "Anthropic API",
+      name: "Claude Haiku",
+      providerKey: "claude",
     },
   ],
   my: [
     {
       host: "http://localhost:11434",
       name: "Localhost",
-    },
-    {
-      host: "http://localhost:11435",
-      name: "AWS",
+      providerKey: "ollama",
     },
   ],
-  hosted: [
-    {
-      host: "http://localhost:11436",
-      name: "AWS",
-    },
-    {
-      host: "http://localhost:11437",
-      name: "AWS",
-    },
-  ],
+  hosted: [],
 };
 
 export const useStore = create<State>()(
@@ -125,6 +117,7 @@ export const useStore = create<State>()(
     (set, get) => ({
       stories: defaultStories,
       host: "http://localhost:11434",
+      providerKey: "ollama",
       availableModels: [],
       availableServers: defaultAvailableServers,
       model: null,
@@ -132,9 +125,10 @@ export const useStore = create<State>()(
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
       generationState: "no-connection",
-      setHost: (host: string) => {
+      setHost: (host: string, providerKey: string) => {
         set(() => ({
           host,
+          providerKey,
           generationState: "no-connection",
           availableModels: [],
           model: null,

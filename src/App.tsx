@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -18,15 +20,15 @@ import { TRANSFORMERS } from "@lexical/markdown";
 import { useDebouncedCallback } from "use-debounce";
 import { useQuery } from "react-query";
 
-import "./App.css";
 import { FloatingMenuPlugin } from "./components/FloatingMenuPlugin";
 import ContextMenu from "./components/ContextMenu";
 import { useStore, Story } from "./store";
 import { UpdateDocumentPlugin } from "./components/UpdateDocumentPlugin";
 import { Tab } from "./components/Tab";
 import { Toolbar } from "./components/Toolbar";
-import { useEffect } from "react";
 import CodeHighlightPlugin from "./components/CodeHighlightPlugin";
+import { providers } from "./providers";
+import "./App.css";
 
 const theme = {
   ltr: "ltr",
@@ -121,12 +123,6 @@ const editorConfig = {
   ],
 };
 
-const getModels = (host: string) => async () => {
-  console.log(host);
-  const res = await fetch(`${host}/api/tags`);
-  return res.json();
-};
-
 function App() {
   const {
     setActive,
@@ -138,8 +134,9 @@ function App() {
     stories,
     cancelGeneration,
     generationState,
+    providerKey,
   } = useStore((state) => state);
-
+  const provider = providers[providerKey];
   const activeStoryId = useStore((state) => state.activeStoryId);
   const debouncedOnChange = useDebouncedCallback(
     (state) => {
@@ -166,7 +163,7 @@ function App() {
   console.log("host", host);
   useQuery({
     queryKey: ["models", host],
-    queryFn: getModels(host),
+    queryFn: provider.getModels(host),
     onError: (e) => {
       console.log("error", e);
       setGenerationState("no-connection");

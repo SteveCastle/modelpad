@@ -6,18 +6,7 @@ import { useStore } from "../store";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 
 import "./ModelSettings.css";
-
-const getModelSettings = (host: string, model: string) => async () => {
-  console.log(host);
-  const res = await fetch(`${host}/api/show`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ name: model }),
-  });
-  return res.json();
-};
+import { providers } from "../providers";
 
 export default function ModelSettings({ model }: { model: string }) {
   const {
@@ -25,15 +14,17 @@ export default function ModelSettings({ model }: { model: string }) {
     generationState,
     activeStoryId,
     host,
+    providerKey,
     cycleModel,
     changeModel,
     modelSettings,
     availableModels,
     updateModelSettings,
   } = useStore((state) => state);
+  const provider = providers[providerKey];
   useQuery({
     queryKey: ["model", host, model],
-    queryFn: getModelSettings(host, model),
+    queryFn: provider.getModelSettings(host, model),
     onSuccess: (data) => {
       console.log(data);
     },

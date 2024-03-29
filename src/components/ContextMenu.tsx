@@ -11,10 +11,12 @@ import {
   $getSelection,
   $isRangeSelection,
   LexicalEditor,
+  ParagraphNode,
 } from "lexical";
 import "./ContextMenu.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useStore } from "../store";
+import { providers } from "../providers";
 
 type PromptGenerator = (text: string) => string;
 type PromptTypeKeys = "newScene" | "rewrite" | "summarize";
@@ -26,10 +28,8 @@ interface Props {
 
 const promptGenerators: Record<PromptTypeKeys, PromptGenerator> = {
   newScene: (text: string) => {
-    return `Write a new scene based on the following prompt:
+    return `
      ${text}
-
-     BEGIN SCENE:
      `;
   },
   rewrite: (text: string) => {
@@ -50,86 +50,56 @@ const promptGenerators: Record<PromptTypeKeys, PromptGenerator> = {
 
 export default function ContextMenu({ hide }: Props) {
   const abortController = useStore((state) => state.abortController);
-  const host = useStore((state) => state.host);
-  const { model, modelSettings } = useStore((state) => state);
+  const { model, modelSettings, host, providerKey } = useStore(
+    (state) => state
+  );
   const { setGenerationState, updateContext } = useStore((state) => state);
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
   const activeStory = stories.find((s) => s.id === activeStoryId);
   const context = activeStory?.context;
   const [editor] = useLexicalComposerContext();
+  const provider = providers[providerKey];
+  const tokenCallback = (newParagraphNode: ParagraphNode) => (text: string) => {
+    setGenerationState("generating");
+    editor.update(() => {
+      const textNode = $createTextNode(text);
+      newParagraphNode.append(textNode);
+    });
+  };
+
+  function completedCallback(context: number[]) {
+    setGenerationState("ready");
+    updateContext(activeStoryId, context);
+    setGenerationState("ready");
+    console.log("set context", context);
+  }
+
   function generate(promptTypeKey: PromptTypeKeys) {
+    if (!abortController || !model) return;
     editor.update(() => {
       const root = $getRoot();
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) return;
+
       const text = selection.getTextContent();
       const newParagraphNode = $createParagraphNode();
       root.append(newParagraphNode);
       const prompt = promptGenerators[promptTypeKey](text);
       console.log("fetching with context", context, prompt);
       setGenerationState("loading");
-      fetch(`${host}/api/generate`, {
-        signal: abortController?.signal,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: model,
-          prompt,
-          context: promptTypeKey === "newScene" ? context : undefined,
-          options: modelSettings,
-        }),
-      })
-        .then((response) => {
-          if (!response || !response.body) {
-            throw new Error("Invalid response");
-          }
-          const reader = response.body.getReader();
-          setGenerationState("generating");
-          return new ReadableStream({
-            start(controller) {
-              function push() {
-                reader.read().then(({ done, value }) => {
-                  if (done) {
-                    controller.close();
-                    return;
-                  }
-                  // Convert the Uint8Array to string and process the chunk
-                  const chunk = new TextDecoder("utf-8").decode(value);
-                  try {
-                    const json = JSON.parse(chunk);
-                    const response = json.response;
-                    if (newParagraphNode && response) {
-                      editor.update(() => {
-                        const textNode = $createTextNode(response);
-                        newParagraphNode.append(textNode);
-                      });
-                    }
-                    if (json.context) {
-                      updateContext(activeStoryId, json.context);
-                      setGenerationState("ready");
-                      console.log("set context", json.context);
-                    }
-                  } catch (e) {
-                    console.log(e);
-                  }
-                  // Push the chunk to the stream
-                  controller.enqueue(value);
-                  push();
-                });
-              }
-              push();
-            },
-          });
-        })
-        .then((stream) => new Response(stream))
-        .then((response) => response.text())
-        .then(() => {
-          console.log("Complete");
-        })
-        .catch((err) => console.error(err));
+      provider.generateText(
+        prompt,
+        tokenCallback(newParagraphNode),
+        completedCallback,
+        {
+          host,
+          model,
+          abortSignal: abortController.signal,
+          context: context || [],
+          modelSettings,
+        }
+      );
     });
   }
 
