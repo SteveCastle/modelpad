@@ -126,7 +126,6 @@
 .editor-input {
   height: 100%;
   width: 100%;
-  padding: 0 1rem;
   outline: none;
   caret-color: rgb(195, 133, 1);
   overflow-y: auto;

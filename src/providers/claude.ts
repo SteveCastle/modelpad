@@ -1,10 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { Config } from ".";
-
-const anthropic = new Anthropic({
-  apiKey: import.meta.env.VITE_ANTHROPIC_KEY, // defaults to process.env["ANTHROPIC_API_KEY"]
-  defaultHeaders: {},
-});
 
 async function generateText(
   prompt: string,
@@ -13,41 +7,83 @@ async function generateText(
   completedCallback: (context: number[]) => void,
   config: Config
 ) {
-  console.log("generating text with claude");
-  if (!config.model) {
-    return;
-  }
-  await anthropic.messages
-    .stream({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 1000,
-      temperature: 0,
-      system:
-        "You are a writing assistant. When provided with a prompt you generate text to satisfy that prompt.",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: prompt,
-            },
-          ],
-        },
-      ],
-    })
-    .on("text", tokenCallback);
+  const { host, model, abortSignal, context, modelSettings } = config;
+  fetch(`${host}/api/generate`, {
+    signal: abortSignal,
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: model,
+      prompt,
+      context,
+      options: modelSettings,
+    }),
+  })
+    .then((response) => {
+      if (!response || !response.body) {
+        throw new Error("Invalid response");
+      }
+      const reader = response.body.getReader();
+      startCallback();
+      return new ReadableStream({
+        start(controller) {
+          function push() {
+            reader.read().then(({ done, value }) => {
+              if (done) {
+                controller.close();
+                return;
+              }
+              // Convert the Uint8Array to string and process the chunk
+              const chunk = new TextDecoder("utf-8").decode(value);
+              try {
+                const json = JSON.parse(chunk);
+                console.log(json);
+                const response = json.response;
+                if (response) {
+                  tokenCallback(response);
+                }
 
-  completedCallback([]);
+                if (json.context) {
+                  completedCallback(json.context);
+                }
+              } catch (e) {
+                console.log(e);
+              }
+              // Push the chunk to the stream
+              controller.enqueue(value);
+              push();
+            });
+          }
+          push();
+        },
+      });
+    })
+    .then((stream) => new Response(stream))
+    .then((response) => response.text())
+    .then(() => {
+      console.log("Complete");
+    })
+    .catch((err) => console.error(err));
 }
 
-const getModels = () => async () => {
-  // Return a mock promise that returns an array of models
-  return { models: [{ name: "claude-3-haiku-20240307" }] };
+const getModels = (host: string) => async () => {
+  console.log(host);
+  const res = await fetch(`${host}/api/tags`);
+  return res.json();
 };
 
-const getModelSettings = () => async () => {
-  return {};
+const getModelSettings = (host: string, model: string) => async () => {
+  console.log(host);
+  const res = await fetch(`${host}/api/show`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ name: model }),
+  });
+  return res.json();
 };
 
 export default { generateText, getModels, getModelSettings };

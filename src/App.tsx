@@ -202,8 +202,8 @@ function App() {
         <div
           className="editor-container"
           style={{
-            width: viewSettings.readingMode ? "960px" : "100%",
-            margin: viewSettings.readingMode ? "0 auto" : "0",
+            width: viewSettings.readingMode ? "960px" : "",
+            margin: viewSettings.readingMode ? "0 auto" : "0 20px",
             height: "100%",
             overflow: "hidden",
             fontSize: `${viewSettings.zoom}em`,

@@ -39,6 +39,7 @@ async function generateText(
               const chunk = new TextDecoder("utf-8").decode(value);
               try {
                 const json = JSON.parse(chunk);
+                console.log(json);
                 const response = json.response;
                 if (response) {
                   tokenCallback(response);

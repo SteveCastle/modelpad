@@ -107,15 +107,15 @@ const defaultStories: Story[] = [
 const defaultAvailableServers: AvailableServers = {
   free: [
     {
-      host: "Anthropic API",
-      name: "Claude Haiku",
+      host: "http://localhost:8080",
+      name: "Claude Haiku Proxy",
       providerKey: "claude",
     },
   ],
   my: [
     {
       host: "http://localhost:11434",
-      name: "Localhost",
+      name: "Local Ollama",
       providerKey: "ollama",
     },
   ],
