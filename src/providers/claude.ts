@@ -38,15 +38,20 @@ async function generateText(
               // Convert the Uint8Array to string and process the chunk
               const chunk = new TextDecoder("utf-8").decode(value);
               try {
-                const json = JSON.parse(chunk);
-                console.log(json);
-                const response = json.response;
-                if (response) {
-                  tokenCallback(response);
-                }
-
-                if (json.context) {
-                  completedCallback(json.context);
+                console.log(chunk);
+                const lines = chunk.split("\n");
+                for (let i = 0; i < lines.length - 1; i++) {
+                  const line = lines[i];
+                  if (line) {
+                    const json = JSON.parse(line);
+                    const response = json.response;
+                    if (response) {
+                      tokenCallback(response);
+                    }
+                    if (json.context) {
+                      completedCallback(json.context);
+                    }
+                  }
                 }
               } catch (e) {
                 console.log(e);

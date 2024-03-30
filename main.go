@@ -165,24 +165,25 @@ func generateHandler(c *gin.Context) {
 		if bytes.HasPrefix(line, []byte("data: ")) {
 			// If the event type is content_block_delta, parse the json into a struct
 			if eventType == "content_block_delta" {
+
 				var delta ContentBlockDelta
 				err := json.Unmarshal(bytes.TrimPrefix(line, []byte("data: ")), &delta)
 				if err != nil {
 					fmt.Printf("Error unmarshaling content_block_delta: %v\n", err)
 					return
 				}
-				fmt.Printf("Data: %s\n", line)
 				c.JSON(http.StatusOK, StreamChunk{
 					Model: "claude-3-haiku-20240307",
 					Response: delta.Delta.Text,
 					CreatedAt: time.Now(),
 					Done: false,
 				})
+				// write a new line to the response writer
+				fmt.Fprint(w, "\n")
+				flusher.Flush()
 			}
 		}
 
-        // Flush the response to send the event immediately
-        flusher.Flush()
     }
 
 	c.JSON(http.StatusOK, CompletedStreamChunk{
