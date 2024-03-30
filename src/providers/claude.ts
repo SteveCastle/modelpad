@@ -8,6 +8,7 @@ const anthropic = new Anthropic({
 
 async function generateText(
   prompt: string,
+  startCallback: () => void,
   tokenCallback: (text: string) => void,
   completedCallback: (context: number[]) => void,
   config: Config

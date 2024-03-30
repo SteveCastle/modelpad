@@ -133,6 +133,7 @@ function App() {
     setGenerationState,
     stories,
     cancelGeneration,
+    viewSettings,
     generationState,
     providerKey,
   } = useStore((state) => state);
@@ -155,12 +156,11 @@ function App() {
 
   // If activeStory changes cancel generation
   useEffect(() => {
-    if (generationState === "ready") {
+    if (generationState !== "ready") {
       cancelGeneration();
     }
   }, [activeStoryId]);
   const host = useStore((state) => state.host);
-  console.log("host", host);
   useQuery({
     queryKey: ["models", host],
     queryFn: provider.getModels(host),
@@ -199,22 +199,33 @@ function App() {
         }}
       >
         <Toolbar />
-        <RichTextPlugin
-          contentEditable={<ContentEditable className="editor-input" />}
-          placeholder={null}
-          ErrorBoundary={LexicalErrorBoundary}
-        />
-        <FloatingMenuPlugin MenuComponent={ContextMenu} />
-        <HistoryPlugin />
-        <OnChangePlugin onChange={debouncedOnChange} ignoreSelectionChange />
-        <UpdateDocumentPlugin
-          activeContent={activeContent}
-          activeStoryId={activeStoryId}
-        />
-        <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-        <ListPlugin />
-        <LinkPlugin />
-        <CodeHighlightPlugin />
+        <div
+          className="editor-container"
+          style={{
+            width: viewSettings.readingMode ? "960px" : "100%",
+            margin: viewSettings.readingMode ? "0 auto" : "0",
+            height: "100%",
+            overflow: "hidden",
+            fontSize: `${viewSettings.zoom}em`,
+          }}
+        >
+          <RichTextPlugin
+            contentEditable={<ContentEditable className="editor-input" />}
+            placeholder={null}
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <FloatingMenuPlugin MenuComponent={ContextMenu} />
+          <HistoryPlugin />
+          <OnChangePlugin onChange={debouncedOnChange} ignoreSelectionChange />
+          <UpdateDocumentPlugin
+            activeContent={activeContent}
+            activeStoryId={activeStoryId}
+          />
+          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+          <ListPlugin />
+          <LinkPlugin />
+          <CodeHighlightPlugin />
+        </div>
       </LexicalComposer>
     </div>
   );

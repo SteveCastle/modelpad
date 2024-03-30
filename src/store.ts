@@ -2,6 +2,11 @@ import { ulid } from "ulid";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+type ViewSettings = {
+  readingMode: boolean;
+  zoom: number;
+};
+
 type Server = {
   host: string;
   providerKey: string;
@@ -49,6 +54,7 @@ type LoadingStates =
 
 type State = {
   host: string;
+  viewSettings: ViewSettings;
   providerKey: string;
   model: string | null;
   stories: Story[];
@@ -58,6 +64,10 @@ type State = {
   availableModels: string[];
   availableServers: AvailableServers;
   modelSettings: ModelSettings;
+  toggleReadingMode: () => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
   setHost: (host: string, providerKey: string) => void;
   setAvailableModels: (models: string[]) => void;
   updateModelSettings: (settings: ModelSettings) => void;
@@ -116,6 +126,10 @@ export const useStore = create<State>()(
   persist(
     (set, get) => ({
       stories: defaultStories,
+      viewSettings: {
+        readingMode: true,
+        zoom: 1.0,
+      },
       host: "http://localhost:11434",
       providerKey: "ollama",
       availableModels: [],
@@ -125,6 +139,38 @@ export const useStore = create<State>()(
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
       generationState: "no-connection",
+      toggleReadingMode: () => {
+        set((state) => ({
+          viewSettings: {
+            ...state.viewSettings,
+            readingMode: !state.viewSettings.readingMode,
+          },
+        }));
+      },
+      zoomIn: () => {
+        set((state) => ({
+          viewSettings: {
+            ...state.viewSettings,
+            zoom: state.viewSettings.zoom + 0.1,
+          },
+        }));
+      },
+      zoomOut: () => {
+        set((state) => ({
+          viewSettings: {
+            ...state.viewSettings,
+            zoom: state.viewSettings.zoom - 0.1,
+          },
+        }));
+      },
+      resetZoom: () => {
+        set((state) => ({
+          viewSettings: {
+            ...state.viewSettings,
+            zoom: 1.0,
+          },
+        }));
+      },
       setHost: (host: string, providerKey: string) => {
         set(() => ({
           host,

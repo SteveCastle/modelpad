@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import cx from "classnames";
 import { useQueryClient } from "react-query";
-import { $getSelection, $isRangeSelection, FORMAT_TEXT_COMMAND } from "lexical";
+import {
+  $getSelection,
+  $isRangeSelection,
+  FORMAT_TEXT_COMMAND,
+  UNDO_COMMAND,
+  REDO_COMMAND,
+  CUT_COMMAND,
+  COPY_COMMAND,
+} from "lexical";
 import { $wrapNodes } from "@lexical/selection";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
@@ -31,9 +39,17 @@ type MenuOptions = {
 
 export function Toolbar() {
   const queryClient = useQueryClient();
-  const { cancelGeneration, clearContext, model, createStory } = useStore(
-    (state) => state
-  );
+  const {
+    cancelGeneration,
+    clearContext,
+    model,
+    createStory,
+    toggleReadingMode,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    viewSettings,
+  } = useStore((state) => state);
   const generationState = useStore((state) => state.generationState);
   const [editor] = useLexicalComposerContext();
   const stories = useStore((state) => state.stories);
@@ -124,37 +140,55 @@ export function Toolbar() {
     edit: [
       {
         label: "Undo",
-        action: () => {},
+        action: () => {
+          editor.dispatchCommand(UNDO_COMMAND, undefined);
+        },
       },
       {
         label: "Redo",
-        action: () => {},
+        action: () => {
+          editor.dispatchCommand(REDO_COMMAND, undefined);
+        },
       },
       {
         label: "Cut",
-        action: () => {},
+        action: () => {
+          editor.dispatchCommand(CUT_COMMAND, null);
+        },
       },
       {
         label: "Copy",
-        action: () => {},
-      },
-      {
-        label: "Paste",
-        action: () => {},
+        action: () => {
+          editor.dispatchCommand(COPY_COMMAND, null);
+        },
       },
     ],
     view: [
       {
         label: "Zoom In",
-        action: () => {},
+        action: () => {
+          zoomIn();
+        },
       },
       {
         label: "Zoom Out",
-        action: () => {},
+        action: () => {
+          zoomOut();
+        },
       },
       {
         label: "Reset Zoom",
-        action: () => {},
+        action: () => {
+          resetZoom();
+        },
+      },
+      {
+        label: viewSettings.readingMode
+          ? "Exit Reading Mode"
+          : "Enter Reading Mode",
+        action: () => {
+          toggleReadingMode();
+        },
       },
     ],
   };

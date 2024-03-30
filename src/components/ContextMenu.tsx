@@ -60,8 +60,12 @@ export default function ContextMenu({ hide }: Props) {
   const context = activeStory?.context;
   const [editor] = useLexicalComposerContext();
   const provider = providers[providerKey];
-  const tokenCallback = (newParagraphNode: ParagraphNode) => (text: string) => {
+
+  const startCallback = () => {
     setGenerationState("generating");
+  };
+
+  const tokenCallback = (newParagraphNode: ParagraphNode) => (text: string) => {
     editor.update(() => {
       const textNode = $createTextNode(text);
       newParagraphNode.append(textNode);
@@ -90,6 +94,7 @@ export default function ContextMenu({ hide }: Props) {
       setGenerationState("loading");
       provider.generateText(
         prompt,
+        startCallback,
         tokenCallback(newParagraphNode),
         completedCallback,
         {

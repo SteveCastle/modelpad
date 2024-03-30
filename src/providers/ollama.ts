@@ -2,6 +2,7 @@ import { Config } from ".";
 
 async function generateText(
   prompt: string,
+  startCallback: () => void,
   tokenCallback: (text: string) => void,
   completedCallback: (context: number[]) => void,
   config: Config
@@ -25,6 +26,7 @@ async function generateText(
         throw new Error("Invalid response");
       }
       const reader = response.body.getReader();
+      startCallback();
       return new ReadableStream({
         start(controller) {
           function push() {
