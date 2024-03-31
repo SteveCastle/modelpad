@@ -211,14 +211,12 @@ export const useStore = create<State>()(
         }));
       },
       setGenerationState: (state: LoadingStates) => {
-        console.log("setting generation state", state);
         set(() => ({
           generationState: state,
         }));
       },
       cancelGeneration: () => {
         get().abortController?.abort();
-        console.log("canceling generation");
         set(() => ({
           abortController: new AbortController(),
           generationState: "ready",
@@ -301,6 +299,7 @@ export const useStore = create<State>()(
         activeStoryId: state.activeStoryId,
         host: state.host,
         model: state.model,
+        providerKey: state.providerKey,
         modelSettings: state.modelSettings,
       }),
     }

@@ -130,6 +130,12 @@
   caret-color: rgb(195, 133, 1);
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.editor-input::-webkit-scrollbar {
+  display: none;
 }
 
 .editor-paragraph,
@@ -178,12 +184,44 @@
 }
 
 .codeHighlight {
+  background-color: rgb(41, 40, 38);
+  font-family: Menlo, Consolas, Monaco, monospace;
   display: block;
-  background-color: #272822;
-  width: 960px;
-
-  padding: 1rem;
+  padding: 8px 8px 8px 52px;
+  line-height: 1.53;
+  font-size: 13px;
+  margin: 0;
+  margin-top: 8px;
   border-radius: 4px;
+  margin-bottom: 8px;
+  tab-size: 2;
+  /* white-space: pre; */
+  overflow-x: auto;
+  position: relative;
+}
+
+.codeHighlight:before {
+  content: attr(data-gutter);
+  position: absolute;
+  background-color: #201e1e;
+  left: 0;
+  top: 0;
+  border-right: 1px solid #0f0c0c;
+  padding: 8px;
+  color: #777;
+  white-space: pre-wrap;
+  text-align: right;
+  min-width: 25px;
+}
+.codeHighlight:after {
+  content: attr(data-highlight-language);
+  top: 0;
+  right: 3px;
+  padding: 3px;
+  font-size: 10px;
+  text-transform: uppercase;
+  position: absolute;
+  color: rgba(167, 167, 167, 0.5);
 }
 
 .codeHighlight .editor-tokenAttr {

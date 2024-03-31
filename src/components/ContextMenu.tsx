@@ -13,6 +13,12 @@ import {
   LexicalEditor,
   ParagraphNode,
 } from "lexical";
+import {
+  TRANSFORMERS,
+  $convertFromMarkdownString,
+  $convertToMarkdownString,
+} from "@lexical/markdown";
+
 import "./ContextMenu.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useStore } from "../store";
@@ -65,37 +71,41 @@ export default function ContextMenu({ hide }: Props) {
     setGenerationState("generating");
   };
 
-  const tokenCallback = (newParagraphNode: ParagraphNode) => (text: string) => {
+  const tokenCallback = (text: string) => {
+    // loop over each character in the text and add it to the new paragraph
     editor.update(() => {
+      const root = $getRoot();
+      const lastParagraphNode = root.getLastChild() as ParagraphNode;
       const textNode = $createTextNode(text);
-      newParagraphNode.append(textNode);
+      lastParagraphNode.append(textNode);
     });
   };
 
   function completedCallback(context: number[]) {
     setGenerationState("ready");
     updateContext(activeStoryId, context);
-    setGenerationState("ready");
-    console.log("set context", context);
+    editor.update(() => {
+      const root = $getRoot();
+      $convertFromMarkdownString($convertToMarkdownString(TRANSFORMERS, root));
+    });
   }
 
   function generate(promptTypeKey: PromptTypeKeys) {
     if (!abortController || !model) return;
     editor.update(() => {
-      const root = $getRoot();
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) return;
 
       const text = selection.getTextContent();
+      const prompt = promptGenerators[promptTypeKey](text);
+      setGenerationState("loading");
+      const root = $getRoot();
       const newParagraphNode = $createParagraphNode();
       root.append(newParagraphNode);
-      const prompt = promptGenerators[promptTypeKey](text);
-      console.log("fetching with context", context, prompt);
-      setGenerationState("loading");
       provider.generateText(
         prompt,
         startCallback,
-        tokenCallback(newParagraphNode),
+        tokenCallback,
         completedCallback,
         {
           host,

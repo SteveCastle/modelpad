@@ -30,7 +30,7 @@ async function generateText(
       return new ReadableStream({
         start(controller) {
           function push() {
-            reader.read().then(({ done, value }) => {
+            reader.read().then(async ({ done, value }) => {
               if (done) {
                 controller.close();
                 return;
@@ -38,7 +38,6 @@ async function generateText(
               // Convert the Uint8Array to string and process the chunk
               const chunk = new TextDecoder("utf-8").decode(value);
               try {
-                console.log(chunk);
                 const lines = chunk.split("\n");
                 for (let i = 0; i < lines.length - 1; i++) {
                   const line = lines[i];
@@ -47,9 +46,6 @@ async function generateText(
                     const response = json.response;
                     if (response) {
                       tokenCallback(response);
-                    }
-                    if (json.context) {
-                      completedCallback(json.context);
                     }
                   }
                 }
@@ -69,6 +65,7 @@ async function generateText(
     .then((response) => response.text())
     .then(() => {
       console.log("Complete");
+      completedCallback([]);
     })
     .catch((err) => console.error(err));
 }

@@ -1,4 +1,4 @@
-.App .toolbar {
+.App .menubar {
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -6,14 +6,14 @@
   background-color: var(--toolbar-bg-color);
 }
 
-.App .toolbar .toolbar-left {
+.App .menubar .toolbar-left {
   display: flex;
   flex-direction: row;
   align-items: stretch;
   flex: 10 1 0;
 }
 
-.App .toolbar .toolbar-left .style-tools {
+.App .menubar .toolbar-left .style-tools {
   display: flex;
   flex-direction: row;
   align-items: stretch;
@@ -21,37 +21,37 @@
   flex: 10 1 0;
 }
 
-.App .toolbar .toolbar-right {
+.App .menubar .toolbar-right {
   display: flex;
   flex-direction: row;
   align-items: center;
   justify-content: flex-end;
 }
 
-.App .toolbar .toolbar-right .model {
+.App .menubar .toolbar-right .model {
   cursor: pointer;
   margin: 0 1rem;
   min-width: 150px;
 }
 
-.App .toolbar .toolbar-right .context {
+.App .menubar .toolbar-right .context {
   cursor: pointer;
   min-width: 90px;
 }
 
-.App .toolbar .toolbar-right .cancel-button {
+.App .menubar .toolbar-right .cancel-button {
   cursor: pointer;
   text-transform: capitalize;
   margin: 0 1rem;
 }
 
-.App .toolbar .toolbar-right .cancel-button:disabled {
+.App .menubar .toolbar-right .cancel-button:disabled {
   cursor: not-allowed;
   text-transform: capitalize;
   margin: 0 1rem;
 }
 
-.App .toolbar .toolbar-right .status {
+.App .menubar .toolbar-right .status {
   height: 10px;
   border-radius: 50%;
   width: 10px;
@@ -59,34 +59,34 @@
   margin: 0 0.6em 0 0.1rem;
 }
 
-.App .toolbar .toolbar-right .generation-state {
+.App .menubar .toolbar-right .generation-state {
   font-size: 0.8rem;
   padding: 0 2rem 0 0;
   color: rgba(255, 255, 255, 0.457);
   text-transform: capitalize;
 }
 
-.App .toolbar .toolbar-right .status.ready {
+.App .menubar .toolbar-right .status.ready {
   background-color: rgb(63, 200, 74);
 }
 
-.App .toolbar .toolbar-right .status.loading {
+.App .menubar .toolbar-right .status.loading {
   background-color: rgb(166, 200, 63);
 }
 
-.App .toolbar .toolbar-right .status.generating {
+.App .menubar .toolbar-right .status.generating {
   background-color: rgb(200, 63, 63);
 }
 
-.App .toolbar .toolbar-right .status.no-connection {
+.App .menubar .toolbar-right .status.no-connection {
   background-color: rgb(200, 63, 63);
 }
 
-.App .toolbar .toolbar-right .status.error {
+.App .menubar .toolbar-right .status.error {
   background-color: rgb(200, 63, 63);
 }
 
-.App .toolbar .item {
+.App .menubar .item {
   display: flex;
   border: none;
   flex-direction: row;
@@ -100,7 +100,7 @@
   width: 55px;
 }
 
-.App .toolbar .item:hover {
+.App .menubar .item:hover {
   background-color: var(--hovered-toolbar-bg-color);
 }
 

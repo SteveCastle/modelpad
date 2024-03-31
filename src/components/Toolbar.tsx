@@ -1,37 +1,19 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import cx from "classnames";
 import { useQueryClient } from "react-query";
-import {
-  $getSelection,
-  $isRangeSelection,
-  FORMAT_TEXT_COMMAND,
-  UNDO_COMMAND,
-  REDO_COMMAND,
-  CUT_COMMAND,
-  COPY_COMMAND,
-} from "lexical";
-import { $wrapNodes } from "@lexical/selection";
+import { UNDO_COMMAND, REDO_COMMAND, CUT_COMMAND, COPY_COMMAND } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   $convertFromMarkdownString,
   $convertToMarkdownString,
   TRANSFORMERS,
 } from "@lexical/markdown";
-import { $createCodeNode, $isCodeNode } from "@lexical/code";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { useStore } from "../store";
-import { IconButton } from "./IconButton";
 import "./Toolbar.css";
 import ModelSettings from "./ModelSettings";
 import ServerSelect from "./ServerSelect";
-
-type TextFormattingState = {
-  isBold: boolean;
-  isCode: boolean;
-  isItalic: boolean;
-  isStrikethrough: boolean;
-  isUnderline: boolean;
-};
+import ToolBarPlugin from "./ToolBarPlugin";
 
 type MenuOptions = {
   [key: string]: { label: string; action: () => void }[];
@@ -55,13 +37,6 @@ export function Toolbar() {
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
   const activeStory = stories.find((s) => s.id === activeStoryId);
-  const [textFormat, setTextFormat] = useState<TextFormattingState>({
-    isBold: false,
-    isCode: false,
-    isItalic: false,
-    isStrikethrough: false,
-    isUnderline: false,
-  });
 
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -194,30 +169,10 @@ export function Toolbar() {
   };
 
   useOnClickOutside(menuRef, () => setActiveMenu(null));
-  useEffect(() => {
-    const unregisterListener = editor.registerUpdateListener(
-      ({ editorState }) => {
-        editorState.read(() => {
-          const selection = $getSelection();
-          if (!$isRangeSelection(selection)) return;
-          setTextFormat({
-            isBold: selection.hasFormat("bold"),
-            isCode:
-              $isCodeNode(selection.getNodes()[0].getParent()) ||
-              $isCodeNode(selection.getNodes()[0]),
-            isItalic: selection.hasFormat("italic"),
-            isStrikethrough: selection.hasFormat("strikethrough"),
-            isUnderline: selection.hasFormat("underline"),
-          });
-        });
-      }
-    );
-    return unregisterListener;
-  }, [editor]);
 
   return (
     <>
-      <div className="toolbar">
+      <div className="menubar">
         <div className="toolbar-left">
           <button
             className="item"
@@ -262,58 +217,7 @@ export function Toolbar() {
             View
           </button>
           <div className="style-tools">
-            <IconButton
-              icon="bold"
-              aria-label="Format text as bold"
-              active={textFormat.isBold}
-              onClick={() => {
-                editor.focus();
-                editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold");
-              }}
-            />
-            <IconButton
-              icon="italic"
-              aria-label="Format text as italics"
-              active={textFormat.isItalic}
-              onClick={() => {
-                editor.focus();
-                editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic");
-              }}
-            />
-            <IconButton
-              icon="underline"
-              aria-label="Format text to underlined"
-              active={textFormat.isUnderline}
-              onClick={() => {
-                editor.focus();
-                editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline");
-              }}
-            />
-            <IconButton
-              icon="strike"
-              aria-label="Format text with a strikethrough"
-              active={textFormat.isStrikethrough}
-              onClick={() => {
-                editor.focus();
-                editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough");
-              }}
-            />
-            <IconButton
-              icon="code"
-              aria-label="Format text with inline code"
-              active={textFormat.isCode}
-              onClick={() => {
-                editor.focus();
-                editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code");
-                editor.update(() => {
-                  const selection = $getSelection();
-
-                  if ($isRangeSelection(selection)) {
-                    $wrapNodes(selection, () => $createCodeNode());
-                  }
-                });
-              }}
-            />
+            <ToolBarPlugin />
           </div>
         </div>
         <div className="toolbar-right">

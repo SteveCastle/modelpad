@@ -37,6 +37,7 @@ type CompletedStreamChunk struct  {
 
 type AnthropicRequestOptions struct {
     Model     string `json:"model"`
+	System string `json:"system"`
     Messages  []struct {
         Role    string `json:"role"`
         Content string `json:"content"`
@@ -106,13 +107,14 @@ func generateHandler(c *gin.Context) {
     // Create your request body
     body := AnthropicRequestOptions{
         Model: "claude-3-haiku-20240307",
+		System: "You are an expert coding assistant. When provided with a prompt you generate code to satisfy that prompt.",
         Messages: []struct {
             Role    string `json:"role"`
             Content string `json:"content"`
         }{
             {Role: "user", Content: reqBody.Prompt},
         },
-        MaxTokens: 256,
+        MaxTokens: 1256,
         Stream:    true,
     }
 
