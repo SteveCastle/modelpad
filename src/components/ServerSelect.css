@@ -20,7 +20,7 @@
 
 .ServerSelect .server-list {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1rem;
 }
 
@@ -28,8 +28,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  background-color: var(--toolbar-bg-color);
+  padding: 0.2rem;
+  background-color: var(--grid-button-bg-color);
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.2s ease;
@@ -37,9 +37,14 @@
 }
 
 .ServerSelect .server-list .server:hover {
-  background-color: gray;
+  background-color: var(--hovered-grid-button-bg-color);
+}
+
+.ServerSelect .server-list .server:disabled {
+  color: white;
+  font-weight: bold;
 }
 
 .ServerSelect .server-list .server.active {
-  background-color: palevioletred;
+  background-color: var(--active-grid-button-bg-color);
 }

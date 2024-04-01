@@ -183,6 +183,11 @@
   text-decoration: underline line-through;
 }
 
+.editor-link {
+  color: var(--link-color);
+  text-decoration: none;
+}
+
 .codeHighlight {
   background-color: rgb(41, 40, 38);
   font-family: Menlo, Consolas, Monaco, monospace;

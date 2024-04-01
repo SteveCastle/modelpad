@@ -38,6 +38,7 @@ const theme = {
   paragraph: "editor-paragraph",
   blockquote: "editor-blockquote",
   quote: "editor-quote",
+  link: "editor-link",
   heading: {
     h1: "editor-heading-h1",
     h2: "editor-heading-h2",

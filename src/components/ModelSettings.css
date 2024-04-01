@@ -38,7 +38,7 @@
 }
 
 .setting.select-setting .control-group button:disabled {
-  background-color: #9549ff;
+  background-color: var(--active-grid-button-bg-color);
   cursor: not-allowed;
 }
 
@@ -88,5 +88,5 @@
 }
 
 .available-models button.active {
-  background-color: #9549ff;
+  background-color: var(--active-grid-button-bg-color);
 }

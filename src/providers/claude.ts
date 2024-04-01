@@ -16,6 +16,8 @@ async function generateText(
     },
     body: JSON.stringify({
       model: model,
+      system:
+        "You are a helpful assistant. You respond to prompts using markdown to format the text.",
       prompt,
       context,
       options: modelSettings,

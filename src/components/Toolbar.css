@@ -43,6 +43,8 @@
   cursor: pointer;
   text-transform: capitalize;
   margin: 0 1rem;
+  display: flex;
+  align-items: center;
 }
 
 .App .menubar .toolbar-right .cancel-button:disabled {
