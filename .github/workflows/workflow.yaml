@@ -1,0 +1,44 @@
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "modelpad/**"
+      - ".github/workflows/**"
+
+jobs:
+  build:
+    name: Build, push, and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@main
+
+      - name: Update SHA
+        run: echo $GITHUB_SHA > $GITHUB_WORKSPACE/modelpad/_meta
+
+      - name: Build container image
+        run: docker build -t registry.digitalocean.com/treasure/modelpad:$(echo $GITHUB_SHA | head -c7) ./modelpad/.
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Log in to DigitalOcean Container Registry with short-lived credentials
+        run: doctl registry login --expiry-seconds 600
+
+      - name: Push image to DigitalOcean Container Registry
+        run: docker push registry.digitalocean.com/treasure/modelpad:$(echo $GITHUB_SHA | head -c7)
+
+      - name: Update deployment file
+        run: TAG=$(echo $GITHUB_SHA | head -c7) && sed -i 's|<IMAGE>|registry.digitalocean.com/treasure/modelpad:'${TAG}'|' $GITHUB_WORKSPACE/modelpad/k8s/deployment.yaml
+
+      - name: Save DigitalOcean kubeconfig with short-lived credentials
+        run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 farallon
+
+      - name: Deploy to DigitalOcean Kubernetes
+        run: kubectl apply -f $GITHUB_WORKSPACE/modelpad/k8s/deployment.yaml
+
+      - name: Verify deployment
+        run: kubectl rollout status statefulset/modelpad
