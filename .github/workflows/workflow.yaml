@@ -1,7 +1,7 @@
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - "modelpad/**"
       - ".github/workflows/**"
@@ -11,8 +11,8 @@ jobs:
     name: Build, push, and deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout main
-        uses: actions/checkout@main
+      - name: Checkout master
+        uses: actions/checkout@master
 
       - name: Update SHA
         run: echo $GITHUB_SHA > $GITHUB_WORKSPACE/modelpad/_meta
