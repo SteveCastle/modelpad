@@ -21,44 +21,31 @@ import {
 
 import "./ContextMenu.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useStore } from "../store";
+import { useStore, PromptTypeKeys } from "../store";
 import { providers } from "../providers";
-
-type PromptGenerator = (text: string) => string;
-type PromptTypeKeys = "newScene" | "rewrite" | "summarize";
+import { PencilIcon } from "@heroicons/react/24/solid";
+import { useEffect, useState } from "react";
 
 interface Props {
   editor: LexicalEditor;
   hide: () => void;
 }
 
-const promptGenerators: Record<PromptTypeKeys, PromptGenerator> = {
-  newScene: (text: string) => {
-    return `
-     ${text}
-     `;
-  },
-  rewrite: (text: string) => {
-    return `A Rewording of this text:
-     ${text}
-
-     ALTERNATE VERSION:
-     `;
-  },
-  summarize: (text: string) => {
-    return `A summary of the following text:
-     ${text}
-
-     BEGIN SUMMARY:
-     `;
-  },
-};
+function applyTemplate(template: string, text: string) {
+  return template.replace("<text>", text);
+}
 
 export default function ContextMenu({ hide }: Props) {
+  const [editing, setEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState<PromptTypeKeys | null>(null); // ["newScene", "rewrite", "summarize"
   const abortController = useStore((state) => state.abortController);
-  const { model, modelSettings, host, providerKey } = useStore(
-    (state) => state
+  const { model, modelSettings, promptTemplates, changePromptTemplate } =
+    useStore((state) => state);
+
+  const { host, providerKey } = useStore(
+    (state) => state.availableServers[state.serverKey]
   );
+
   const { setGenerationState, updateContext } = useStore((state) => state);
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
@@ -66,6 +53,13 @@ export default function ContextMenu({ hide }: Props) {
   const context = activeStory?.context;
   const [editor] = useLexicalComposerContext();
   const provider = providers[providerKey];
+
+  //if editing becomes false clear the active tab
+  useEffect(() => {
+    if (!editing) {
+      setActiveTab(null);
+    }
+  }, [editing]);
 
   const startCallback = () => {
     setGenerationState("generating");
@@ -90,18 +84,19 @@ export default function ContextMenu({ hide }: Props) {
     });
   }
 
-  function generate(promptTypeKey: PromptTypeKeys) {
+  function generate(promptTemplateKey: PromptTypeKeys) {
     if (!abortController || !model) return;
     editor.update(() => {
       const selection = $getSelection();
       if (!$isRangeSelection(selection)) return;
 
       const text = selection.getTextContent();
-      const prompt = promptGenerators[promptTypeKey](text);
+      const prompt = applyTemplate(promptTemplates[promptTemplateKey], text);
       setGenerationState("loading");
       const root = $getRoot();
       const newParagraphNode = $createParagraphNode();
       root.append(newParagraphNode);
+      console.log(prompt);
       provider.generateText(
         prompt,
         startCallback,
@@ -119,34 +114,77 @@ export default function ContextMenu({ hide }: Props) {
   }
 
   return (
-    <span className={"context-menu"}>
-      <button
-        type="button"
-        onClick={() => {
-          hide();
-          generate("newScene");
-        }}
-      >
-        <SparklesIcon aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          generate("rewrite");
-          hide();
-        }}
-      >
-        <ArrowPathIcon aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          generate("summarize");
-          hide();
-        }}
-      >
-        <ArrowsPointingInIcon aria-hidden="true" />
-      </button>
-    </span>
+    <div className={"context-menu"}>
+      <div className={"button-area"}>
+        <button
+          type="button"
+          className={`new-scene-button ${
+            activeTab === "newScene" ? "active" : ""
+          }`}
+          onClick={() => {
+            if (editing) {
+              setActiveTab("newScene");
+              return;
+            }
+            hide();
+            generate("newScene");
+          }}
+        >
+          <SparklesIcon aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={`rewrite-button ${
+            activeTab === "rewrite" ? "active" : ""
+          }`}
+          onClick={() => {
+            if (editing) {
+              setActiveTab("rewrite");
+              return;
+            }
+            generate("rewrite");
+            hide();
+          }}
+        >
+          <ArrowPathIcon aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={`summarize-button ${
+            activeTab === "summarize" ? "active" : ""
+          }`}
+          onClick={() => {
+            if (editing) {
+              setActiveTab("summarize");
+              return;
+            }
+            generate("summarize");
+            hide();
+          }}
+        >
+          <ArrowsPointingInIcon aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={`edit-button ${editing ? "active" : ""}`}
+          onClick={() => {
+            setActiveTab("newScene");
+            setEditing((editing) => !editing);
+          }}
+        >
+          <PencilIcon aria-hidden="true" />
+        </button>
+      </div>
+      {editing && activeTab ? (
+        <div className="editing-area">
+          <textarea
+            value={promptTemplates[activeTab]}
+            onChange={(e) => {
+              changePromptTemplate(activeTab, e.target.value);
+            }}
+          ></textarea>
+        </div>
+      ) : null}
+    </div>
   );
 }

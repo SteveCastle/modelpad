@@ -7,7 +7,11 @@ import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import "./ServerSelect.css";
 
 export default function ServerSelect() {
-  const { host, availableServers, setHost } = useStore((state) => state);
+  const { availableServers, setServerKey } = useStore((state) => state);
+
+  const { host, name } = useStore(
+    (state) => state.availableServers[state.serverKey]
+  );
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -32,7 +36,7 @@ export default function ServerSelect() {
         {...getReferenceProps()}
         ref={refs.setReference}
       >
-        {host}
+        {name}
       </button>
       {isOpen && (
         <div
@@ -42,38 +46,16 @@ export default function ServerSelect() {
           {...getFloatingProps()}
         >
           <h2>Server Select</h2>
-          <h3>Free Servers</h3>
           <div className="server-list free-servers">
-            {availableServers.free.map((server) => (
+            {Object.entries(availableServers).map(([key, server]) => (
               <button
                 className={`server ${server.host === host ? "active" : ""}`}
                 key={server.host}
                 disabled={server.host === host}
-                onClick={() => setHost(server.host, server.providerKey)}
+                onClick={() => setServerKey(key)}
               >
                 {server.name}
               </button>
-            ))}
-          </div>
-          <h3>My Servers</h3>
-          <div className="server-list my-servers">
-            {availableServers.my.map((server) => (
-              <button
-                key={server.host}
-                className={`server ${server.host === host ? "active" : ""}`}
-                disabled={server.host === host}
-                onClick={() => setHost(server.host, server.providerKey)}
-              >
-                {server.name}
-              </button>
-            ))}
-          </div>
-          <h3>Hosted Servers</h3>
-          <div className=" server-list hosted-servers">
-            {availableServers.hosted.map((server) => (
-              <div className="server" key={server.host}>
-                {server.name}
-              </div>
             ))}
           </div>
         </div>

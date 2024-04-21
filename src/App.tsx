@@ -136,8 +136,10 @@ function App() {
     cancelGeneration,
     viewSettings,
     generationState,
-    providerKey,
   } = useStore((state) => state);
+  const { providerKey, host } = useStore(
+    (state) => state.availableServers[state.serverKey]
+  );
   const provider = providers[providerKey];
   const activeStoryId = useStore((state) => state.activeStoryId);
   const debouncedOnChange = useDebouncedCallback(
@@ -161,7 +163,6 @@ function App() {
       cancelGeneration();
     }
   }, [activeStoryId]);
-  const host = useStore((state) => state.host);
   useQuery({
     queryKey: ["models", host],
     queryFn: provider.getModels(host),

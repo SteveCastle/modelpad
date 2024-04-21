@@ -2,6 +2,10 @@ import { ulid } from "ulid";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
+export type PromptTypeKeys = "newScene" | "rewrite" | "summarize";
+
+type PromptTemplates = { [key in PromptTypeKeys]: string };
+
 type ViewSettings = {
   readingMode: boolean;
   zoom: number;
@@ -13,11 +17,7 @@ type Server = {
   name: string;
 };
 
-type AvailableServers = {
-  free: Server[];
-  my: Server[];
-  hosted: Server[];
-};
+type AvailableServers = { [key: string]: Server };
 
 export type ModelSettings = {
   mirostat?: 0 | 1 | 2;
@@ -53,22 +53,24 @@ type LoadingStates =
   | "no-connection";
 
 type State = {
-  host: string;
+  serverKey: string;
   viewSettings: ViewSettings;
-  providerKey: string;
   model: string | null;
   stories: Story[];
   activeStoryId: string;
+  promptTemplateKey: PromptTypeKeys;
+  promptTemplates: PromptTemplates;
   abortController?: AbortController;
   generationState: LoadingStates;
   availableModels: string[];
   availableServers: AvailableServers;
   modelSettings: ModelSettings;
+  changePromptTemplate: (key: PromptTypeKeys, text: string) => void;
   toggleReadingMode: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
   resetZoom: () => void;
-  setHost: (host: string, providerKey: string) => void;
+  setServerKey: (serverKey: string) => void;
   setAvailableModels: (models: string[]) => void;
   updateModelSettings: (settings: ModelSettings) => void;
   changeModel: (model: string) => void;
@@ -84,7 +86,7 @@ type State = {
   createStory: (title: string) => void;
 };
 
-const defaultSettings: ModelSettings = {
+const ollamaSettings: ModelSettings = {
   mirostat: 2, // Mirostat disabled
   mirostat_eta: 0.1, // Learning rate for feedback response
   mirostat_tau: 5.0, // Balance between coherence and diversity
@@ -105,21 +107,16 @@ const defaultStories: Story[] = [
 ];
 
 const defaultAvailableServers: AvailableServers = {
-  free: [
-    {
-      host: "http://localhost:8080",
-      name: "Claude Haiku Proxy",
-      providerKey: "claude",
-    },
-  ],
-  my: [
-    {
-      host: "http://localhost:11434",
-      name: "Local Ollama",
-      providerKey: "ollama",
-    },
-  ],
-  hosted: [],
+  modelPadServer: {
+    host: "http://localhost:8080",
+    name: "Free Model Pad Server",
+    providerKey: "claude",
+  },
+  localOllama: {
+    host: "http://localhost:11434",
+    name: "Local Ollama",
+    providerKey: "ollama",
+  },
 };
 
 export const useStore = create<State>()(
@@ -130,12 +127,25 @@ export const useStore = create<State>()(
         readingMode: true,
         zoom: 1.0,
       },
-      host: "http://localhost:11434",
-      providerKey: "ollama",
+      serverKey: "localOllama",
       availableModels: [],
       availableServers: defaultAvailableServers,
       model: null,
-      modelSettings: defaultSettings,
+      modelSettings: ollamaSettings,
+      promptTemplateKey: "newScene",
+      promptTemplates: {
+        newScene: `<text>
+      `,
+        rewrite: `A Rewording of this text:
+<text>
+ALTERNATE VERSION:
+        `,
+        summarize: `A summary of the following text:
+<text>
+
+BEGIN SUMMARY:
+        `,
+      },
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
       generationState: "no-connection",
@@ -171,10 +181,17 @@ export const useStore = create<State>()(
           },
         }));
       },
-      setHost: (host: string, providerKey: string) => {
+      changePromptTemplate: (key: PromptTypeKeys, text: string) => {
         set(() => ({
-          host,
-          providerKey,
+          promptTemplates: {
+            ...get().promptTemplates,
+            [key]: text,
+          },
+        }));
+      },
+      setServerKey: (serverKey: string) => {
+        set(() => ({
+          serverKey,
           generationState: "no-connection",
           availableModels: [],
           model: null,
@@ -284,7 +301,7 @@ export const useStore = create<State>()(
               title: title ? title : "Untitled",
               id: newId,
               content: "",
-              modelSettings: defaultSettings,
+              modelSettings: ollamaSettings,
             },
           ],
           activeStoryId: newId,
@@ -297,9 +314,9 @@ export const useStore = create<State>()(
       partialize: (state) => ({
         stories: state.stories,
         activeStoryId: state.activeStoryId,
-        host: state.host,
+        viewSettings: state.viewSettings,
+        serverKey: state.serverKey,
         model: state.model,
-        providerKey: state.providerKey,
         modelSettings: state.modelSettings,
       }),
     }

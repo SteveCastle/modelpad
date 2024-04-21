@@ -1,13 +1,39 @@
 .context-menu {
   background-color: var(--context-menu-bg-color);
   display: flex;
+  flex-direction: column;
   border-radius: 4px;
   position: absolute;
+  overflow: hidden;
 
   /* Avoid layout interference */
   width: max-content;
   top: 0;
   left: 0;
+  transition: width 0.2s ease, height 0.2s ease;
+}
+
+.context-menu .button-area {
+  display: flex;
+}
+
+.context-menu .editing-area {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.context-menu .editing-area textarea {
+  width: 300px;
+  height: 200px;
+  resize: none;
+  border: none;
+  background-color: var(--context-menu-bg-color);
+  color: var(--text-color);
+  font-size: 1rem;
+  padding: 0.5rem;
+  border-radius: 4px;
 }
 
 .context-menu button {
@@ -23,14 +49,6 @@
   margin: 0;
   padding: 8px 1rem;
 }
-/* The first and last button should have rounded corners in the context menu */
-.context-menu button:first-child {
-  border-radius: 4px 0 0 4px;
-}
-
-.context-menu button:last-child {
-  border-radius: 0 4px 4px 0;
-}
 
 .context-menu button:hover {
   background-color: var(--hovered-button-bg-color);
@@ -38,4 +56,12 @@
 
 .context-menu button svg {
   height: 16px;
+}
+
+.context-menu button.active:first-child {
+  background-color: rgba(179, 179, 179, 0.8);
+}
+
+.context-menu button.edit-button.active {
+  background-color: var(--active-grid-button-bg-color);
 }

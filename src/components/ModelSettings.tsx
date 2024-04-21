@@ -13,14 +13,17 @@ export default function ModelSettings({ model }: { model: string }) {
     clearContext,
     generationState,
     activeStoryId,
-    host,
-    providerKey,
     cycleModel,
     changeModel,
     modelSettings,
     availableModels,
     updateModelSettings,
   } = useStore((state) => state);
+
+  const { providerKey, host } = useStore(
+    (state) => state.availableServers[state.serverKey]
+  );
+
   const provider = providers[providerKey];
   useQuery({
     queryKey: ["model", host, model],
@@ -84,7 +87,11 @@ export default function ModelSettings({ model }: { model: string }) {
               ))}
           </div>
 
-          <div className="setting select-setting">
+          <div
+            className={`setting ${
+              providerKey === "claude" ? "hidden" : ""
+            } select-setting`}
+          >
             <label>Mirostat Version</label>
             <div className="control-group">
               <button
@@ -110,7 +117,11 @@ export default function ModelSettings({ model }: { model: string }) {
               </button>
             </div>
           </div>
-          <div className="setting number-setting">
+          <div
+            className={`setting ${
+              providerKey === "claude" ? "hidden" : ""
+            } number-setting`}
+          >
             <label>Mirostat ETA</label>
             <input
               type="number"
@@ -123,7 +134,11 @@ export default function ModelSettings({ model }: { model: string }) {
               }
             />
           </div>
-          <div className="setting number-setting">
+          <div
+            className={`setting ${
+              providerKey === "claude" ? "hidden" : ""
+            } number-setting`}
+          >
             <label>Mirostat TAU</label>
             <input
               type="number"
@@ -136,7 +151,7 @@ export default function ModelSettings({ model }: { model: string }) {
               }
             />
           </div>
-          <div className="setting number-setting">
+          <div className={`setting  number-setting`}>
             <label>Temperature</label>
             <input
               type="number"
@@ -149,7 +164,11 @@ export default function ModelSettings({ model }: { model: string }) {
               }
             />
           </div>
-          <div className="setting number-setting">
+          <div
+            className={`setting ${
+              providerKey === "claude" ? "hidden" : ""
+            } number-setting`}
+          >
             <label>Top P</label>
             <input
               type="number"
@@ -162,7 +181,11 @@ export default function ModelSettings({ model }: { model: string }) {
               }
             />
           </div>
-          <div className="setting number-setting">
+          <div
+            className={`setting ${
+              providerKey === "claude" ? "hidden" : ""
+            } number-setting`}
+          >
             <label>Top K</label>
             <input
               type="number"
@@ -175,7 +198,11 @@ export default function ModelSettings({ model }: { model: string }) {
               }
             />
           </div>
-          <div className="setting number-setting">
+          <div
+            className={`setting ${
+              providerKey === "claude" ? "hidden" : ""
+            } number-setting`}
+          >
             <label>Frequency Penalty</label>
             <input
               type="number"
@@ -186,6 +213,42 @@ export default function ModelSettings({ model }: { model: string }) {
                   repeat_penalty: parseFloat(e.target.value),
                 })
               }
+            />
+          </div>
+          <div className={`setting  number-setting`}>
+            <label>Generation Length</label>
+            <input
+              type="tel"
+              pattern="-?[0-9]+"
+              step="1"
+              value={modelSettings.num_predict}
+              onChange={(e) => {
+                let value = parseInt(e.target.value);
+                // if value is NaN, do nothing
+                if (isNaN(value)) {
+                  value = -1;
+                }
+                updateModelSettings({
+                  num_predict: value,
+                });
+              }}
+            />
+          </div>
+          <div
+            className={`setting ${
+              providerKey === "claude" ? "hidden" : ""
+            } number-setting`}
+          >
+            <label>Stop Word</label>
+            <input
+              type="text"
+              value={modelSettings.stop}
+              onChange={(e) => {
+                const value = e.target.value;
+                updateModelSettings({
+                  stop: [value],
+                });
+              }}
             />
           </div>
         </div>

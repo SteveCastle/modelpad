@@ -1,8 +1,15 @@
 .ModelSettings {
   background-color: var(--context-menu-bg-color);
-  padding: 1rem;
+  padding: 1rem 1rem 1rem 1rem;
   border-radius: 4px;
   z-index: 999;
+  max-width: 500px;
+}
+
+.ModelSettings h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 700;
 }
 
 .setting .control-group {
@@ -26,7 +33,7 @@
   margin: 4px;
   padding: 4px;
   border: none;
-  background-color: palevioletred;
+  background-color: var(--grid-button-bg-color);
   border-radius: 4px;
   text-align: center;
   cursor: pointer;
@@ -34,7 +41,7 @@
 }
 
 .setting.select-setting .control-group button:hover {
-  background-color: rebeccapurple;
+  background-color: var(--active-grid-button-bg-color);
 }
 
 .setting.select-setting .control-group button:disabled {
@@ -59,13 +66,13 @@
   flex: 1 1 0;
   padding: 4px;
   border: none;
-  background-color: palevioletred;
+  background-color: var(--grid-button-bg-color);
   border-radius: 4px;
   text-align: center;
 }
 
 .setting.number-setting input:focus {
-  background-color: rebeccapurple;
+  background-color: var(--active-grid-button-bg-color);
 }
 
 .available-models {
@@ -79,8 +86,9 @@
   flex: 1 1 0;
   margin: 4px;
   padding: 4px;
+  min-width: 200px;
   border: none;
-  background-color: rgb(181, 181, 181);
+  background-color: var(--grid-button-bg-color);
   border-radius: 4px;
   text-align: center;
   cursor: pointer;
@@ -89,4 +97,8 @@
 
 .available-models button.active {
   background-color: var(--active-grid-button-bg-color);
+}
+
+.setting.hidden {
+  display: none;
 }
