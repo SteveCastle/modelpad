@@ -163,7 +163,6 @@ func generateHandler(c *gin.Context) {
 		if bytes.HasPrefix(line, []byte("event: ")) {
 			eventType = strings.TrimSpace(string(bytes.TrimPrefix(line, []byte("event: "))))
 		}
-		fmt.Printf("Event type: %s\n", eventType)
 		if bytes.HasPrefix(line, []byte("data: ")) {
 			// If the event type is content_block_delta, parse the json into a struct
 			if eventType == "content_block_delta" {
@@ -215,6 +214,9 @@ func main() {
 		MaxAge: 12 * time.Hour,
 	  }))
 
+	r.Static("/assets", "./dist/assets")
+	r.StaticFile("/", "./dist/index.html")
+	r.StaticFile("/modelpad.svg", "./dist/modelpad.svg")
 
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{

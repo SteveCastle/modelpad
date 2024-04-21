@@ -9,8 +9,7 @@
 import type { ElementTransformer, Transformer } from "@lexical/markdown";
 import type { LexicalNode } from "lexical";
 
-import { TRANSFORMERS } from "@lexical/markdown";
-import { registerMarkdownShortcuts } from "../transformers/MarkdownShortcuts";
+import { TRANSFORMERS, registerMarkdownShortcuts } from "@lexical/markdown";
 
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
