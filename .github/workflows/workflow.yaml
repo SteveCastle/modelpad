@@ -15,7 +15,7 @@ jobs:
         uses: actions/checkout@master
 
       - name: Update SHA
-        run: echo $GITHUB_SHA > $GITHUB_WORKSPACE/modelpad/_meta
+        run: echo $GITHUB_SHA > $GITHUB_WORKSPACE/_meta
 
       - name: Build container image
         run: docker build -t registry.digitalocean.com/treasure/modelpad:$(echo $GITHUB_SHA | head -c7) ./modelpad/.
