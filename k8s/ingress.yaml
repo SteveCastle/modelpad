@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: modelpad-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  labels:
+    app: modelpad
+spec:
+  tls:
+    - hosts:
+        - modelpad.app
+      secretName: modelpad-tls
+  rules:
+    - host: "modelpad.app"
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: modelpad
+                port:
+                  number: 80

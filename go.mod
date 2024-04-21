@@ -1,4 +1,4 @@
-module github.com/stevecastle/dream-library
+module github.com/stevecastle/modelpad
 
 go 1.21.4
 

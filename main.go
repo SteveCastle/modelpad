@@ -214,9 +214,9 @@ func main() {
 		MaxAge: 12 * time.Hour,
 	  }))
 
-	r.Static("/assets", "./dist/assets")
-	r.StaticFile("/", "./dist/index.html")
-	r.StaticFile("/modelpad.svg", "./dist/modelpad.svg")
+	r.Static("/assets", "/app/dist/assets")
+	r.StaticFile("/", "/app/dist/index.html")
+	r.StaticFile("/modelpad.svg", "/app/dist/modelpad.svg")
 
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
