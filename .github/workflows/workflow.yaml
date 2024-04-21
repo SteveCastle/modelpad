@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    environment: production
     name: Build, push, and deploy
     runs-on: ubuntu-latest
     steps:
