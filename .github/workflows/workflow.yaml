@@ -33,13 +33,13 @@ jobs:
         run: docker push registry.digitalocean.com/treasure/modelpad:$(echo $GITHUB_SHA | head -c7)
 
       - name: Update deployment file
-        run: TAG=$(echo $GITHUB_SHA | head -c7) && sed -i 's|<IMAGE>|registry.digitalocean.com/treasure/modelpad:'${TAG}'|' $GITHUB_WORKSPACE/modelpad/k8s/deployment.yaml
+        run: TAG=$(echo $GITHUB_SHA | head -c7) && sed -i 's|<IMAGE>|registry.digitalocean.com/treasure/modelpad:'${TAG}'|' $GITHUB_WORKSPACE/k8s/deployment.yaml
 
       - name: Save DigitalOcean kubeconfig with short-lived credentials
         run: doctl kubernetes cluster kubeconfig save --expiry-seconds 600 farallon
 
       - name: Deploy to DigitalOcean Kubernetes
-        run: kubectl apply -f $GITHUB_WORKSPACE/modelpad/k8s/deployment.yaml
+        run: kubectl apply -f $GITHUB_WORKSPACE/k8s/deployment.yaml
 
       - name: Verify deployment
         run: kubectl rollout status statefulset/modelpad

@@ -22,11 +22,11 @@ spec:
             - mountPath: "/data"
               name: modelpad-nest
           env:
-            - name: TITLE
+            - name: ANTHROPIC_API_KEY
               valueFrom:
-                configMapKeyRef:
-                  name: modelpad-config
-                  key: title
+                secretKeyRef:
+                  name: modelpad-secret
+                  key: anthropicApiKey
           ports:
             - containerPort: 8080
           resources:
