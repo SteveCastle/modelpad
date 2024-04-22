@@ -3,7 +3,9 @@ on:
     branches:
       - master
     paths:
-      - "modelpad/**"
+      - "src/**"
+      - "k8s/**"
+      - "public/**"
       - ".github/workflows/**"
 
 jobs:
