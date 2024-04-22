@@ -127,7 +127,7 @@ export const useStore = create<State>()(
         readingMode: true,
         zoom: 1.0,
       },
-      serverKey: "localOllama",
+      serverKey: "modelPadServer",
       availableModels: [],
       availableServers: defaultAvailableServers,
       model: null,
