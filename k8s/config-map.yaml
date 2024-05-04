@@ -6,3 +6,6 @@ metadata:
     app: modelpad
 data:
   title: "ModelPad"
+  authFrontEndDomain: "https://modelpad.app"
+  authApiDomain: "https://modelpad.app"
+  anthropicRoute: "https://api.anthropic.com/v1/messages"

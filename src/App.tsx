@@ -20,12 +20,7 @@ import { TRANSFORMERS } from "@lexical/markdown";
 import { useDebouncedCallback } from "use-debounce";
 import { useQuery } from "react-query";
 import SuperTokens, { SuperTokensWrapper } from "supertokens-auth-react";
-import ThirdPartyEmailPassword, {
-  Github,
-  Google,
-  Facebook,
-  Apple,
-} from "supertokens-auth-react/recipe/thirdpartyemailpassword";
+import ThirdPartyEmailPassword from "supertokens-auth-react/recipe/thirdpartyemailpassword";
 import { ThirdPartyEmailPasswordPreBuiltUI } from "supertokens-auth-react/recipe/thirdpartyemailpassword/prebuiltui";
 import Session from "supertokens-auth-react/recipe/session";
 import { canHandleRoute, getRoutingComponent } from "supertokens-auth-react/ui";
@@ -51,12 +46,7 @@ SuperTokens.init({
   recipeList: [
     ThirdPartyEmailPassword.init({
       signInAndUpFeature: {
-        providers: [
-          Github.init(),
-          Google.init(),
-          Facebook.init(),
-          Apple.init(),
-        ],
+        providers: [],
       },
     }),
     Session.init(),

@@ -27,6 +27,26 @@ spec:
                 secretKeyRef:
                   name: modelpad-secret
                   key: anthropicApiKey
+            - name: SUPERTOKENS_CONNECTION_URI
+              valueFrom:
+                secretKeyRef:
+                  name: modelpad-secret
+                  key: superTokensConnectionUri
+            - name: SUPERTOKENS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: modelpad-secret
+                  key: superTokensApiKey
+            - name: AUTH_API_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: modelpad-config
+                  key: authApiDomain
+            - name: AUTH_FRONT_END_DOMAIN
+              valueFrom:
+                configMapKeyRef:
+                  name: modelpad-config
+                  key: authFrontEndDomain
           ports:
             - containerPort: 8080
           resources:
