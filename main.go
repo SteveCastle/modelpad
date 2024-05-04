@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -211,16 +210,13 @@ func generateHandler(c *gin.Context) {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-	  log.Fatal("Error loading .env file")
-	}
+	godotenv.Load()
 
 	r := gin.Default()
 
     apiBasePath := "/api/auth"
     websiteBasePath := "/auth"
-    err = supertokens.Init(supertokens.TypeInput{
+    err := supertokens.Init(supertokens.TypeInput{
         Supertokens: &supertokens.ConnectionInfo{
             ConnectionURI: os.Getenv("SUPERTOKENS_CONNECTION_URI"),
             APIKey: os.Getenv("SUPERTOKENS_API_KEY"),
