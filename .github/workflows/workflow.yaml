@@ -3,6 +3,7 @@ on:
     branches:
       - master
     paths:
+      - "main.go"
       - "src/**"
       - "Dockerfile"
       - "index.html"
