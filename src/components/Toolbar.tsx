@@ -14,6 +14,10 @@ import "./Toolbar.css";
 import ModelSettings from "./ModelSettings";
 import ServerSelect from "./ServerSelect";
 import ToolBarPlugin from "./ToolBarPlugin";
+import {
+  useSessionContext,
+  signOut,
+} from "supertokens-auth-react/recipe/session";
 
 type MenuOptions = {
   [key: string]: { label: string; action: () => void }[];
@@ -40,7 +44,8 @@ export function Toolbar() {
 
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
+  const session = useSessionContext();
+  console.log(session);
   const menuOptions: MenuOptions = {
     file: [
       {
@@ -170,6 +175,11 @@ export function Toolbar() {
 
   useOnClickOutside(menuRef, () => setActiveMenu(null));
 
+  async function onLogout() {
+    await signOut();
+    window.location.href = "/"; // or to wherever your logic page is
+  }
+
   return (
     <>
       <div className="menubar">
@@ -250,6 +260,15 @@ export function Toolbar() {
                 : "Cancel "
             }${generationState}`}
           </button>
+          {session.loading === false && session.userId ? (
+            <button onClick={onLogout} className="logout">
+              Sign Out
+            </button>
+          ) : (
+            <a href="/auth" className="login">
+              Sign In / Sign Up
+            </a>
+          )}
         </div>
       </div>
       <div className={cx("drop-down-menu", activeMenu)} ref={menuRef}>

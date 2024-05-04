@@ -19,7 +19,11 @@ import { TRANSFORMERS } from "@lexical/markdown";
 
 import { useDebouncedCallback } from "use-debounce";
 import { useQuery } from "react-query";
-
+import SuperTokens, { SuperTokensWrapper } from "supertokens-auth-react";
+import ThirdPartyEmailPassword from "supertokens-auth-react/recipe/thirdpartyemailpassword";
+import { ThirdPartyEmailPasswordPreBuiltUI } from "supertokens-auth-react/recipe/thirdpartyemailpassword/prebuiltui";
+import Session from "supertokens-auth-react/recipe/session";
+import { canHandleRoute, getRoutingComponent } from "supertokens-auth-react/ui";
 import { FloatingMenuPlugin } from "./components/FloatingMenuPlugin";
 import ContextMenu from "./components/ContextMenu";
 import { useStore, Story } from "./store";
@@ -29,6 +33,25 @@ import { Toolbar } from "./components/Toolbar";
 import CodeHighlightPlugin from "./components/CodeHighlightPlugin";
 import { providers } from "./providers";
 import "./App.css";
+
+SuperTokens.init({
+  appInfo: {
+    // learn more about this on https://supertokens.com/docs/thirdpartyemailpassword/appinfo
+    appName: "ModelPad",
+    apiDomain: import.meta.env.VITE_AUTH_API_DOMAIN,
+    websiteDomain: import.meta.env.VITE_AUTH_FRONT_END_DOMAIN,
+    apiBasePath: "/api/auth",
+    websiteBasePath: "/auth",
+  },
+  recipeList: [
+    ThirdPartyEmailPassword.init({
+      signInAndUpFeature: {
+        providers: [],
+      },
+    }),
+    Session.init(),
+  ],
+});
 
 const theme = {
   ltr: "ltr",
@@ -176,60 +199,69 @@ function App() {
       setAvailableModels(modelNames);
     },
   });
+  if (canHandleRoute([ThirdPartyEmailPasswordPreBuiltUI])) {
+    // This renders the login UI on the /auth route
+    return getRoutingComponent([ThirdPartyEmailPasswordPreBuiltUI]);
+  }
   return (
-    <div className="App">
-      <div className="tabs">
-        {stories.map((story: Story) => (
-          <Tab
-            key={story.id}
-            story={story}
-            activeStoryId={activeStoryId}
-            setActive={setActive}
-            closeStory={closeStory}
-          />
-        ))}
-        <div className="add">
-          <button className="button" onClick={() => createStory("Untitled")}>
-            <PlusIcon />
-          </button>
+    <SuperTokensWrapper>
+      <div className="App">
+        <div className="tabs">
+          {stories.map((story: Story) => (
+            <Tab
+              key={story.id}
+              story={story}
+              activeStoryId={activeStoryId}
+              setActive={setActive}
+              closeStory={closeStory}
+            />
+          ))}
+          <div className="add">
+            <button className="button" onClick={() => createStory("Untitled")}>
+              <PlusIcon />
+            </button>
+          </div>
         </div>
-      </div>
-      <LexicalComposer
-        initialConfig={{
-          ...editorConfig,
-          editorState: activeContent,
-        }}
-      >
-        <Toolbar />
-        <div
-          className="editor-container"
-          style={{
-            width: viewSettings.readingMode ? "960px" : "",
-            margin: viewSettings.readingMode ? "0 auto" : "0 20px",
-            height: "100%",
-            overflow: "hidden",
-            fontSize: `${viewSettings.zoom}em`,
+        <LexicalComposer
+          initialConfig={{
+            ...editorConfig,
+            editorState: activeContent,
           }}
         >
-          <RichTextPlugin
-            contentEditable={<ContentEditable className="editor-input" />}
-            placeholder={null}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <FloatingMenuPlugin MenuComponent={ContextMenu} />
-          <HistoryPlugin />
-          <OnChangePlugin onChange={debouncedOnChange} ignoreSelectionChange />
-          <UpdateDocumentPlugin
-            activeContent={activeContent}
-            activeStoryId={activeStoryId}
-          />
-          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-          <ListPlugin />
-          <LinkPlugin />
-          <CodeHighlightPlugin />
-        </div>
-      </LexicalComposer>
-    </div>
+          <Toolbar />
+          <div
+            className="editor-container"
+            style={{
+              width: viewSettings.readingMode ? "960px" : "",
+              margin: viewSettings.readingMode ? "0 auto" : "0 20px",
+              height: "100%",
+              overflow: "hidden",
+              fontSize: `${viewSettings.zoom}em`,
+            }}
+          >
+            <RichTextPlugin
+              contentEditable={<ContentEditable className="editor-input" />}
+              placeholder={null}
+              ErrorBoundary={LexicalErrorBoundary}
+            />
+            <FloatingMenuPlugin MenuComponent={ContextMenu} />
+            <HistoryPlugin />
+            <OnChangePlugin
+              onChange={debouncedOnChange}
+              ignoreSelectionChange
+            />
+            <UpdateDocumentPlugin
+              activeContent={activeContent}
+              activeStoryId={activeStoryId}
+            />
+            <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+            <ListPlugin />
+            <LinkPlugin />
+            <CodeHighlightPlugin />
+          </div>
+        </LexicalComposer>
+      </div>
+    </SuperTokensWrapper>
   );
 }
 

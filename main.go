@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -12,6 +13,12 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
+	"github.com/supertokens/supertokens-golang/recipe/dashboard"
+	"github.com/supertokens/supertokens-golang/recipe/session"
+	"github.com/supertokens/supertokens-golang/recipe/thirdpartyemailpassword"
+	"github.com/supertokens/supertokens-golang/recipe/thirdpartyemailpassword/tpepmodels"
+	"github.com/supertokens/supertokens-golang/supertokens"
 )
 
 type StreamChunk struct {
@@ -125,7 +132,7 @@ func generateHandler(c *gin.Context) {
     }
 
     // Create the request
-    req, err := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(bodyBytes))
+    req, err := http.NewRequest("POST", os.Getenv("ANTHROPIC_ROUTE"), bytes.NewBuffer(bodyBytes))
     if err != nil {
         fmt.Printf("Error creating request: %v\n", err)
         return
@@ -204,19 +211,63 @@ func generateHandler(c *gin.Context) {
 }
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+	  log.Fatal("Error loading .env file")
+	}
+
 	r := gin.Default()
-	r.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"},
-		AllowMethods:     []string{"POST"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
-		ExposeHeaders:    []string{"Content-Length"},
-		AllowCredentials: true,
-		MaxAge: 12 * time.Hour,
-	  }))
+
+    apiBasePath := "/api/auth"
+    websiteBasePath := "/auth"
+    err = supertokens.Init(supertokens.TypeInput{
+        Supertokens: &supertokens.ConnectionInfo{
+            ConnectionURI: os.Getenv("SUPERTOKENS_CONNECTION_URI"),
+            APIKey: os.Getenv("SUPERTOKENS_API_KEY"),
+        },
+        AppInfo: supertokens.AppInfo{
+            AppName: "ModelPad",
+            APIDomain: os.Getenv("AUTH_API_DOMAIN"),
+            WebsiteDomain: os.Getenv("AUTH_FRONT_END_DOMAIN"),
+            APIBasePath: &apiBasePath,
+            WebsiteBasePath: &websiteBasePath,
+        },
+        RecipeList: []supertokens.Recipe{
+            thirdpartyemailpassword.Init(&tpepmodels.TypeInput{/*TODO: See next step*/}),
+			dashboard.Init(nil),
+            session.Init(nil), // initializes session features
+        },
+    })
+
+    if err != nil {
+        panic(err.Error())
+    }
+
+
+
+    r.Use(cors.New(cors.Config{
+        AllowOrigins: []string{"https://modelpad.app", "http://localhost:5173"},
+        AllowMethods: []string{"GET", "POST", "DELETE", "PUT", "OPTIONS"},
+        AllowHeaders: append([]string{"content-type"},
+            supertokens.GetAllCORSHeaders()...),
+        AllowCredentials: true,
+    }))
+
+    // Adding the SuperTokens middleware
+    r.Use(func(c *gin.Context) {
+        supertokens.Middleware(http.HandlerFunc(
+            func(rw http.ResponseWriter, r *http.Request) {
+                c.Next()
+            })).ServeHTTP(c.Writer, c.Request)
+        // we call Abort so that the next handler in the chain is not called, unless we call Next explicitly
+        c.Abort()
+    })
 
 	r.Static("/assets", "/app/dist/assets")
 	r.StaticFile("/", "/app/dist/index.html")
 	r.StaticFile("/modelpad.svg", "/app/dist/modelpad.svg")
+
+
 
 	r.GET("/api/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
