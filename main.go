@@ -261,6 +261,7 @@ func main() {
 
 	r.Static("/assets", "/app/dist/assets")
 	r.StaticFile("/", "/app/dist/index.html")
+	r.StaticFile("/auth", "/app/dist/index.html")
 	r.StaticFile("/modelpad.svg", "/app/dist/modelpad.svg")
 
 
