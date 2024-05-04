@@ -38,8 +38,9 @@ SuperTokens.init({
   appInfo: {
     // learn more about this on https://supertokens.com/docs/thirdpartyemailpassword/appinfo
     appName: "ModelPad",
-    apiDomain: import.meta.env.VITE_AUTH_API_DOMAIN,
-    websiteDomain: import.meta.env.VITE_AUTH_FRONT_END_DOMAIN,
+    apiDomain: import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app",
+    websiteDomain:
+      import.meta.env.VITE_AUTH_FRONT_END_DOMAIN || "https://modelpad.app",
     apiBasePath: "/api/auth",
     websiteBasePath: "/auth",
   },
