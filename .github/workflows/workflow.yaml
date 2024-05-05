@@ -5,6 +5,9 @@ on:
     paths:
       - "main.go"
       - "src/**"
+      - "models/**"
+      - "notes/**"
+      - "streaming/**"
       - "Dockerfile"
       - "index.html"
       - "k8s/**"

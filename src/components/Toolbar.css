@@ -58,7 +58,6 @@
   height: 10px;
   border-radius: 50%;
   width: 10px;
-  display: inline-block;
   margin: 0 0.6em 0 0.1rem;
 }
 
@@ -175,4 +174,26 @@
 
 .drop-down-menu button:hover {
   background-color: var(--hovered-toolbar-bg-color);
+}
+
+/* media query for mobile to hide toolbar-left */
+@media (max-width: 768px) {
+  .App .menubar .toolbar-left {
+    display: none;
+  }
+
+  .App .menubar .toolbar-right button {
+    display: none !important;
+  }
+  .App .menubar .toolbar-right {
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .App .menubar .toolbar-right .logout,
+  .App .menubar .toolbar-right .login {
+    padding: 0.4rem;
+    margin: 0.4rem;
+    display: flex !important;
+  }
 }
