@@ -116,6 +116,12 @@ export function Toolbar() {
           saveFile();
         },
       },
+      {
+        label: "Cloud Sync",
+        action: () => {
+          console.log("Cloud Sync");
+        },
+      },
     ],
     edit: [
       {
