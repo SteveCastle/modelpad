@@ -27,6 +27,11 @@ spec:
                 secretKeyRef:
                   name: modelpad-secret
                   key: anthropicApiKey
+            - name: ANTHROPIC_ROUTE
+              valueFrom:
+                secretKeyRef:
+                  name: modelpad-config
+                  key: anthropicRoute
             - name: SUPERTOKENS_CONNECTION_URI
               valueFrom:
                 secretKeyRef:
