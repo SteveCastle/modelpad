@@ -58,7 +58,7 @@
   height: 16px;
 }
 
-.context-menu button.active:first-child {
+.context-menu button.active:not(:last-child) {
   background-color: rgba(179, 179, 179, 0.8);
 }
 
