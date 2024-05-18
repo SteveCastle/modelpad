@@ -42,6 +42,11 @@ spec:
                 secretKeyRef:
                   name: modelpad-secret
                   key: superTokensApiKey
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: modelpad-secret
+                  key: databaseUrl
             - name: AUTH_API_DOMAIN
               valueFrom:
                 configMapKeyRef:
