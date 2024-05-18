@@ -200,6 +200,7 @@ function App() {
   useQuery({
     queryKey: ["stories"],
     queryFn: getStories,
+    refetchOnWindowFocus: false,
     onError: (e) => {
       console.log("error", e);
     },
