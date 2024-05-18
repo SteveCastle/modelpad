@@ -134,6 +134,11 @@
   -ms-overflow-style: none;
 }
 
+/* Give the last child of editor-input a bottom margin of 6rem */
+.editor-input > *:last-child {
+  margin-bottom: 6rem;
+}
+
 .editor-input::-webkit-scrollbar {
   display: none;
 }
