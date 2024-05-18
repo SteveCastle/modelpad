@@ -16,7 +16,6 @@ import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "./components/LexicalMarkdownShortcutPlugin";
 import { TRANSFORMERS } from "@lexical/markdown";
-
 import { useDebouncedCallback } from "use-debounce";
 import { useQuery } from "react-query";
 
@@ -32,6 +31,7 @@ import CodeHighlightPlugin from "./components/CodeHighlightPlugin";
 import { providers } from "./providers";
 import "./App.css";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
+import { EditorState } from "lexical";
 
 const theme = {
   ltr: "ltr",
@@ -211,7 +211,7 @@ function App() {
   });
 
   const debouncedSave = useDebouncedCallback(
-    (state) => {
+    (state: EditorState) => {
       async function save() {
         await fetch(
           `${
@@ -230,7 +230,11 @@ function App() {
           }
         );
       }
-      if (session.loading === false && session.userId) {
+      if (
+        session.loading === false &&
+        session.userId &&
+        activeStory.title !== "Untitled"
+      ) {
         save();
       }
     },

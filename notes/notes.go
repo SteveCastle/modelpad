@@ -171,10 +171,33 @@ func DeleteNote(c *gin.Context) {
 	noteID := c.Param("id")
 
 	db := c.MustGet("db").(*pgxpool.Pool)
-	_, err := db.Exec(context.Background(), "DELETE FROM notes WHERE id = $1 AND user_id = $2", noteID, userID)
+
+	 //In a transaction delete any revisions and then the note
+	tx, err := db.Begin(context.Background())
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+
+	_, err = tx.Exec(context.Background(), "DELETE FROM revisions WHERE note_id = $1", noteID)
+	if err != nil {
+		tx.Rollback(context.Background())
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = tx.Exec(context.Background(), "DELETE FROM notes WHERE id = $1 AND user_id = $2", noteID, userID)
+	if err != nil {
+		tx.Rollback(context.Background())
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
+	err = tx.Commit(context.Background())
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(200, gin.H{"message": "Note deleted"})
 }
