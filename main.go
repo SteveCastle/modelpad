@@ -1,16 +1,19 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/stevecastle/modelpad/models"
 	"github.com/stevecastle/modelpad/notes"
 	"github.com/stevecastle/modelpad/streaming"
+	"github.com/stevecastle/modelpad/usersync"
 	"github.com/supertokens/supertokens-golang/recipe/dashboard"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 	"github.com/supertokens/supertokens-golang/recipe/session/sessmodels"
@@ -52,14 +55,23 @@ func me(c *gin.Context) {
     fmt.Println(userID)
 }
 
+
 func main() {
 	godotenv.Load()
 
 	r := gin.Default()
 
+	dbpool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
+		os.Exit(1)
+	}
+	defer dbpool.Close()
+
+
     apiBasePath := "/api/auth"
     websiteBasePath := "/auth"
-    err := supertokens.Init(supertokens.TypeInput{
+    err = supertokens.Init(supertokens.TypeInput{
         Supertokens: &supertokens.ConnectionInfo{
             ConnectionURI: os.Getenv("SUPERTOKENS_CONNECTION_URI"),
             APIKey: os.Getenv("SUPERTOKENS_API_KEY"),
@@ -82,8 +94,13 @@ func main() {
         panic(err.Error())
     }
 
+//Adding postgres connection to the context
+	r.Use(func(c *gin.Context) {
+		c.Set("db", dbpool)
+		c.Next()
+	})
 
-
+	// Adding the CORS middleware
     r.Use(cors.New(cors.Config{
         AllowOrigins: []string{"https://modelpad.app", "http://localhost:5173"},
         AllowMethods: []string{"GET", "POST", "DELETE", "PUT", "OPTIONS"},
@@ -114,7 +131,14 @@ func main() {
 	// Note Endpoints
 	r.GET("/api/me", verifySession(&sessmodels.VerifySessionOptions{}), me)
 	r.GET("/api/notes", verifySession(&sessmodels.VerifySessionOptions{}), notes.ListNotes)
+	r.POST("/api/notes", verifySession(&sessmodels.VerifySessionOptions{}), notes.CreateNote)
+	r.PUT("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.UpsertNote)
+	r.DELETE("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.DeleteNote)
 	r.GET("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.GetNote)
+
+	// Sync Endpoints
+	r.GET("/api/sync/get", verifySession(&sessmodels.VerifySessionOptions{}), usersync.GetSync)
+	r.POST("/api/sync/set", verifySession(&sessmodels.VerifySessionOptions{}), usersync.SetSync)
 
 
 	// These endpoints match the ollama API

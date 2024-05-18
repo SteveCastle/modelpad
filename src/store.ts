@@ -1,4 +1,4 @@
-import { ulid } from "ulid";
+import { v4 } from "uuid";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 
@@ -45,6 +45,12 @@ export type Story = {
   context?: number[];
 };
 
+export type Note = {
+  id: string;
+  title: string;
+  body: string;
+};
+
 type LoadingStates =
   | "ready"
   | "loading"
@@ -84,6 +90,7 @@ type State = {
   clearContext: (id: string) => void;
   closeStory: (id: string) => void;
   createStory: (title: string) => void;
+  mergeNotes: (notes: Note[]) => void; // Updates stories if ID exists, otherwise creates a new story
 };
 
 const ollamaSettings: ModelSettings = {
@@ -99,7 +106,7 @@ const ollamaSettings: ModelSettings = {
 
 const defaultStories: Story[] = [
   {
-    id: ulid(),
+    id: v4(),
     title: "Untitled",
     content: undefined,
     context: undefined,
@@ -149,6 +156,33 @@ BEGIN SUMMARY:
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
       generationState: "no-connection",
+      mergeNotes: (notes: Note[]) => {
+        set(() => {
+          // Iterate over the existing stories and if the note ID exists, update the story
+          const updatedStories = get().stories.map((s) => {
+            const note = notes.find((n) => n.id === s.id);
+            if (note) {
+              return {
+                ...s,
+                title: note.title,
+                content: JSON.parse(note.body),
+              };
+            }
+            return s;
+          });
+          // Iterate over the notes and if the ID does not exist, create a new story
+          const newStories = notes
+            .filter((n) => !get().stories.find((s) => s.id === n.id))
+            .map((n) => ({
+              id: n.id,
+              title: n.title,
+              content: JSON.parse(n.body),
+            }));
+          return {
+            stories: [...updatedStories, ...newStories],
+          };
+        });
+      },
       toggleReadingMode: () => {
         set((state) => ({
           viewSettings: {
@@ -293,7 +327,7 @@ BEGIN SUMMARY:
         });
       },
       createStory: (title: string) => {
-        const newId = ulid();
+        const newId = v4();
         set(() => ({
           stories: [
             ...get().stories,
