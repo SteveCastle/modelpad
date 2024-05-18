@@ -13,6 +13,7 @@ import (
 	"github.com/stevecastle/modelpad/models"
 	"github.com/stevecastle/modelpad/notes"
 	"github.com/stevecastle/modelpad/streaming"
+	"github.com/stevecastle/modelpad/usersync"
 	"github.com/supertokens/supertokens-golang/recipe/dashboard"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 	"github.com/supertokens/supertokens-golang/recipe/session/sessmodels"
@@ -131,9 +132,13 @@ func main() {
 	r.GET("/api/me", verifySession(&sessmodels.VerifySessionOptions{}), me)
 	r.GET("/api/notes", verifySession(&sessmodels.VerifySessionOptions{}), notes.ListNotes)
 	r.POST("/api/notes", verifySession(&sessmodels.VerifySessionOptions{}), notes.CreateNote)
-	r.PUT("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.UpdateNote)
+	r.PUT("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.UpsertNote)
 	r.DELETE("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.DeleteNote)
 	r.GET("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.GetNote)
+
+	// Sync Endpoints
+	r.GET("/api/sync/get", verifySession(&sessmodels.VerifySessionOptions{}), usersync.GetSync)
+	r.POST("/api/sync/set", verifySession(&sessmodels.VerifySessionOptions{}), usersync.SetSync)
 
 
 	// These endpoints match the ollama API

@@ -45,7 +45,6 @@ export function Toolbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const session = useSessionContext();
-  console.log(session);
   const menuOptions: MenuOptions = {
     file: [
       {
