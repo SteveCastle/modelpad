@@ -323,10 +323,17 @@ BEGIN SUMMARY:
       },
       closeStory: (id: string) => {
         set(() => {
-          const filteredStories = get().stories.filter((s) => s.id !== id);
+          const filteredStories = get().stories.filter(
+            (s) => s.id !== id && (s.open === true || s.open === undefined)
+          );
           if (filteredStories.length === 0) {
             return {
-              stories: [...get().stories, ...defaultStories],
+              stories: [
+                ...get().stories.map((s) =>
+                  s.id === id ? { ...s, open: false } : s
+                ),
+                ...defaultStories,
+              ],
               activeStoryId: defaultStories[0].id,
             };
           }
