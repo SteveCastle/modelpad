@@ -56,7 +56,26 @@ export default function ServerSelect() {
                 key={server.host}
                 onClick={() => setServerKey(key)}
               >
-                <span className="server-name">{server.name}</span>
+                <div>
+                  <span className="server-name">
+                    {server.providerKey === "claude"
+                      ? server.name
+                      : `${server.name} (${server.host})`}
+                  </span>
+                  <span className="server-info">
+                    {server.providerKey === "ollama" ? (
+                      <a
+                        href="https://github.com/ollama/ollama/blob/main/docs/faq.md#how-can-i-allow-additional-web-origins-to-access-ollama"
+                        target="_blank"
+                      >
+                        Add https://modelpad.app to your OLLAMA_ORIGINS env
+                        variable.
+                      </a>
+                    ) : (
+                      "The Cloud Free tier includes free access to the Anthropic Claude 3 Haiku AI model."
+                    )}
+                  </span>
+                </div>
                 {server.providerKey === "ollama" && (
                   <span
                     className="server-edit"

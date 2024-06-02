@@ -18,6 +18,7 @@
   --tabs-bg-color: rgb(31, 31, 31);
   --active-tab-bg-color: rgb(158, 153, 153);
   --active-style-button-bg-color: rgb(51, 49, 49);
+  --active-hovered-style-button-bg-color: rgba(51, 49, 49, 0.7);
   --hovered-button-bg-color: rgb(106, 103, 103);
   --hovered-tab-bg-color: rgb(106, 103, 103);
   --grid-button-bg-color: rgb(44, 44, 44);

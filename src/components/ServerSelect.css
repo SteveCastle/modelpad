@@ -41,10 +41,11 @@
   transition: background-color 0.2s ease;
   background: none;
   border: none;
+  text-align: left;
 }
 
 .ServerSelect .server-list .server:hover {
-  color: var(--hovered-grid-button-bg-color);
+  background-color: var(--active-hovered-style-button-bg-color);
 }
 
 .ServerSelect .server-list .server:disabled {
@@ -57,6 +58,22 @@
 }
 
 .ServerSelect .server-list .server .server-name {
+  display: block;
+}
+
+.ServerSelect .server-list .server .server-info {
+  margin-top: 0.3rem;
+  display: block;
+  font-size: 0.6rem;
+  text-decoration: none;
+}
+
+.ServerSelect .server-list .server .server-info a {
+  text-decoration: none;
+}
+
+.ServerSelect .server-list .server .server-info a:hover {
+  color: var(--link-color);
 }
 
 .ServerSelect .server-list .server .server-edit {
