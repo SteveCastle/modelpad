@@ -238,9 +238,19 @@ export function Toolbar() {
               clearContext(activeStoryId);
             }}
             disabled={generationState !== "ready"}
-          >{`${
-            activeStory?.context?.length ? activeStory.context?.length : "0"
-          }/4096`}</button>
+          >
+            <div
+              style={{
+                width: `${
+                  activeStory?.context?.length
+                    ? Math.floor((activeStory?.context?.length / 4096) * 100)
+                    : 0
+                }%`,
+              }}
+              className="history-percentage"
+            />
+            Clear Context
+          </button>
           <button
             className="cancel-button"
             onClick={() => {

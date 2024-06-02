@@ -36,8 +36,32 @@
 }
 
 .App .menubar .toolbar-right .context {
+  position: relative;
   cursor: pointer;
+  height: 20.89px;
   min-width: 90px;
+  border: none;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.App .menubar .toolbar-right .context:hover {
+  opacity: 0.8;
+}
+
+.App .menubar .toolbar-right .context:disabled {
+  cursor: default;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.App .menubar .toolbar-right .context .history-percentage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  border-radius: 2px;
+  background-color: rgba(222, 0, 0, 0.5);
+  transition: width 0.2s ease;
 }
 
 .App .menubar .toolbar-right .cancel-button {
