@@ -73,6 +73,8 @@ type State = {
   availableModels: string[];
   availableServers: AvailableServers;
   modelSettings: ModelSettings;
+  setServerHost: (host: string) => void;
+  setServerName: (title: string) => void;
   changePromptTemplate: (key: PromptTypeKeys, text: string) => void;
   toggleReadingMode: () => void;
   zoomIn: () => void;
@@ -121,7 +123,7 @@ const defaultStories: Story[] = [
 const defaultAvailableServers: AvailableServers = {
   modelPadServer: {
     host: "https://modelpad.app",
-    name: "Free Model Pad Server",
+    name: "Cloud (Free Tier)",
     providerKey: "claude",
   },
   localOllama: {
@@ -366,6 +368,28 @@ BEGIN SUMMARY:
           activeStoryId: newId,
         }));
       },
+      setServerName: (title: string) => {
+        set(() => ({
+          availableServers: {
+            ...get().availableServers,
+            localOllama: {
+              ...get().availableServers.localOllama,
+              name: title,
+            },
+          },
+        }));
+      },
+      setServerHost: (host: string) => {
+        set(() => ({
+          availableServers: {
+            ...get().availableServers,
+            localOllama: {
+              ...get().availableServers.localOllama,
+              host,
+            },
+          },
+        }));
+      },
     }),
     {
       name: "editor",
@@ -377,6 +401,7 @@ BEGIN SUMMARY:
         serverKey: state.serverKey,
         model: state.model,
         modelSettings: state.modelSettings,
+        availableServers: state.availableServers,
       }),
     }
   )

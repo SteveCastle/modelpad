@@ -3,11 +3,14 @@ import { offset } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import { useStore } from "../store";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
+import { PencilIcon } from "@heroicons/react/24/solid";
 
 import "./ServerSelect.css";
 
 export default function ServerSelect() {
-  const { availableServers, setServerKey } = useStore((state) => state);
+  const [editing, setEditing] = useState(false);
+  const { availableServers, setServerKey, setServerName, setServerHost } =
+    useStore((state) => state);
 
   const { host, name } = useStore(
     (state) => state.availableServers[state.serverKey]
@@ -51,13 +54,41 @@ export default function ServerSelect() {
               <button
                 className={`server ${server.host === host ? "active" : ""}`}
                 key={server.host}
-                disabled={server.host === host}
                 onClick={() => setServerKey(key)}
               >
-                {server.name}
+                <span className="server-name">{server.name}</span>
+                {server.providerKey === "ollama" && (
+                  <span
+                    className="server-edit"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      console.log("setting editing state");
+                      setEditing(!editing);
+                    }}
+                  >
+                    <PencilIcon aria-hidden="true" />
+                  </span>
+                )}
               </button>
             ))}
           </div>
+          {editing && (
+            <div className="server-edit-form">
+              <input
+                type="text"
+                value={availableServers.localOllama.name}
+                onChange={(e) => setServerName(e.currentTarget.value)}
+                placeholder="Local Ollama Server"
+              />
+              <input
+                type="text"
+                value={availableServers.localOllama.host}
+                onChange={(e) => setServerHost(e.currentTarget.value)}
+                placeholder="http://localhost:11434"
+              />
+            </div>
+          )}
         </div>
       )}
     </>
