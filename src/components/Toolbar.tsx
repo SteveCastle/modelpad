@@ -29,6 +29,7 @@ export function Toolbar() {
     cancelGeneration,
     clearContext,
     model,
+    serverKey,
     createStory,
     toggleReadingMode,
     zoomIn,
@@ -232,25 +233,27 @@ export function Toolbar() {
         <div className="toolbar-right">
           <ServerSelect />
           {model && <ModelSettings model={model} />}
-          <button
-            className={`context ${generationState}`}
-            onClick={() => {
-              clearContext(activeStoryId);
-            }}
-            disabled={generationState !== "ready"}
-          >
-            <div
-              style={{
-                width: `${
-                  activeStory?.context?.length
-                    ? Math.floor((activeStory?.context?.length / 4096) * 100)
-                    : 0
-                }%`,
+          {serverKey === "localOllama" && (
+            <button
+              className={`context ${generationState}`}
+              onClick={() => {
+                clearContext(activeStoryId);
               }}
-              className="history-percentage"
-            />
-            Clear Context
-          </button>
+              disabled={generationState !== "ready"}
+            >
+              <div
+                style={{
+                  width: `${
+                    activeStory?.context?.length
+                      ? Math.floor((activeStory?.context?.length / 4096) * 100)
+                      : 0
+                  }%`,
+                }}
+                className="history-percentage"
+              />
+              Clear Context
+            </button>
+          )}
           <button
             className="cancel-button"
             onClick={() => {
