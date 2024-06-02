@@ -43,6 +43,8 @@ export type Story = {
   title: string;
   content?: string;
   context?: number[];
+  open?: boolean;
+  synced?: boolean;
 };
 
 export type Note = {
@@ -86,6 +88,7 @@ type State = {
   setActive: (id: string) => void;
   updateStory: (id: string, content: string) => void;
   updateTitle: (id: string, title: string) => void;
+  updateSyncState: (id: string, synced: boolean) => void;
   updateContext: (id: string, context: number[]) => void;
   clearContext: (id: string) => void;
   closeStory: (id: string) => void;
@@ -101,6 +104,7 @@ const ollamaSettings: ModelSettings = {
   top_p: 0.9, // Top p sampling
   top_k: 40, // Top k sampling
   repeat_penalty: 1.0, // Penalty for repeating
+  num_predict: -1, // Number of predictions to generate
   stop: ["user:"],
 };
 
@@ -110,6 +114,7 @@ const defaultStories: Story[] = [
     title: "Untitled",
     content: undefined,
     context: undefined,
+    open: true,
   },
 ];
 
@@ -177,6 +182,8 @@ BEGIN SUMMARY:
               id: n.id,
               title: n.title,
               content: JSON.parse(n.body),
+              open: true,
+              synced: true,
             }));
           return {
             stories: [...updatedStories, ...newStories],
@@ -292,6 +299,13 @@ BEGIN SUMMARY:
           ),
         }));
       },
+      updateSyncState: (id: string, synced: boolean) => {
+        set(() => ({
+          stories: get().stories.map((s) =>
+            s.id === id ? { ...s, synced } : s
+          ),
+        }));
+      },
       updateContext: (id: string, context: number[]) => {
         set(() => ({
           stories: get().stories.map((s) =>
@@ -311,7 +325,7 @@ BEGIN SUMMARY:
           const filteredStories = get().stories.filter((s) => s.id !== id);
           if (filteredStories.length === 0) {
             return {
-              stories: defaultStories,
+              stories: [...get().stories, ...defaultStories],
               activeStoryId: defaultStories[0].id,
             };
           }
@@ -321,7 +335,9 @@ BEGIN SUMMARY:
               : get().activeStoryId;
 
           return {
-            stories: filteredStories,
+            stories: get().stories.map((s) =>
+              s.id === id ? { ...s, open: false } : s
+            ),
             activeStoryId,
           };
         });
@@ -336,6 +352,7 @@ BEGIN SUMMARY:
               id: newId,
               content: "",
               modelSettings: ollamaSettings,
+              open: true,
             },
           ],
           activeStoryId: newId,

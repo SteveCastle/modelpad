@@ -3,6 +3,7 @@ import { Story } from "../store";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import "./Tab.css";
 import { useStore } from "../store";
+import { useSessionContext } from "supertokens-auth-react/recipe/session";
 
 type Props = {
   story: Story;
@@ -13,7 +14,33 @@ type Props = {
 
 export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
   const [editingTitle, setEditingTitle] = useState(false);
-  const { updateTitle } = useStore((state) => state);
+  const { updateTitle, updateSyncState } = useStore((state) => state);
+  const session = useSessionContext();
+  const saveHandler = (story: Story, newTitle: string) => {
+    async function save() {
+      await fetch(
+        `${
+          import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
+        }/api/notes/${activeStoryId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: activeStoryId,
+            body: JSON.stringify(story.content),
+            title: newTitle,
+          }),
+        }
+      );
+      updateSyncState(story.id, true);
+    }
+    if (session.loading === false && session.userId) {
+      save();
+    }
+  };
+
   return (
     <a
       className={["tab", story.id === activeStoryId ? "active" : ""].join(" ")}
@@ -37,14 +64,31 @@ export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
     >
       <span
         contentEditable={editingTitle}
-        className={["editable-title", editingTitle ? "editing" : ""].join(" ")}
+        className={[
+          "editable-title",
+          editingTitle ? "editing" : "",
+          story.synced ? "synced" : "",
+        ].join(" ")}
         onDoubleClick={() => setEditingTitle(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
         onBlur={(e) => {
-          updateTitle(story.id, e.currentTarget.textContent || "");
+          updateTitle(
+            story.id,
+            removeNewLineChars(e.currentTarget.textContent) || ""
+          );
+          saveHandler(
+            story,
+            removeNewLineChars(e.currentTarget.textContent) || ""
+          );
           setEditingTitle(false);
         }}
       >
-        {story.title}
+        {removeNewLineChars(story.title)}
       </span>
       <button
         className="close"
@@ -66,4 +110,8 @@ export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
       </button>
     </a>
   );
+}
+
+function removeNewLineChars(text: string) {
+  return text.replace(/(\r\n|\n|\r)/gm, "");
 }
