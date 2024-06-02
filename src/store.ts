@@ -171,6 +171,7 @@ BEGIN SUMMARY:
                 ...s,
                 title: note.title,
                 content: JSON.parse(note.body),
+                synced: true,
               };
             }
             return s;
