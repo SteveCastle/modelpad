@@ -77,14 +77,18 @@ export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
           }
         }}
         onBlur={(e) => {
-          updateTitle(
-            story.id,
-            removeNewLineChars(e.currentTarget.textContent) || ""
-          );
-          saveHandler(
-            story,
-            removeNewLineChars(e.currentTarget.textContent) || ""
-          );
+          if (e.currentTarget.textContent.length > 0) {
+            updateTitle(
+              story.id,
+              removeNewLineChars(e.currentTarget.textContent) || ""
+            );
+            saveHandler(
+              story,
+              removeNewLineChars(e.currentTarget.textContent) || ""
+            );
+          } else {
+            e.currentTarget.textContent = story.title;
+          }
           setEditingTitle(false);
         }}
       >
