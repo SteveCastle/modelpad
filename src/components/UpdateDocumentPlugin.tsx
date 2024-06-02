@@ -24,16 +24,18 @@ const emptyState = JSON.stringify({
 export function UpdateDocumentPlugin({
   activeContent,
   activeStoryId,
+  updateId,
 }: {
   activeContent: string | undefined;
   activeStoryId: string;
+  updateId: number;
 }) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
     const editorState = editor.parseEditorState(activeContent || emptyState);
     editor.setEditorState(editorState);
-  }, [activeStoryId, editor]);
+  }, [activeStoryId, editor, updateId]);
 
   return null;
 }

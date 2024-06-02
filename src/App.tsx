@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
@@ -141,6 +141,7 @@ async function getStories(): Promise<NoteReponse> {
 }
 
 function App() {
+  const [updateId, setUpdateId] = useState(0);
   const {
     setActive,
     closeStory,
@@ -200,13 +201,14 @@ function App() {
   useQuery({
     queryKey: ["stories"],
     queryFn: getStories,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
     onError: (e) => {
       console.log("error", e);
     },
     onSuccess: (data) => {
       if (session.loading === false && session.userId) {
         mergeNotes(data.notes);
+        setUpdateId((id) => id + 1);
       }
     },
   });
@@ -302,6 +304,7 @@ function App() {
           <UpdateDocumentPlugin
             activeContent={activeContent}
             activeStoryId={activeStoryId}
+            updateId={updateId}
           />
           <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
           <ListPlugin />
