@@ -99,15 +99,6 @@ export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
         onClick={(e) => {
           e.stopPropagation();
           closeStory(story.id);
-          // Delete the note by calling api
-          fetch(
-            `${
-              import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
-            }/api/notes/${story.id}`,
-            {
-              method: "DELETE",
-            }
-          );
         }}
       >
         <XMarkIcon />
