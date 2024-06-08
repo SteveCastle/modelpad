@@ -1,4 +1,4 @@
-.App .tabs .tab {
+.App .tabs .tab-container .tab {
   height: 22px;
   flex: 1 1 0;
   font-size: 0.8rem;
@@ -16,7 +16,14 @@
   user-select: none;
 }
 
-.App .tabs .tab .editable-title {
+@media (max-width: 768px) {
+  .App .tabs .tab-container .tab {
+    min-width: 100px;
+    height: 30px;
+  }
+}
+
+.App .tabs .tab-container .tab .editable-title {
   text-overflow: ellipsis;
   white-space: nowrap;
   overflow: hidden;
@@ -28,11 +35,11 @@
   background: none;
 }
 
-.App .tabs .tab .editable-title.synced {
+.App .tabs .tab-container .tab .editable-title.synced {
   font-style: normal;
 }
 
-.App .tabs .tab .close {
+.App .tabs .tab-container .tab .close {
   border: none;
   background-color: transparent;
   display: flex;
@@ -47,33 +54,33 @@
   border-radius: 4px;
 }
 
-.App .tabs .tab .close:hover {
+.App .tabs .tab-container .tab .close:hover {
   background-color: var(--hovered-button-bg-color);
 }
 
-.App .tabs .tab .close svg {
+.App .tabs .tab-container .tab .close svg {
   fill: var(--text-color);
   width: 12px;
   height: 12px;
   cursor: pointer;
 }
 
-.App .tabs .tab.active {
+.App .tabs .tab-container .tab.active {
   background-color: var(--active-tab-bg-color);
 }
 
-.App .tabs .tab.active .close {
+.App .tabs .tab-container .tab.active .close {
   opacity: 1;
 }
 
-.App .tabs .tab:hover {
+.App .tabs .tab-container .tab:hover {
   background-color: var(--hovered-tab-bg-color);
 }
 
-.App .tabs .tab:hover .close {
+.App .tabs .tab-container .tab:hover .close {
   opacity: 1;
 }
 
-.App .tabs .tab.active:hover {
+.App .tabs .tab-container .tab.active:hover {
   background-color: var(--active-tab-bg-color);
 }

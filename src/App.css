@@ -6,6 +6,12 @@
   overflow: hidden;
 }
 
+@media (max-width: 768px) {
+  .App {
+    flex-direction: column-reverse;
+  }
+}
+
 .App .tabs {
   display: flex;
   flex-direction: row;
@@ -13,6 +19,19 @@
   align-items: center;
   background-color: var(--tabs-bg-color);
   justify-content: flex-start;
+  width: 100%;
+}
+
+.App .tab-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  align-items: center;
+  background-color: var(--tabs-bg-color);
+  justify-content: flex-start;
+  flex: 1;
+  overflow-y: hidden;
+  overflow-x: auto;
 }
 
 .App .tabs .add {

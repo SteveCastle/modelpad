@@ -255,17 +255,19 @@ function App() {
   return (
     <div className="App">
       <div className="tabs">
-        {stories
-          .filter((story) => story.open === true || story.open === undefined)
-          .map((story: Story) => (
-            <Tab
-              key={story.id}
-              story={story}
-              activeStoryId={activeStoryId}
-              setActive={setActive}
-              closeStory={closeStory}
-            />
-          ))}
+        <div className="tab-container">
+          {stories
+            .filter((story) => story.open === true || story.open === undefined)
+            .map((story: Story) => (
+              <Tab
+                key={story.id}
+                story={story}
+                activeStoryId={activeStoryId}
+                setActive={setActive}
+                closeStory={closeStory}
+              />
+            ))}
+        </div>
         <div className="add">
           <button className="button" onClick={() => createStory("Untitled")}>
             <PlusIcon />

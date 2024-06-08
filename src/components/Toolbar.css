@@ -202,6 +202,9 @@
 
 /* media query for mobile to hide toolbar-left */
 @media (max-width: 768px) {
+  .App .menubar {
+    background-color: transparent;
+  }
   .App .menubar .toolbar-left {
     display: none;
   }
@@ -214,10 +217,13 @@
     width: 100%;
   }
 
-  .App .menubar .toolbar-right .logout,
   .App .menubar .toolbar-right .login {
     padding: 0.4rem;
     margin: 0.4rem;
     display: flex !important;
+    flex: 1 1 0;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
   }
 }
