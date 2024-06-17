@@ -2,6 +2,12 @@
 
 Modelpad is an Open Source AI assisted writing app with Notepad like features. Connect to cloud assisted writing models, or to your own locally hosted LLMs using Ollama.
 
+
+
+https://github.com/SteveCastle/modelpad/assets/1828509/f61fe937-88ec-4aa6-a541-77a5eecc6b30
+
+
+
 ## Running the App Locally
 
 ## Prerequisites
