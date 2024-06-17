@@ -30,5 +30,6 @@ and configure each environment variable to your own credentials.
 
 ```
 go run .
+npm i
 npm run dev
 ```
