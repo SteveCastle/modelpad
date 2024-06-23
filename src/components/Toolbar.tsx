@@ -34,6 +34,7 @@ export function Toolbar() {
     toggleReadingMode,
     zoomIn,
     zoomOut,
+    updateSyncState,
     resetZoom,
     viewSettings,
   } = useStore((state) => state);
@@ -73,9 +74,7 @@ export function Toolbar() {
             const file = await fileHandle.getFile();
             createStory(file.name);
             const markDown = await file.text();
-            console.log("creating story");
             editor.update(() => {
-              console.log("applying markdown");
               $convertFromMarkdownString(markDown, TRANSFORMERS);
             });
           }
@@ -84,6 +83,34 @@ export function Toolbar() {
       },
       {
         label: "Save",
+        action: () => {
+          async function save() {
+            await fetch(
+              `${
+                import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
+              }/api/notes/${activeStoryId}`,
+              {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  id: activeStoryId,
+                  body: JSON.stringify(activeStory.content),
+                  title: activeStory.title,
+                }),
+              }
+            );
+            queryClient.invalidateQueries("stories");
+            updateSyncState(activeStoryId, true);
+          }
+          if (session.loading === false && session.userId) {
+            save();
+          }
+        },
+      },
+      {
+        label: "Export",
         action: () => {
           async function saveFile() {
             // create a new handle
@@ -291,7 +318,6 @@ export function Toolbar() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("clicked", option.label);
               option.action();
               setActiveMenu(null);
             }}

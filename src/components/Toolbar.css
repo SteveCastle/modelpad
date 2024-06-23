@@ -166,24 +166,31 @@
   overflow-y: hidden;
   height: 0;
   opacity: 0;
+  display: none;
 }
 
 .drop-down-menu.file {
   left: 4px;
   height: auto;
   opacity: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .drop-down-menu.edit {
   left: 55px;
   height: auto;
   opacity: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .drop-down-menu.view {
   left: 110px;
   height: auto;
   opacity: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .drop-down-menu button {

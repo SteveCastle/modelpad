@@ -66,20 +66,17 @@ async function generateText(
     .then((stream) => new Response(stream))
     .then((response) => response.text())
     .then(() => {
-      console.log("Complete");
       completedCallback([]);
     })
     .catch((err) => console.error(err));
 }
 
 const getModels = (host: string) => async () => {
-  console.log(host);
   const res = await fetch(`${host}/api/tags`);
   return res.json();
 };
 
 const getModelSettings = (host: string, model: string) => async () => {
-  console.log(host);
   const res = await fetch(`${host}/api/show`, {
     method: "POST",
     headers: {

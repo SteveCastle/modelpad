@@ -1,0 +1,94 @@
+.note-list {
+  list-style-type: none;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.note-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.note-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.note-item:hover {
+  background-color: #171616;
+  border-radius: 5px;
+}
+
+.note-item-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.note-icon {
+  margin-right: 10px;
+  color: var(--text-color);
+}
+
+.note-title {
+  font-size: 16px;
+  color: var(--text-color);
+}
+
+.note-date {
+  font-size: 12px;
+  color: var(--low-contrast-text-color);
+}
+
+.note-actions-container {
+  display: flex;
+}
+
+.note-action-btn {
+  background-color: transparent;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  width: 40px;
+  height: 40px;
+}
+
+.note-action-btn:hover {
+  color: #ffffff;
+}
+
+/* note-actions is a drop down menu */
+.note-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background-color: var(--context-menu-bg-color);
+  border-radius: 5px;
+  padding: 8px;
+  width: 200px;
+  z-index: 999;
+}
+
+.note-actions .note-action {
+  text-align: left;
+  padding: 8px;
+  color: var(--text-color);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.note-actions .note-action.delete {
+  color: #ff0000;
+}
+
+.note-actions .note-action:hover {
+  opacity: 1;
+}

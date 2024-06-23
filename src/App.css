@@ -10,6 +10,16 @@
   .App {
     flex-direction: column-reverse;
   }
+  .App .app-container .side-bar.open {
+    width: 100%;
+    min-width: 100%;
+    margin-top: 30px;
+  }
+}
+@media (min-width: 768px) {
+  .App .app-container .side-bar.open {
+    width: 300px;
+  }
 }
 
 .App .tabs {
@@ -70,6 +80,46 @@
 
 .App .tabs .add:hover {
   background-color: var(--hovered-tab-bg-color);
+}
+
+.App .app-container {
+  display: flex;
+  height: 100%;
+}
+
+.App .app-container .side-bar {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--side-bar-bg-color);
+}
+
+.App .app-container .side-bar.closed {
+  width: 20px;
+}
+
+.App .app-container .side-bar .toggle-handle {
+  position: absolute;
+  right: 0;
+  width: 20px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  background-color: #161616;
+  transition: background-color 0.2s ease;
+}
+
+.App .app-container .side-bar .toggle-handle:hover {
+  background-color: #322f2f;
+  cursor: pointer;
+}
+
+.App .app-container .editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background-color: var(--editor-bg-color);
+  overflow-y: auto;
 }
 
 .editor-input {

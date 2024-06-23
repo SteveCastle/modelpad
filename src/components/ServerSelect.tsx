@@ -82,7 +82,6 @@ export default function ServerSelect() {
                     onClick={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      console.log("setting editing state");
                       setEditing(!editing);
                     }}
                   >
