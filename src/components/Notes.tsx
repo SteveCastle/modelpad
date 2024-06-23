@@ -64,7 +64,7 @@ const NoteItem = ({ note }) => {
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
-    placement: "bottom-start",
+    placement: "bottom-end",
     middleware: [offset(10)],
   });
   const click = useClick(context);

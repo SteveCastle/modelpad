@@ -4,11 +4,7 @@ import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
-import {
-  ArrowLeftIcon,
-  ArrowRightIcon,
-  PlusIcon,
-} from "@heroicons/react/24/solid";
+import { PlusIcon } from "@heroicons/react/24/solid";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { CodeHighlightNode, CodeNode } from "@lexical/code";
@@ -239,13 +235,7 @@ function App() {
                 onClick={() => {
                   setSidebarOpen(!sidebarOpen);
                 }}
-              >
-                {/* {sidebarOpen ? (
-                  <ArrowLeftIcon className="toggle-icon" />
-                ) : (
-                  <ArrowRightIcon className="toggle-icon" />
-                )} */}
-              </div>
+              ></div>
             </div>
           ) : null}
           <div
