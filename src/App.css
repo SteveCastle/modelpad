@@ -72,6 +72,30 @@
   background-color: var(--hovered-tab-bg-color);
 }
 
+.App .app-container {
+  display: flex;
+  height: 100%;
+}
+
+.App .app-container .side-bar {
+  display: flex;
+  flex-direction: column;
+  width: 20%;
+  height: 100%;
+  background-color: var(--side-bar-bg-color);
+  border-right: 1px solid var(--border-color);
+  overflow-y: auto;
+}
+
+.App .app-container .editor-container {
+  display: flex;
+  flex-direction: column;
+  width: 80%;
+  height: 100%;
+  background-color: var(--editor-bg-color);
+  overflow-y: auto;
+}
+
 .editor-input {
   height: 100%;
   width: 100%;

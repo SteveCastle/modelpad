@@ -50,15 +50,6 @@ export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
         if (e.button == 1) {
           e.preventDefault();
           closeStory(story.id);
-          // Delete the note by calling api
-          fetch(
-            `${
-              import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
-            }/api/notes/${story.id}`,
-            {
-              method: "DELETE",
-            }
-          );
         }
       }}
     >

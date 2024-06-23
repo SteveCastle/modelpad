@@ -47,7 +47,7 @@ func ListNotes(c *gin.Context) {
 	notes:= []Note{}
 
 	db := c.MustGet("db").(*pgxpool.Pool)
-	rows, err := db.Query(context.Background(), "SELECT * FROM notes WHERE user_id = $1", userID)
+	rows, err := db.Query(context.Background(), "SELECT * FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return

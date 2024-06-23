@@ -51,6 +51,7 @@ export type Note = {
   id: string;
   title: string;
   body: string;
+  created_at: string;
 };
 
 type LoadingStates =
@@ -166,7 +167,7 @@ BEGIN SUMMARY:
       mergeNotes: (notes: Note[]) => {
         set(() => {
           // Iterate over the existing stories and if the note ID exists, update the story
-          const updatedStories = get().stories.map((s) => {
+          const openTabs = get().stories.map((s) => {
             const note = notes.find((n) => n.id === s.id);
             if (note) {
               return {
@@ -189,7 +190,8 @@ BEGIN SUMMARY:
               synced: true,
             }));
           return {
-            stories: [...updatedStories, ...newStories],
+            stories: [...openTabs, ...newStories],
+            activeStoryId: notes[0].id,
           };
         });
       },
@@ -325,17 +327,10 @@ BEGIN SUMMARY:
       },
       closeStory: (id: string) => {
         set(() => {
-          const filteredStories = get().stories.filter(
-            (s) => s.id !== id && (s.open === true || s.open === undefined)
-          );
+          const filteredStories = get().stories.filter((s) => s.id !== id);
           if (filteredStories.length === 0) {
             return {
-              stories: [
-                ...get().stories.map((s) =>
-                  s.id === id ? { ...s, open: false } : s
-                ),
-                ...defaultStories,
-              ],
+              stories: [...defaultStories],
               activeStoryId: defaultStories[0].id,
             };
           }
@@ -345,9 +340,7 @@ BEGIN SUMMARY:
               : get().activeStoryId;
 
           return {
-            stories: get().stories.map((s) =>
-              s.id === id ? { ...s, open: false } : s
-            ),
+            stories: get().stories.filter((s) => s.id !== id),
             activeStoryId,
           };
         });

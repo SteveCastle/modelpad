@@ -27,6 +27,7 @@
   --active-grid-button-bg-color: #524a5d;
   --hovered-toolbar-bg-color: rgb(158, 153, 153);
   --text-color: #fff;
+  --low-contrast-text-color: #999;
   --link-color: #d2678a;
   --border-color: #444;
 }

@@ -23,7 +23,7 @@ import { ThirdPartyEmailPasswordPreBuiltUI } from "supertokens-auth-react/recipe
 import { canHandleRoute, getRoutingComponent } from "supertokens-auth-react/ui";
 import { FloatingMenuPlugin } from "./components/FloatingMenuPlugin";
 import ContextMenu from "./components/ContextMenu";
-import { useStore, Story, Note } from "./store";
+import { useStore, Story } from "./store";
 import { UpdateDocumentPlugin } from "./components/UpdateDocumentPlugin";
 import { Tab } from "./components/Tab";
 import { Toolbar } from "./components/Toolbar";
@@ -32,6 +32,7 @@ import { providers } from "./providers";
 import "./App.css";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
 import { EditorState } from "lexical";
+import Notes from "./components/Notes";
 
 const theme = {
   ltr: "ltr",
@@ -127,27 +128,13 @@ const editorConfig = {
   ],
 };
 
-type NoteReponse = {
-  notes: Note[];
-};
-
-async function getStories(): Promise<NoteReponse> {
-  const response = await fetch(
-    `${
-      import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
-    }/api/notes`
-  );
-  return response.json();
-}
-
 function App() {
-  const [updateId, setUpdateId] = useState(0);
+  const [updateId] = useState(0);
   const {
     setActive,
     closeStory,
     createStory,
     updateStory,
-    mergeNotes,
     setAvailableModels,
     setGenerationState,
     stories,
@@ -197,22 +184,6 @@ function App() {
     },
   });
 
-  // Load
-  useQuery({
-    queryKey: ["stories"],
-    queryFn: getStories,
-    refetchOnWindowFocus: true,
-    onError: (e) => {
-      console.log("error", e);
-    },
-    onSuccess: (data) => {
-      if (session.loading === false && session.userId) {
-        mergeNotes(data.notes);
-        setUpdateId((id) => id + 1);
-      }
-    },
-  });
-
   const debouncedSave = useDebouncedCallback(
     (state: EditorState) => {
       async function save() {
@@ -256,17 +227,15 @@ function App() {
     <div className="App">
       <div className="tabs">
         <div className="tab-container">
-          {stories
-            .filter((story) => story.open === true || story.open === undefined)
-            .map((story: Story) => (
-              <Tab
-                key={story.id}
-                story={story}
-                activeStoryId={activeStoryId}
-                setActive={setActive}
-                closeStory={closeStory}
-              />
-            ))}
+          {stories.map((story: Story) => (
+            <Tab
+              key={story.id}
+              story={story}
+              activeStoryId={activeStoryId}
+              setActive={setActive}
+              closeStory={closeStory}
+            />
+          ))}
         </div>
         <div className="add">
           <button className="button" onClick={() => createStory("Untitled")}>
@@ -281,37 +250,45 @@ function App() {
         }}
       >
         <Toolbar />
-        <div
-          className="editor-container"
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            maxWidth: viewSettings.readingMode ? "960px" : "",
-            margin: viewSettings.readingMode ? "0 auto" : "0 20px",
-            padding: viewSettings.readingMode ? "20px" : "0",
-            height: "100%",
-            overflow: "hidden",
-            fontSize: `${viewSettings.zoom}em`,
-          }}
-        >
-          <RichTextPlugin
-            contentEditable={<ContentEditable className="editor-input" />}
-            placeholder={null}
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <FloatingMenuPlugin MenuComponent={ContextMenu} />
-          <HistoryPlugin />
-          <OnChangePlugin onChange={debouncedOnChange} ignoreSelectionChange />
-          <OnChangePlugin onChange={debouncedSave} ignoreSelectionChange />
-          <UpdateDocumentPlugin
-            activeContent={activeContent}
-            activeStoryId={activeStoryId}
-            updateId={updateId}
-          />
-          <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
-          <ListPlugin />
-          <LinkPlugin />
-          <CodeHighlightPlugin />
+        <div className="app-container">
+          <div className="side-bar">
+            <Notes />
+          </div>
+          <div
+            className="editor-container"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              maxWidth: viewSettings.readingMode ? "960px" : "",
+              margin: viewSettings.readingMode ? "0 auto" : "0 20px",
+              padding: viewSettings.readingMode ? "20px" : "0",
+              height: "100%",
+              overflow: "hidden",
+              fontSize: `${viewSettings.zoom}em`,
+            }}
+          >
+            <RichTextPlugin
+              contentEditable={<ContentEditable className="editor-input" />}
+              placeholder={null}
+              ErrorBoundary={LexicalErrorBoundary}
+            />
+            <FloatingMenuPlugin MenuComponent={ContextMenu} />
+            <HistoryPlugin />
+            <OnChangePlugin
+              onChange={debouncedOnChange}
+              ignoreSelectionChange
+            />
+            <OnChangePlugin onChange={debouncedSave} ignoreSelectionChange />
+            <UpdateDocumentPlugin
+              activeContent={activeContent}
+              activeStoryId={activeStoryId}
+              updateId={updateId}
+            />
+            <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+            <ListPlugin />
+            <LinkPlugin />
+            <CodeHighlightPlugin />
+          </div>
         </div>
       </LexicalComposer>
     </div>

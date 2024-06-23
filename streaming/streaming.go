@@ -82,8 +82,8 @@ func Stream(c *gin.Context) {
 
 	// Create your request body
 	body := AnthropicRequestOptions{
-		Model:  "claude-3-haiku-20240307",
-		System: "You are an expert coding assistant. When provided with a prompt you generate code to satisfy that prompt.",
+		Model:  "claude-3-5-sonnet-20240620",
+		System: "You are an expert  assistant. When provided with a prompt you generate a response to satisfy that prompt.",
 		Messages: []struct {
 			Role    string `json:"role"`
 			Content string `json:"content"`
