@@ -151,8 +151,9 @@ function App() {
   const debouncedOnChange = useDebouncedCallback(
     (state) => {
       const content = JSON.stringify(state);
+
       if (content !== activeContent) {
-        updateStory(activeStoryId, content);
+        updateStory(activeStoryId, state);
         updateSyncState(activeStoryId, false);
       }
     },
