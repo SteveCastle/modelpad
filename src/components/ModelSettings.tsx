@@ -28,9 +28,7 @@ export default function ModelSettings({ model }: { model: string }) {
   useQuery({
     queryKey: ["model", host, model],
     queryFn: provider.getModelSettings(host, model),
-    onSuccess: (data) => {
-      console.log(data);
-    },
+    onSuccess: () => {},
   });
 
   const [isOpen, setIsOpen] = useState(false);

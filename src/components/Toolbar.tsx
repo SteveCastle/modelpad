@@ -74,9 +74,7 @@ export function Toolbar() {
             const file = await fileHandle.getFile();
             createStory(file.name);
             const markDown = await file.text();
-            console.log("creating story");
             editor.update(() => {
-              console.log("applying markdown");
               $convertFromMarkdownString(markDown, TRANSFORMERS);
             });
           }
@@ -320,7 +318,6 @@ export function Toolbar() {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              console.log("clicked", option.label);
               option.action();
               setActiveMenu(null);
             }}

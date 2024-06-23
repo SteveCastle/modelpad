@@ -4,7 +4,11 @@ import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
 import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
-import { PlusIcon } from "@heroicons/react/24/solid";
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  PlusIcon,
+} from "@heroicons/react/24/solid";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { CodeHighlightNode, CodeNode } from "@lexical/code";
@@ -128,6 +132,7 @@ const editorConfig = {
 };
 
 function App() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [updateId] = useState(0);
   const {
     setActive,
@@ -223,8 +228,24 @@ function App() {
         <Toolbar />
         <div className="app-container">
           {session.loading === false && session.userId ? (
-            <div className="side-bar">
-              <Notes />
+            <div
+              className={["side-bar", sidebarOpen ? "open" : "closed"].join(
+                " "
+              )}
+            >
+              {sidebarOpen ? <Notes /> : null}
+              <div
+                className="toggle-handle"
+                onClick={() => {
+                  setSidebarOpen(!sidebarOpen);
+                }}
+              >
+                {/* {sidebarOpen ? (
+                  <ArrowLeftIcon className="toggle-icon" />
+                ) : (
+                  <ArrowRightIcon className="toggle-icon" />
+                )} */}
+              </div>
             </div>
           ) : null}
           <div

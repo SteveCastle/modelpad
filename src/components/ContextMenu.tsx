@@ -96,7 +96,6 @@ export default function ContextMenu({ hide }: Props) {
       const root = $getRoot();
       const newParagraphNode = $createParagraphNode();
       root.append(newParagraphNode);
-      console.log(prompt);
       provider.generateText(
         prompt,
         startCallback,

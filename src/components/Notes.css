@@ -4,6 +4,12 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.note-list::-webkit-scrollbar {
+  width: 8px;
 }
 
 .note-item {

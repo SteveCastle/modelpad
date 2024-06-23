@@ -74,7 +74,7 @@ const NoteItem = ({ note }) => {
     setIsOpen(false);
   });
 
-  const { mergeNotes } = useStore((state) => state);
+  const { mergeNotes, updateSyncState } = useStore((state) => state);
   return (
     <li
       className="note-item"
@@ -106,10 +106,21 @@ const NoteItem = ({ note }) => {
             style={floatingStyles}
             {...getFloatingProps()}
           >
-            <button className="note-action">History</button>
+            <button
+              className="note-action"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              Details
+            </button>
             <button
               className="note-action delete"
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                updateSyncState(note.id, false);
                 mutate(note.id);
               }}
             >
