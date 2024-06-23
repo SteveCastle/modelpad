@@ -3,7 +3,6 @@ import { Story } from "../store";
 import { XMarkIcon } from "@heroicons/react/24/solid";
 import "./Tab.css";
 import { useStore } from "../store";
-import { useSessionContext } from "supertokens-auth-react/recipe/session";
 
 type Props = {
   story: Story;
@@ -14,32 +13,7 @@ type Props = {
 
 export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
   const [editingTitle, setEditingTitle] = useState(false);
-  const { updateTitle, updateSyncState } = useStore((state) => state);
-  const session = useSessionContext();
-  const saveHandler = (story: Story, newTitle: string) => {
-    async function save() {
-      await fetch(
-        `${
-          import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
-        }/api/notes/${activeStoryId}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            id: activeStoryId,
-            body: JSON.stringify(story.content),
-            title: newTitle,
-          }),
-        }
-      );
-      updateSyncState(story.id, true);
-    }
-    if (session.loading === false && session.userId) {
-      save();
-    }
-  };
+  const { updateTitle } = useStore((state) => state);
 
   return (
     <a
@@ -71,10 +45,6 @@ export function Tab({ story, activeStoryId, setActive, closeStory }: Props) {
           if (e.currentTarget.textContent.length > 0) {
             updateTitle(
               story.id,
-              removeNewLineChars(e.currentTarget.textContent) || ""
-            );
-            saveHandler(
-              story,
               removeNewLineChars(e.currentTarget.textContent) || ""
             );
           } else {

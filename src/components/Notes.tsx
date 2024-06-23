@@ -1,8 +1,12 @@
-import { useQuery } from "react-query";
+import { useQuery, useMutation, useQueryClient } from "react-query";
 import { Note, useStore } from "../store";
+import { offset } from "@floating-ui/dom";
+import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import { EllipsisVerticalIcon } from "@heroicons/react/24/solid";
 
 import "./Notes.css";
+import { useState } from "react";
+import { useOnClickOutside } from "../hooks/useOnClickOutside";
 
 type NoteReponse = {
   notes: Note[];
@@ -15,6 +19,17 @@ async function getStories(): Promise<NoteReponse> {
     }/api/notes`
   );
   return response.json();
+}
+
+async function deleteStory(id: string) {
+  await fetch(
+    `${
+      import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
+    }/api/notes/${id}`,
+    {
+      method: "DELETE",
+    }
+  );
 }
 
 const Notes = () => {
@@ -38,6 +53,27 @@ const Notes = () => {
 };
 
 const NoteItem = ({ note }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { mutate } = useMutation(deleteStory, {
+    onSuccess: () => {
+      queryClient.invalidateQueries("stories");
+    },
+  });
+  const { refs, floatingStyles, context } = useFloating({
+    open: isOpen,
+    onOpenChange: setIsOpen,
+    placement: "bottom-start",
+    middleware: [offset(10)],
+  });
+  const click = useClick(context);
+  const { getReferenceProps, getFloatingProps } = useInteractions([click]);
+
+  useOnClickOutside(refs.floating, () => {
+    setIsOpen(false);
+  });
+
   const { mergeNotes } = useStore((state) => state);
   return (
     <li
@@ -50,10 +86,37 @@ const NoteItem = ({ note }) => {
         <div className="note-title">{note.title}</div>
         <div className="note-date">{prettyDate(note.updated_at)}</div>
       </div>
-      <div className="note-actions">
-        <button className="note-action-btn">
+      <div className="note-actions-container">
+        <button
+          className="note-action-btn"
+          {...getReferenceProps({
+            onClick: (e) => {
+              e.stopPropagation();
+              setIsOpen(!isOpen);
+            },
+          })}
+          ref={refs.setReference}
+        >
           <EllipsisVerticalIcon />
         </button>
+        {isOpen && (
+          <div
+            className="note-actions"
+            ref={refs.setFloating}
+            style={floatingStyles}
+            {...getFloatingProps()}
+          >
+            <button className="note-action">History</button>
+            <button
+              className="note-action delete"
+              onClick={() => {
+                mutate(note.id);
+              }}
+            >
+              Delete
+            </button>
+          </div>
+        )}
       </div>
     </li>
   );
@@ -84,7 +147,7 @@ function prettyDate(date: string): string {
   } else if (minutes > 0) {
     return `${minutes} minutes ago`;
   } else {
-    return `${seconds} seconds ago`;
+    return `Less than a minute ago`;
   }
 }
 

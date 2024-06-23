@@ -31,12 +31,13 @@
   border: none;
   box-shadow: none;
   font-weight: 600;
-  font-style: italic;
   background: none;
 }
 
-.App .tabs .tab-container .tab .editable-title.synced {
-  font-style: normal;
+.App .tabs .tab-container .tab .editable-title:not(.synced)::after {
+  content: "●";
+  display: inline-block;
+  margin-left: 0.2rem;
 }
 
 .App .tabs .tab-container .tab .close {

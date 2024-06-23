@@ -31,7 +31,6 @@ import CodeHighlightPlugin from "./components/CodeHighlightPlugin";
 import { providers } from "./providers";
 import "./App.css";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
-import { EditorState } from "lexical";
 import Notes from "./components/Notes";
 
 const theme = {
@@ -135,6 +134,7 @@ function App() {
     closeStory,
     createStory,
     updateStory,
+    updateSyncState,
     setAvailableModels,
     setGenerationState,
     stories,
@@ -150,7 +150,11 @@ function App() {
   const activeStoryId = useStore((state) => state.activeStoryId);
   const debouncedOnChange = useDebouncedCallback(
     (state) => {
-      updateStory(activeStoryId, state);
+      const content = JSON.stringify(state);
+      if (content !== activeContent) {
+        updateStory(activeStoryId, content);
+        updateSyncState(activeStoryId, false);
+      }
     },
     1000,
     {
@@ -183,40 +187,6 @@ function App() {
       setAvailableModels(modelNames);
     },
   });
-
-  const debouncedSave = useDebouncedCallback(
-    (state: EditorState) => {
-      async function save() {
-        await fetch(
-          `${
-            import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
-          }/api/notes/${activeStoryId}`,
-          {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              id: activeStoryId,
-              body: JSON.stringify(state),
-              title: activeStory.title,
-            }),
-          }
-        );
-      }
-      if (
-        session.loading === false &&
-        session.userId &&
-        activeStory.title !== "Untitled"
-      ) {
-        save();
-      }
-    },
-    5000,
-    {
-      maxWait: 5000,
-    }
-  );
 
   if (canHandleRoute([ThirdPartyEmailPasswordPreBuiltUI])) {
     // This renders the login UI on the /auth route
@@ -251,9 +221,11 @@ function App() {
       >
         <Toolbar />
         <div className="app-container">
-          <div className="side-bar">
-            <Notes />
-          </div>
+          {session.loading === false && session.userId ? (
+            <div className="side-bar">
+              <Notes />
+            </div>
+          ) : null}
           <div
             className="editor-container"
             style={{
@@ -277,8 +249,8 @@ function App() {
             <OnChangePlugin
               onChange={debouncedOnChange}
               ignoreSelectionChange
+              ignoreHistoryMergeTagChange
             />
-            <OnChangePlugin onChange={debouncedSave} ignoreSelectionChange />
             <UpdateDocumentPlugin
               activeContent={activeContent}
               activeStoryId={activeStoryId}
