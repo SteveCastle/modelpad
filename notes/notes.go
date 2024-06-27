@@ -6,7 +6,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pgvector/pgvector-go"
 	uuid "github.com/satori/go.uuid"
+	"github.com/stevecastle/modelpad/embeddings"
+	"github.com/stevecastle/modelpad/markdown"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 )
 
@@ -26,6 +29,7 @@ import (
 //     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 //     title TEXT,
 //     body TEXT,
+//	   embedding VECTOR,
 //     user_id UUID,
 //     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
 //     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
@@ -36,6 +40,7 @@ type Note struct {
 	ID    uuid.UUID `json:"id"`
 	Title string `json:"title"`
 	Body string `json:"body"`
+	Embedding pgvector.Vector `json:"embedding"`
 	UserId uuid.UUID `json:"user_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -47,7 +52,7 @@ func ListNotes(c *gin.Context) {
 	notes:= []Note{}
 
 	db := c.MustGet("db").(*pgxpool.Pool)
-	rows, err := db.Query(context.Background(), "SELECT * FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
+	rows, err := db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -55,7 +60,7 @@ func ListNotes(c *gin.Context) {
 
 	for rows.Next() {
 		var note Note
-		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.CreatedAt, &note.UpdatedAt)
+		err := rows.Scan(&note.ID, &note.Title,&note.Body, &note.CreatedAt, &note.UpdatedAt)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
@@ -81,37 +86,6 @@ func GetNote(c *gin.Context) {
 	c.JSON(200, gin.H{"note": note})
 }
 
-func CreateNote(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
-	note := Note{}
-	c.BindJSON(&note)
-
-	db := c.MustGet("db").(*pgxpool.Pool)
-	err := db.QueryRow(context.Background(), "INSERT INTO notes (title, body, user_id) VALUES ($1, $2, $3) RETURNING id, created_at, updated_at", note.Title, note.Body, userID).Scan(&note.ID, &note.CreatedAt, &note.UpdatedAt)
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"note": note})
-}
-
-func UpdateNote(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
-	noteID := c.Param("id")
-	note := Note{}
-	c.BindJSON(&note)
-
-	db := c.MustGet("db").(*pgxpool.Pool)
-	err := db.QueryRow(context.Background(), "UPDATE notes SET title = $1, body = $2, updated_at = now() WHERE id = $3 AND user_id = $4 RETURNING created_at", note.Title, note.Body, noteID, userID).Scan(&note.CreatedAt)
-	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(200, gin.H{"note": note})
-}
-
 func UpsertNote(c *gin.Context) {
 	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
 	userID := sessionContainer.GetUserID()
@@ -122,20 +96,14 @@ func UpsertNote(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-
+	markdown, err:= markdown.ConvertJSONToMarkdown(note.Body)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	embedding := embeddings.CreateEmbedding(markdown)
+	newVector := pgvector.NewVector(embedding.Embedding)
 	db := c.MustGet("db").(*pgxpool.Pool)
-
-	// err = db.QueryRow(context.Background(), "INSERT INTO notes (id, title, body, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET id = $1, title = $2, body = $3, updated_at = now() RETURNING id, created_at, updated_at", note.ID, note.Title, note.Body, userID).Scan(&note.ID, &note.CreatedAt, &note.UpdatedAt)
-	// if err != nil {
-	// 	c.JSON(500, gin.H{"error": err.Error()})
-	// 	return
-	// }
-	// // Also create a revision
-	// _, err = db.Exec(context.Background(), "INSERT INTO revisions (note_id, title, body, user_id) VALUES ($1, $2, $3, $4)", note.ID, note.Title, note.Body, note.UserId)
-	// if err != nil {
-	// 	c.JSON(500, gin.H{"error": err.Error()})
-	// 	return
-	// }
 
 	tx, err := db.Begin(context.Background())
 	if err != nil {
@@ -143,7 +111,7 @@ func UpsertNote(c *gin.Context) {
 		return
 	}
 
-	_, err = tx.Exec(context.Background(), "INSERT INTO notes (id, title, body, user_id) VALUES ($1, $2, $3, $4) ON CONFLICT (id) DO UPDATE SET id = $1, title = $2, body = $3, updated_at = now()", note.ID, note.Title, note.Body, userID)
+	_, err = tx.Exec(context.Background(), "INSERT INTO notes (id, title, body, user_id, embedding) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET id = $1, title = $2, body = $3, embedding = $5, updated_at = now()", note.ID, note.Title, note.Body, userID, newVector)
 	if err != nil {
 		tx.Rollback(context.Background())
 		c.JSON(500, gin.H{"error": err.Error()})

@@ -34,8 +34,10 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nyaruka/phonenumbers v1.0.73 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.0 // indirect
+	github.com/pgvector/pgvector-go v0.2.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/sashabaranov/go-openai v1.26.1 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/supertokens/supertokens-golang v0.17.5 // indirect

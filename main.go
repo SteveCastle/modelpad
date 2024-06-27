@@ -131,7 +131,6 @@ func main() {
 	// Note Endpoints
 	r.GET("/api/me", verifySession(&sessmodels.VerifySessionOptions{}), me)
 	r.GET("/api/notes", verifySession(&sessmodels.VerifySessionOptions{}), notes.ListNotes)
-	r.POST("/api/notes", verifySession(&sessmodels.VerifySessionOptions{}), notes.CreateNote)
 	r.PUT("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.UpsertNote)
 	r.DELETE("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.DeleteNote)
 	r.GET("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.GetNote)

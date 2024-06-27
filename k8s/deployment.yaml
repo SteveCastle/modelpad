@@ -27,6 +27,11 @@ spec:
                 secretKeyRef:
                   name: modelpad-secret
                   key: anthropicApiKey
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: modelpad-secret
+                  key: openAiApiKey
             - name: ANTHROPIC_ROUTE
               valueFrom:
                 configMapKeyRef:

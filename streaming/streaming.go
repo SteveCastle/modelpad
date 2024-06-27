@@ -79,11 +79,10 @@ func Stream(c *gin.Context) {
 		fmt.Printf("Error binding request body: %v\n", err)
 		return
 	}
-
 	// Create your request body
 	body := AnthropicRequestOptions{
 		Model:  "claude-3-5-sonnet-20240620",
-		System: "You are an expert  assistant. When provided with a prompt you generate a response to satisfy that prompt.",
+		System: "You are an expert assistant. When provided with a prompt you generate a response to satisfy that prompt.",
 		Messages: []struct {
 			Role    string `json:"role"`
 			Content string `json:"content"`
