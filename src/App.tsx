@@ -132,7 +132,6 @@ function App() {
   const [updateId] = useState(0);
   const {
     setActive,
-    closeStory,
     createStory,
     updateStory,
     updateSyncState,
