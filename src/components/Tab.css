@@ -85,3 +85,25 @@
 .App .tabs .tab-container .tab.active:hover {
   background-color: var(--active-tab-bg-color);
 }
+
+.tab-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 4px;
+  background-color: var(--context-menu-bg-color);
+  z-index: 999;
+}
+
+.tab-actions button {
+  border: none;
+  background: none;
+  padding: 0.2rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tab-actions button:hover {
+  color: var(--hovered-button-bg-color);
+}

@@ -95,6 +95,9 @@ type State = {
   updateContext: (id: string, context: number[]) => void;
   clearContext: (id: string) => void;
   closeStory: (id: string) => void;
+  closeAllStories: () => void;
+  closeOtherStories: (id: string) => void;
+  closeToTheRight: (id: string) => void;
   createStory: (title: string) => void;
   mergeNotes: (notes: Note[]) => void; // Updates stories if ID exists, otherwise creates a new story
 };
@@ -341,6 +344,27 @@ BEGIN SUMMARY:
           return {
             stories: get().stories.filter((s) => s.id !== id),
             activeStoryId,
+          };
+        });
+      },
+      closeAllStories: () => {
+        set(() => ({
+          stories: defaultStories,
+          activeStoryId: defaultStories[0].id,
+        }));
+      },
+      closeOtherStories: (id: string) => {
+        set(() => ({
+          stories: get().stories.filter((s) => s.id === id),
+          activeStoryId: id,
+        }));
+      },
+      closeToTheRight: (id: string) => {
+        set(() => {
+          const activeStoryIndex = get().stories.findIndex((s) => s.id === id);
+          return {
+            stories: get().stories.slice(0, activeStoryIndex + 1),
+            activeStoryId: id,
           };
         });
       },

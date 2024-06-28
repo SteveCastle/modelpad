@@ -205,7 +205,6 @@ function App() {
               story={story}
               activeStoryId={activeStoryId}
               setActive={setActive}
-              closeStory={closeStory}
             />
           ))}
         </div>

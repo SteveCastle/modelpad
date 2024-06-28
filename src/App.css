@@ -15,10 +15,17 @@
     min-width: 100%;
     margin-top: 30px;
   }
+  .App .tab-container {
+    overflow-y: hidden;
+    overflow-x: auto;
+  }
 }
 @media (min-width: 768px) {
   .App .app-container .side-bar.open {
     width: 300px;
+  }
+  .App .tab-container {
+    overflow: hidden;
   }
 }
 
