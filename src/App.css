@@ -24,9 +24,6 @@
   .App .app-container .side-bar.open {
     width: 300px;
   }
-  .App .tab-container {
-    overflow: hidden;
-  }
 }
 
 .App .tabs {
@@ -47,8 +44,6 @@
   background-color: var(--tabs-bg-color);
   justify-content: flex-start;
   flex: 1;
-  overflow-y: hidden;
-  overflow-x: auto;
 }
 
 .App .tabs .add {
