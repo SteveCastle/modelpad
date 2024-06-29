@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { offset } from "@floating-ui/dom";
+import { offset, shift } from "@floating-ui/dom";
 import { useQuery } from "react-query";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import { useStore } from "../store";
@@ -36,7 +36,7 @@ export default function ModelSettings({ model }: { model: string }) {
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
-    middleware: [offset(10)],
+    middleware: [offset(10), shift()],
   });
 
   const click = useClick(context);

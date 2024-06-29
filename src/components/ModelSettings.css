@@ -41,7 +41,7 @@
 }
 
 .setting.select-setting .control-group button:hover {
-  background-color: var(--active-grid-button-bg-color);
+  background-color: var(--active-hovered-style-button-bg-color);
 }
 
 .setting.select-setting .control-group button:disabled {
@@ -72,7 +72,7 @@
 }
 
 .setting.number-setting input:focus {
-  background-color: var(--active-grid-button-bg-color);
+  background-color: var(--active-hovered-style-button-bg-color);
 }
 
 .available-models {
@@ -93,6 +93,10 @@
   text-align: center;
   cursor: pointer;
   transition: background-color 0.2s ease;
+}
+
+.available-models button:hover {
+  background-color: var(--active-hovered-style-button-bg-color);
 }
 
 .available-models button.active {

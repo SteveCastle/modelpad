@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { offset } from "@floating-ui/dom";
+import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import { useStore } from "../store";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
@@ -21,7 +21,7 @@ export default function ServerSelect() {
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
-    middleware: [offset(10)],
+    middleware: [offset(10), shift()],
   });
 
   const click = useClick(context);
