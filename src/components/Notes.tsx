@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "react-query";
 import { Note, useStore } from "../store";
-import { offset } from "@floating-ui/dom";
+import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import { EllipsisVerticalIcon } from "@heroicons/react/24/solid";
 
@@ -64,8 +64,8 @@ const NoteItem = ({ note }) => {
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
-    placement: "bottom-end",
-    middleware: [offset(10)],
+    placement: "bottom-start",
+    middleware: [offset(10), shift()],
   });
   const click = useClick(context);
   const { getReferenceProps, getFloatingProps } = useInteractions([click]);
@@ -106,15 +106,6 @@ const NoteItem = ({ note }) => {
             style={floatingStyles}
             {...getFloatingProps()}
           >
-            <button
-              className="note-action"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-              }}
-            >
-              Details
-            </button>
             <button
               className="note-action delete"
               onClick={(e) => {
