@@ -18,6 +18,7 @@ import {
   useSessionContext,
   signOut,
 } from "supertokens-auth-react/recipe/session";
+import useCtrlSHotkey from "../hooks/useCtrlSHotkey";
 
 type MenuOptions = {
   [key: string]: { label: string; action: () => void }[];
@@ -47,6 +48,35 @@ export function Toolbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const session = useSessionContext();
+
+  const saveDocument = () => {
+    async function save() {
+      await fetch(
+        `${
+          import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
+        }/api/notes/${activeStoryId}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            id: activeStoryId,
+            body: JSON.stringify(activeStory.content),
+            title: activeStory.title,
+          }),
+        }
+      );
+      queryClient.invalidateQueries("stories");
+      updateSyncState(activeStoryId, true);
+    }
+    if (session.loading === false && session.userId) {
+      save();
+    }
+  };
+
+  useCtrlSHotkey(saveDocument);
+
   const menuOptions: MenuOptions = {
     file: [
       {
@@ -83,31 +113,7 @@ export function Toolbar() {
       },
       {
         label: "Save",
-        action: () => {
-          async function save() {
-            await fetch(
-              `${
-                import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
-              }/api/notes/${activeStoryId}`,
-              {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  id: activeStoryId,
-                  body: JSON.stringify(activeStory.content),
-                  title: activeStory.title,
-                }),
-              }
-            );
-            queryClient.invalidateQueries("stories");
-            updateSyncState(activeStoryId, true);
-          }
-          if (session.loading === false && session.userId) {
-            save();
-          }
-        },
+        action: saveDocument,
       },
       {
         label: "Export",
