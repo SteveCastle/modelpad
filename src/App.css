@@ -111,9 +111,25 @@
   transition: background-color 0.2s ease;
 }
 
+.App .app-container .side-bar .toggle-handle::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 15px);
+  left: calc(50% - 2px);
+  width: 4px;
+  border-radius: 2px;
+  height: 30px;
+  background-color: gray;
+  opacity: 0.3;
+}
+
 .App .app-container .side-bar .toggle-handle:hover {
   background-color: #322f2f;
   cursor: pointer;
+}
+
+.App .app-container .side-bar .toggle-handle:hover::after {
+  opacity: 0.6;
 }
 
 .App .app-container .editor-container {

@@ -74,6 +74,8 @@ type State = {
   availableModels: string[];
   availableServers: AvailableServers;
   modelSettings: ModelSettings;
+  sideBarOpen: boolean;
+  setSideBarOpen: (open: boolean) => void;
   setServerHost: (host: string) => void;
   setServerName: (title: string) => void;
   changePromptTemplate: (key: PromptTypeKeys, text: string) => void;
@@ -167,6 +169,7 @@ BEGIN SUMMARY:
       activeStoryId: defaultStories[0].id,
       abortController: new AbortController(),
       generationState: "no-connection",
+      sideBarOpen: false,
       mergeNotes: (notes: Note[]) => {
         set(() => {
           // Iterate over the existing stories and if the note ID exists, update the story
@@ -406,6 +409,11 @@ BEGIN SUMMARY:
           },
         }));
       },
+      setSideBarOpen: (open: boolean) => {
+        set(() => ({
+          sideBarOpen: open,
+        }));
+      },
     }),
     {
       name: "editor",
@@ -418,6 +426,7 @@ BEGIN SUMMARY:
         model: state.model,
         modelSettings: state.modelSettings,
         availableServers: state.availableServers,
+        sideBarOpen: state.sideBarOpen,
       }),
     }
   )

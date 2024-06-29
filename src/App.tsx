@@ -128,7 +128,6 @@ const editorConfig = {
 };
 
 function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [updateId] = useState(0);
   const {
     setActive,
@@ -138,6 +137,8 @@ function App() {
     setAvailableModels,
     setGenerationState,
     stories,
+    sideBarOpen,
+    setSideBarOpen,
     cancelGeneration,
     viewSettings,
     generationState,
@@ -223,15 +224,15 @@ function App() {
         <div className="app-container">
           {session.loading === false && session.userId ? (
             <div
-              className={["side-bar", sidebarOpen ? "open" : "closed"].join(
+              className={["side-bar", sideBarOpen ? "open" : "closed"].join(
                 " "
               )}
             >
-              {sidebarOpen ? <Notes /> : null}
+              {sideBarOpen ? <Notes /> : null}
               <div
                 className="toggle-handle"
                 onClick={() => {
-                  setSidebarOpen(!sidebarOpen);
+                  setSideBarOpen(!sideBarOpen);
                 }}
               ></div>
             </div>
