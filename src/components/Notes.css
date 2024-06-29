@@ -9,6 +9,14 @@
   margin-bottom: 60px;
 }
 
+.loading-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
 .note-list::-webkit-scrollbar {
   width: 8px;
 }

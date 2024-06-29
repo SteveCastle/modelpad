@@ -7,6 +7,7 @@ import { EllipsisVerticalIcon } from "@heroicons/react/24/solid";
 import "./Notes.css";
 import { useState } from "react";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
+import { LoadingSpinner } from "./LoadingSpinner";
 
 type NoteReponse = {
   notes: Note[];
@@ -40,7 +41,11 @@ const Notes = () => {
   });
 
   if (!data) {
-    return <div>Loading...</div>;
+    return (
+      <div className="loading-container">
+        <LoadingSpinner />
+      </div>
+    );
   }
 
   return (
