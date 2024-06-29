@@ -138,12 +138,36 @@ export function Tab({ story, activeStoryId, setActive }: Props) {
             style={floatingStyles}
             {...getFloatingProps()}
           >
-            <button onClick={() => closeStory(story.id)}>Close</button>
-            <button onClick={closeAllStories}>Close All</button>
-            <button onClick={() => closeOtherStories(story.id)}>
+            <button
+              onClick={() => {
+                closeStory(story.id);
+                setIsOpen(false);
+              }}
+            >
+              Close
+            </button>
+            <button
+              onClick={() => {
+                closeAllStories();
+                setIsOpen(false);
+              }}
+            >
+              Close All
+            </button>
+            <button
+              onClick={() => {
+                closeOtherStories(story.id);
+                setIsOpen(false);
+              }}
+            >
               Close Other Tabs
             </button>
-            <button onClick={() => closeToTheRight(story.id)}>
+            <button
+              onClick={() => {
+                closeToTheRight(story.id);
+                setIsOpen(false);
+              }}
+            >
               Close to the Right
             </button>
           </div>
