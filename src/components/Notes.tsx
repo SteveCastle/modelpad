@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "react-query";
 import { Note, useStore } from "../store";
 import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
-import { EllipsisVerticalIcon } from "@heroicons/react/24/solid";
+import { EllipsisVerticalIcon, XMarkIcon } from "@heroicons/react/24/solid";
+import { useDebouncedCallback } from "use-debounce";
 
 import "./Notes.css";
 import { useState } from "react";
@@ -13,11 +14,12 @@ type NoteReponse = {
   notes: Note[];
 };
 
-async function getStories(): Promise<NoteReponse> {
+async function getStories({ queryKey }): Promise<NoteReponse> {
+  const searchQuery = queryKey[1].searchQuery;
   const response = await fetch(
     `${
       import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
-    }/api/notes`
+    }/api/notes?search=${searchQuery}`
   );
   return response.json();
 }
@@ -34,26 +36,54 @@ async function deleteStory(id: string) {
 }
 
 const Notes = () => {
+  const [searchText, setSearchText] = useState("");
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebouncedCallback(() => {
+    setSearchQuery(searchText);
+  }, 300);
   const { data } = useQuery({
-    queryKey: ["stories"],
+    queryKey: ["stories", { searchQuery }],
     queryFn: getStories,
     refetchOnWindowFocus: true,
   });
 
-  if (!data) {
-    return (
-      <div className="loading-container">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
   return (
-    <ul className="note-list">
-      {data.notes.map((note) => (
-        <NoteItem key={note.id} note={note} />
-      ))}
-    </ul>
+    <div className="Notes">
+      <div className="notes-header">
+        <div className="search-input">
+          <input
+            type="text"
+            placeholder="Search notes"
+            value={searchText}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              debouncedSearch();
+            }}
+          />
+          <button
+            className="clear-btn"
+            onClick={() => {
+              setSearchText("");
+              setSearchQuery("");
+            }}
+          >
+            <XMarkIcon />
+          </button>
+        </div>
+      </div>
+      {data ? (
+        <ul className="note-list">
+          {data.notes.map((note) => (
+            <NoteItem key={note.id} note={note} />
+          ))}
+        </ul>
+      ) : (
+        <div className="loading-container">
+          <LoadingSpinner />
+        </div>
+      )}
+    </div>
   );
 };
 

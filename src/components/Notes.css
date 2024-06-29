@@ -1,3 +1,62 @@
+.Notes {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  margin-right: 30px;
+}
+
+.Notes .notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background-color: var(--header-bg-color);
+  color: var(--text-color);
+}
+
+.Notes .notes-header .search-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background-color: var(--input-bg-color);
+  border-radius: 5px;
+  padding: 8px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.Notes .notes-header .search-input input {
+  padding: 8px;
+  border: none;
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  border-radius: 5px;
+  width: 100%;
+}
+
+.Notes .notes-header .search-input input:focus {
+  outline: none;
+}
+
+.Notes .notes-header .search-input input::placeholder {
+  color: var(--low-contrast-text-color);
+}
+
+.Notes .notes-header .search-input .clear-btn {
+  position: absolute;
+  right: 10px;
+  color: var(--low-contrast-text-color);
+  cursor: pointer;
+  background: none;
+  border: none;
+  width: 30px;
+  height: 30px;
+}
+
+.Notes .notes-header .search-input .clear-btn:hover {
+  color: var(--text-color);
+}
+
 .note-list {
   list-style-type: none;
   padding: 8px;

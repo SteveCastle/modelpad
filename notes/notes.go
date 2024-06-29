@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pgvector/pgvector-go"
 	uuid "github.com/satori/go.uuid"
@@ -50,9 +51,24 @@ func ListNotes(c *gin.Context) {
 	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
     userID := sessionContainer.GetUserID()
 	notes:= []Note{}
-
+	searchParam := c.Query("search")
+	var vector pgvector.Vector
+	if searchParam != "" {
+		embedding, err := embeddings.CreateEmbedding(searchParam)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		vector = pgvector.NewVector(embedding.Embedding)
+	}
 	db := c.MustGet("db").(*pgxpool.Pool)
-	rows, err := db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
+	var rows pgx.Rows
+	var err error
+	if searchParam != "" {
+		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at FROM notes WHERE user_id = $1 AND embedding <-> $2 > 0.5 ORDER BY embedding <-> $2", userID, vector)
+	} else {
+	rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
+	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -101,7 +117,13 @@ func UpsertNote(c *gin.Context) {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
-	embedding := embeddings.CreateEmbedding(markdown)
+	// Append a new line to the start of the markdown with the Note title
+	markdown = "# " + note.Title + "\n" + markdown
+	embedding, err := embeddings.CreateEmbedding(markdown)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
 	newVector := pgvector.NewVector(embedding.Embedding)
 	db := c.MustGet("db").(*pgxpool.Pool)
 

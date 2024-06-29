@@ -2,13 +2,12 @@ package embeddings
 
 import (
 	"context"
-	"log"
 	"os"
 
 	"github.com/sashabaranov/go-openai"
 )
 
-func CreateEmbedding(text string) openai.Embedding {
+func CreateEmbedding(text string) (openai.Embedding,error) {
 	OPEN_AI_TOKEN := os.Getenv("OPENAI_API_KEY")
 	client := openai.NewClient(OPEN_AI_TOKEN)
 
@@ -21,9 +20,9 @@ func CreateEmbedding(text string) openai.Embedding {
 		// Create an embedding for the target text
 		targetResponse, err := client.CreateEmbeddings(context.Background(), targetReq)
 		if err != nil {
-			log.Fatal("Error creating target embedding:", err)
+			return openai.Embedding{}, err
 		}
 
 		// Print the target embedding
-		return targetResponse.Data[0]
+		return targetResponse.Data[0], nil
 }
