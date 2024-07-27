@@ -25,6 +25,7 @@ import { useStore, PromptTypeKeys } from "../store";
 import { providers } from "../providers";
 import { PencilIcon } from "@heroicons/react/24/solid";
 import { useEffect, useState } from "react";
+import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
 
 interface Props {
   editor: LexicalEditor;
@@ -45,13 +46,19 @@ export default function ContextMenu({ hide }: Props) {
   const { host, providerKey } = useStore(
     (state) => state.availableServers[state.serverKey]
   );
-
+  const [editor] = useLexicalComposerContext();
   const { setGenerationState, updateContext } = useStore((state) => state);
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
   const activeStory = stories.find((s) => s.id === activeStoryId);
-  const context = activeStory?.context;
-  const [editor] = useLexicalComposerContext();
+  const activeStoryMarkdown = activeStory.content
+    ? convertJSONToMarkdown(JSON.stringify(activeStory?.content) || "")
+    : "";
+  const inActiveStoryMarkdowns = stories.map((s) =>
+    convertJSONToMarkdown(JSON.stringify(s.content))
+  );
+  const documents = inActiveStoryMarkdowns.concat(activeStoryMarkdown);
+
   const provider = providers[providerKey];
 
   //if editing becomes false clear the active tab
@@ -91,13 +98,19 @@ export default function ContextMenu({ hide }: Props) {
       if (!$isRangeSelection(selection)) return;
 
       const text = selection.getTextContent();
+      const promptHeader = documents.join("\n").replace(text, "");
       const prompt = applyTemplate(promptTemplates[promptTemplateKey], text);
+      const promptWithHeader =
+        "Use these Documents as a repository of information for satisfying the request at the end\n" +
+        promptHeader +
+        "\n" +
+        prompt;
       setGenerationState("loading");
       const root = $getRoot();
       const newParagraphNode = $createParagraphNode();
       root.append(newParagraphNode);
       provider.generateText(
-        prompt,
+        promptWithHeader,
         startCallback,
         tokenCallback,
         completedCallback,
@@ -105,7 +118,7 @@ export default function ContextMenu({ hide }: Props) {
           host,
           model,
           abortSignal: abortController.signal,
-          context: context || [],
+          context: [],
           modelSettings,
         }
       );

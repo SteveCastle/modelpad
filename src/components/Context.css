@@ -1,0 +1,90 @@
+.Context {
+  background-color: var(--context-menu-bg-color);
+  padding: 1rem 1rem 1rem 1rem;
+  border-radius: 4px;
+  z-index: 999;
+  width: 400px;
+}
+
+.Context h2 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.context-button {
+  margin: 0 1rem;
+  padding: 3px;
+  min-width: 150px;
+  border: none;
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.context-button:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+.Context .context-list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.Context .context-list .context-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  background: none;
+  border: none;
+  text-align: left;
+}
+
+.Context .context-list .context-item:hover {
+  background-color: var(--active-hovered-style-button-bg-color);
+}
+
+.Context .context-list .context-item:disabled {
+  color: white;
+  font-weight: bold;
+}
+
+.Context .context-list .context-item.active {
+  background-color: var(--active-grid-button-bg-color);
+}
+
+.Context .context-list .context-item .context-name {
+  display: block;
+}
+
+.Context .context-list .context-item .context-info {
+  margin-top: 0.3rem;
+  display: block;
+  font-size: 0.6rem;
+  text-decoration: none;
+}
+
+.Context .context-list .context-item .context-info a {
+  text-decoration: none;
+}
+
+.Context .context-list .context-item .context-info a:hover {
+  color: var(--link-color);
+}
+
+.Context .context-list .context-item .context-edit {
+  height: 16px;
+  width: 16px;
+  opacity: 0.7;
+}
+
+.Context .context-list .context-item .context-edit:hover {
+  opacity: 1;
+}

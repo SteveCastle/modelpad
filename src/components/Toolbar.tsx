@@ -19,6 +19,7 @@ import {
   signOut,
 } from "supertokens-auth-react/recipe/session";
 import useCtrlSHotkey from "../hooks/useCtrlSHotkey";
+import Context from "./Context";
 
 type MenuOptions = {
   [key: string]: { label: string; action: () => void }[];
@@ -28,9 +29,7 @@ export function Toolbar() {
   const queryClient = useQueryClient();
   const {
     cancelGeneration,
-    clearContext,
     model,
-    serverKey,
     createStory,
     toggleReadingMode,
     zoomIn,
@@ -266,27 +265,7 @@ export function Toolbar() {
         <div className="toolbar-right">
           <ServerSelect />
           {model && <ModelSettings model={model} />}
-          {serverKey === "localOllama" && (
-            <button
-              className={`context ${generationState}`}
-              onClick={() => {
-                clearContext(activeStoryId);
-              }}
-              disabled={generationState !== "ready"}
-            >
-              <div
-                style={{
-                  width: `${
-                    activeStory?.context?.length
-                      ? Math.floor((activeStory?.context?.length / 4096) * 100)
-                      : 0
-                  }%`,
-                }}
-                className="history-percentage"
-              />
-              Clear Context
-            </button>
-          )}
+          <Context />
           <button
             className="cancel-button"
             onClick={() => {

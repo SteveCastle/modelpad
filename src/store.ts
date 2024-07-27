@@ -45,6 +45,7 @@ export type Story = {
   context?: number[];
   open?: boolean;
   synced?: boolean;
+  includeInContext?: boolean;
 };
 
 export type Note = {
@@ -91,6 +92,7 @@ type State = {
   setGenerationState: (state: LoadingStates) => void;
   cancelGeneration: () => void;
   setActive: (id: string) => void;
+  setIncludeInContext: (id: string, include: boolean) => void;
   updateStory: (id: string, content: string) => void;
   updateTitle: (id: string, title: string) => void;
   updateSyncState: (id: string, synced: boolean) => void;
@@ -370,6 +372,13 @@ BEGIN SUMMARY:
             activeStoryId: id,
           };
         });
+      },
+      setIncludeInContext: (id: string, include: boolean) => {
+        set(() => ({
+          stories: get().stories.map((s) =>
+            s.id === id ? { ...s, includeInContext: include } : s
+          ),
+        }));
       },
       createStory: (title: string) => {
         const newId = v4();
