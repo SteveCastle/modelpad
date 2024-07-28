@@ -1,6 +1,7 @@
 import { v4 } from "uuid";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { welcomeContent } from "./welcomeContent";
 
 export type PromptTypeKeys = "newScene" | "rewrite" | "summarize";
 
@@ -120,6 +121,16 @@ const ollamaSettings: ModelSettings = {
   stop: ["user:"],
 };
 
+const initialStories: Story[] = [
+  {
+    id: v4(),
+    title: "Welcome to ModelPad",
+    content: welcomeContent,
+    context: undefined,
+    open: true,
+  },
+];
+
 const defaultStories: Story[] = [
   {
     id: v4(),
@@ -146,7 +157,7 @@ const defaultAvailableServers: AvailableServers = {
 export const useStore = create<State>()(
   persist(
     (set, get) => ({
-      stories: defaultStories,
+      stories: initialStories,
       viewSettings: {
         readingMode: true,
         zoom: 1.0,
@@ -170,7 +181,7 @@ ALTERNATE VERSION:
 BEGIN SUMMARY:
         `,
       },
-      activeStoryId: defaultStories[0].id,
+      activeStoryId: initialStories[0].id,
       abortController: new AbortController(),
       generationState: "no-connection",
       sideBarOpen: false,

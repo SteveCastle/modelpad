@@ -57,7 +57,7 @@ export default function ContextMenu({ hide }: Props) {
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
   const activeStory = stories.find((s) => s.id === activeStoryId);
-  const activeStoryMarkdown = activeStory.content
+  const activeStoryMarkdown = activeStory?.content
     ? convertJSONToMarkdown(JSON.stringify(activeStory?.content) || "")
     : "";
   const inActiveStoryMarkdowns = stories
