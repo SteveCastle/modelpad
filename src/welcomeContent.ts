@@ -1,4 +1,81 @@
-export const welcomeContent = {
+type TextNode = {
+  detail: number;
+  format: number;
+  mode: "normal";
+  style: string;
+  text: string;
+  type: "text";
+  version: number;
+};
+
+type LinkNode = {
+  children: TextNode[];
+  direction: "ltr";
+  format: string;
+  indent: number;
+  type: "link";
+  version: number;
+  rel: string | null;
+  target: string | null;
+  title: string | null;
+  url: string;
+};
+
+type ListItemNode = {
+  children: TextNode[];
+  direction: "ltr";
+  format: string;
+  indent: number;
+  type: "listitem";
+  version: number;
+  value: number;
+};
+
+type ListNode = {
+  children: (ListItemNode | TextNode)[];
+  direction: "ltr";
+  format: string;
+  indent: number;
+  type: "list";
+  version: number;
+  listType: "bullet";
+  start: number;
+  tag: "ul";
+};
+
+type HeadingNode = {
+  children: TextNode[];
+  direction: "ltr";
+  format: string;
+  indent: number;
+  type: "heading";
+  version: number;
+  tag: "h1" | "h2" | "h3";
+};
+
+type ParagraphNode = {
+  children: (TextNode | LinkNode)[];
+  direction: "ltr";
+  format: string;
+  indent: number;
+  type: "paragraph";
+  version: number;
+};
+
+type RootNode = {
+  children: (HeadingNode | ParagraphNode | ListNode)[];
+  direction: "ltr";
+  format: string;
+  indent: number;
+  type: "root";
+  version: number;
+};
+
+export type Content = {
+  root: RootNode;
+};
+
+export const welcomeContent: Content = {
   root: {
     children: [
       {

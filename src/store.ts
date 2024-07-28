@@ -1,7 +1,7 @@
 import { v4 } from "uuid";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { welcomeContent } from "./welcomeContent";
+import { Content, welcomeContent } from "./welcomeContent";
 
 export type PromptTypeKeys = "newScene" | "rewrite" | "summarize";
 
@@ -42,7 +42,7 @@ export type ModelSettings = {
 export type Story = {
   id: string;
   title: string;
-  content?: string;
+  content?: Content;
   context?: number[];
   open?: boolean;
   synced?: boolean;
@@ -96,7 +96,7 @@ type State = {
   cancelGeneration: () => void;
   setActive: (id: string) => void;
   setIncludeInContext: (id: string, include: boolean) => void;
-  updateStory: (id: string, content: string) => void;
+  updateStory: (id: string, content: Content) => void;
   updateTitle: (id: string, title: string) => void;
   updateSyncState: (id: string, synced: boolean) => void;
   updateContext: (id: string, context: number[]) => void;
@@ -311,7 +311,7 @@ BEGIN SUMMARY:
           activeStoryId: id,
         }));
       },
-      updateStory: (id: string, content: string) => {
+      updateStory: (id: string, content: Content) => {
         set(() => ({
           stories: get().stories.map((s) =>
             s.id === id ? { ...s, content } : s
@@ -402,7 +402,7 @@ BEGIN SUMMARY:
             {
               title: title ? title : "Untitled",
               id: newId,
-              content: "",
+              content: null,
               modelSettings: ollamaSettings,
               open: true,
             },
