@@ -8,11 +8,16 @@ import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import "./Context.css";
 
 export default function Context() {
-  const { stories, setIncludeInContext, useRag, setUseRag } = useStore(
-    (state) => state
-  );
+  const { stories, activeStoryId, setIncludeInContext, useRag, setUseRag } =
+    useStore((state) => state);
 
   const [isOpen, setIsOpen] = useState(false);
+
+  const sortedStories = stories.sort((a, b) => {
+    if (a.id === activeStoryId) return -1;
+    if (b.id === activeStoryId) return 1;
+    return 0;
+  });
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -46,7 +51,7 @@ export default function Context() {
         >
           <h2>Tabs</h2>
           <div className="context-list">
-            {stories.map((story) => (
+            {sortedStories.map((story) => (
               <button
                 className={`context-item`}
                 key={story.id}
@@ -57,7 +62,11 @@ export default function Context() {
                 }}
               >
                 <div>
-                  <span className="context-name">{story.title}</span>
+                  <span className="context-name">
+                    {story.id === activeStoryId
+                      ? `${story.title} (Active Tab)`
+                      : story.title}
+                  </span>
                 </div>
                 <span className="context-edit">
                   {story.includeInContext ? (

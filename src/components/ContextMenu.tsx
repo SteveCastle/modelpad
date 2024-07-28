@@ -59,9 +59,9 @@ export default function ContextMenu({ hide }: Props) {
   const activeStoryMarkdown = activeStory.content
     ? convertJSONToMarkdown(JSON.stringify(activeStory?.content) || "")
     : "";
-  const inActiveStoryMarkdowns = stories.map((s) =>
-    convertJSONToMarkdown(JSON.stringify(s.content))
-  );
+  const inActiveStoryMarkdowns = stories
+    .filter((story) => story.id !== activeStoryId && story.includeInContext)
+    .map((s) => convertJSONToMarkdown(JSON.stringify(s.content)));
   const documents = inActiveStoryMarkdowns.concat(activeStoryMarkdown);
 
   const provider = providers[providerKey];
