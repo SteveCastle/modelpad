@@ -45,44 +45,52 @@ type Note struct {
 	UserId uuid.UUID `json:"user_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+	Distance float64 `json:"distance"`
 }
 
-func ListNotes(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-    userID := sessionContainer.GetUserID()
-	notes:= []Note{}
-	searchParam := c.Query("search")
+func RagSearch(text string, userID string, distance float64, c *gin.Context) []Note {
 	var vector pgvector.Vector
-	if searchParam != "" {
-		embedding, err := embeddings.CreateEmbedding(searchParam)
+	var notes []Note
+	if text != "" {
+		embedding, err := embeddings.CreateEmbedding(text)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
-			return
+			return nil
 		}
 		vector = pgvector.NewVector(embedding.Embedding)
 	}
 	db := c.MustGet("db").(*pgxpool.Pool)
 	var rows pgx.Rows
 	var err error
-	if searchParam != "" {
-		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at FROM notes WHERE user_id = $1 AND embedding <-> $2 > 0.5 ORDER BY embedding <-> $2", userID, vector)
+	if text != "" {
+		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, embedding <-> $2 as distance FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3 ORDER BY embedding <-> $2", userID, vector, distance)
 	} else {
-	rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
+	rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, 0 as distance FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
 	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
-		return
+		return nil
 	}
 
 	for rows.Next() {
 		var note Note
-		err := rows.Scan(&note.ID, &note.Title,&note.Body, &note.CreatedAt, &note.UpdatedAt)
+		err := rows.Scan(&note.ID, &note.Title,&note.Body, &note.CreatedAt, &note.UpdatedAt, &note.Distance)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
-			return
+			return nil
 		}
 		notes = append(notes, note)
 	}
+	return notes
+}
+
+
+func ListNotes(c *gin.Context) {
+	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
+    userID := sessionContainer.GetUserID()
+	searchParam := c.Query("search")
+	distance:= .8
+	notes := RagSearch(searchParam,userID, distance, c )
 
 	c.JSON(200, gin.H{"notes": notes})
 }

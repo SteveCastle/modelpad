@@ -7,7 +7,7 @@ async function generateText(
   completedCallback: (context: number[]) => void,
   config: Config
 ) {
-  const { host, model, abortSignal, context, modelSettings } = config;
+  const { host, model, abortSignal, context, modelSettings, useRag } = config;
   fetch(`${host}/api/generate`, {
     signal: abortSignal,
     method: "POST",
@@ -20,6 +20,7 @@ async function generateText(
         "You are a helpful assistant. You respond to prompts using markdown to format the text.",
       prompt,
       context,
+      useRag,
       options: modelSettings,
     }),
   })

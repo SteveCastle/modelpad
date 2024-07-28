@@ -18,6 +18,7 @@ export type Config = {
   abortSignal: AbortSignal;
   context: number[];
   modelSettings: ModelSettings;
+  useRag?: boolean;
 };
 type Provider = {
   generateText: (

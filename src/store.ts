@@ -76,6 +76,8 @@ type State = {
   availableServers: AvailableServers;
   modelSettings: ModelSettings;
   sideBarOpen: boolean;
+  useRag: boolean;
+  setUseRag: (useRag: boolean) => void;
   setSideBarOpen: (open: boolean) => void;
   setServerHost: (host: string) => void;
   setServerName: (title: string) => void;
@@ -172,6 +174,7 @@ BEGIN SUMMARY:
       abortController: new AbortController(),
       generationState: "no-connection",
       sideBarOpen: false,
+      useRag: false,
       mergeNotes: (notes: Note[]) => {
         set(() => {
           // Iterate over the existing stories and if the note ID exists, update the story
@@ -421,6 +424,11 @@ BEGIN SUMMARY:
       setSideBarOpen: (open: boolean) => {
         set(() => ({
           sideBarOpen: open,
+        }));
+      },
+      setUseRag: (useRag: boolean) => {
+        set(() => ({
+          useRag,
         }));
       },
     }),

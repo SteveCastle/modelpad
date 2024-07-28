@@ -74,7 +74,7 @@ const Notes = () => {
       </div>
       {data ? (
         <ul className="note-list">
-          {data.notes.map((note) => (
+          {data.notes?.map((note) => (
             <NoteItem key={note.id} note={note} />
           ))}
         </ul>

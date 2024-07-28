@@ -8,7 +8,9 @@ import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
 import "./Context.css";
 
 export default function Context() {
-  const { stories, setIncludeInContext } = useStore((state) => state);
+  const { stories, setIncludeInContext, useRag, setUseRag } = useStore(
+    (state) => state
+  );
 
   const [isOpen, setIsOpen] = useState(false);
 
@@ -33,7 +35,7 @@ export default function Context() {
         {...getReferenceProps()}
         ref={refs.setReference}
       >
-        Context
+        Context Settings
       </button>
       {isOpen && (
         <div
@@ -42,27 +44,22 @@ export default function Context() {
           style={floatingStyles}
           {...getFloatingProps()}
         >
-          <h2>In Context</h2>
+          <h2>Tabs</h2>
           <div className="context-list">
             {stories.map((story) => (
               <button
                 className={`context-item`}
                 key={story.id}
-                onClick={() => {
-                  console.log("clicked");
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setIncludeInContext(story.id, !story.includeInContext);
                 }}
               >
                 <div>
                   <span className="context-name">{story.title}</span>
                 </div>
-                <span
-                  className="context-edit"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    setIncludeInContext(story.id, !story.includeInContext);
-                  }}
-                >
+                <span className="context-edit">
                   {story.includeInContext ? (
                     <CheckCircleIcon
                       aria-hidden="true"
@@ -74,6 +71,33 @@ export default function Context() {
                 </span>
               </button>
             ))}
+            <h2 className="rag-header">RAG Settings</h2>
+            <div className="context-list">
+              <button
+                className={`context-item`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  setUseRag(!useRag);
+                }}
+              >
+                <div>
+                  <span className="context-name">
+                    Use Related Documents in Context
+                  </span>
+                </div>
+                <span className="context-edit">
+                  {useRag ? (
+                    <CheckCircleIcon
+                      aria-hidden="true"
+                      className="check-icon"
+                    />
+                  ) : (
+                    <XCircleIcon className="x-icon" />
+                  )}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -12,6 +12,10 @@
   font-weight: 700;
 }
 
+.Context h2.rag-header {
+  margin: 0;
+}
+
 .context-button {
   margin: 0 1rem;
   padding: 3px;
@@ -31,7 +35,6 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
-  margin-top: 1rem;
 }
 
 .Context .context-list .context-item {

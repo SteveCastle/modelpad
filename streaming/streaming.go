@@ -57,6 +57,7 @@ type ContentBlockDelta struct {
 type GenerateRequest struct {
 	Model     string `json:"model"`
 	Prompt    string `json:"prompt"`
+	UseRag   bool   `json:"useRag"`
 }
 
 func Stream(c *gin.Context) {
@@ -79,6 +80,10 @@ func Stream(c *gin.Context) {
 		fmt.Printf("Error binding request body: %v\n", err)
 		return
 	}
+
+
+
+
 	// Create your request body
 	body := AnthropicRequestOptions{
 		Model:  "claude-3-5-sonnet-20240620",

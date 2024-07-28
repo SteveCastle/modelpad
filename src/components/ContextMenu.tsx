@@ -40,8 +40,13 @@ export default function ContextMenu({ hide }: Props) {
   const [editing, setEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<PromptTypeKeys | null>(null); // ["newScene", "rewrite", "summarize"
   const abortController = useStore((state) => state.abortController);
-  const { model, modelSettings, promptTemplates, changePromptTemplate } =
-    useStore((state) => state);
+  const {
+    model,
+    modelSettings,
+    promptTemplates,
+    changePromptTemplate,
+    useRag,
+  } = useStore((state) => state);
 
   const { host, providerKey } = useStore(
     (state) => state.availableServers[state.serverKey]
@@ -120,6 +125,7 @@ export default function ContextMenu({ hide }: Props) {
           abortSignal: abortController.signal,
           context: [],
           modelSettings,
+          useRag,
         }
       );
     });
