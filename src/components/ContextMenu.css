@@ -60,3 +60,10 @@
 .context-menu button.edit-button.active {
   background-color: var(--active-grid-button-bg-color);
 }
+
+/*Media query to hide the edit button on small screens*/
+@media (max-width: 768px) {
+  .context-menu button.edit-button {
+    display: none;
+  }
+}

@@ -104,8 +104,8 @@ export function FloatingMenuPlugin({
       aria-hidden={!show}
       style={{
         position: "fixed",
-        bottom: "40px",
-        left: "50%",
+        bottom: "46px",
+        left: "calc(50% - 70px)",
       }}
     >
       <MenuComponent
