@@ -18,7 +18,7 @@ import {
   useSessionContext,
   signOut,
 } from "supertokens-auth-react/recipe/session";
-import useCtrlSHotkey from "../hooks/useCtrlSHotkey";
+import useCtrlHotkey from "../hooks/useCtrlHotkey";
 import Context from "./Context";
 
 type MenuOptions = {
@@ -74,7 +74,7 @@ export function Toolbar() {
     }
   };
 
-  useCtrlSHotkey(saveDocument);
+  useCtrlHotkey(saveDocument, "s");
 
   const menuOptions: MenuOptions = {
     file: [

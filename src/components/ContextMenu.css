@@ -3,13 +3,8 @@
   display: flex;
   flex-direction: column;
   border-radius: 4px;
-  position: absolute;
   overflow: hidden;
-
-  /* Avoid layout interference */
   width: max-content;
-  top: 0;
-  left: 0;
   transition: width 0.2s ease, height 0.2s ease;
 }
 

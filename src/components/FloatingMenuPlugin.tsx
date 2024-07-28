@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { offset } from "@floating-ui/dom";
+import { offset, shift } from "@floating-ui/dom";
 
 import { createPortal } from "react-dom";
 import {
@@ -46,11 +46,11 @@ export function FloatingMenuPlugin({
     if (!domRange || !ref.current || isPointerDown) return setCoords(undefined);
 
     computePosition(domRange, ref.current, {
-      placement: "top",
-      middleware: [offset(30)],
+      placement: "right",
+      middleware: [offset(10), shift()],
     })
       .then((pos: { x: number; y: number }) => {
-        setCoords({ x: pos.x, y: pos.y - 10 });
+        setCoords({ x: pos.x, y: pos.y });
       })
       .catch(() => {
         setCoords(undefined);
@@ -104,10 +104,8 @@ export function FloatingMenuPlugin({
       aria-hidden={!show}
       style={{
         position: "fixed",
-        top: coords?.y,
-        left: coords?.x,
-        visibility: show ? "visible" : "hidden",
-        opacity: show ? 1 : 0,
+        bottom: "40px",
+        left: "50%",
       }}
     >
       <MenuComponent

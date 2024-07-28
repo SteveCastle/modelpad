@@ -1,14 +1,14 @@
 import { useEffect, useCallback } from "react";
 
-const useCtrlSHotkey = (callback) => {
+const useCtrlHotkey = (callback, key: string) => {
   const handleKeyDown = useCallback(
     (event) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === "s") {
+      if ((event.ctrlKey || event.metaKey) && event.key === key) {
         event.preventDefault();
         callback();
       }
     },
-    [callback]
+    [callback, key]
   );
 
   useEffect(() => {
@@ -20,4 +20,4 @@ const useCtrlSHotkey = (callback) => {
   }, [handleKeyDown]);
 };
 
-export default useCtrlSHotkey;
+export default useCtrlHotkey;

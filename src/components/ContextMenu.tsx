@@ -26,6 +26,7 @@ import { providers } from "../providers";
 import { PencilIcon } from "@heroicons/react/24/solid";
 import { useEffect, useState } from "react";
 import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
+import useCtrlHotkey from "../hooks/useCtrlHotkey";
 
 interface Props {
   editor: LexicalEditor;
@@ -100,9 +101,14 @@ export default function ContextMenu({ hide }: Props) {
     if (!abortController || !model) return;
     editor.update(() => {
       const selection = $getSelection();
-      if (!$isRangeSelection(selection)) return;
+      const root = $getRoot();
+      let text;
+      if (!$isRangeSelection(selection)) {
+        text = selection.getTextContent();
+      } else {
+        text = root.getTextContent();
+      }
 
-      const text = selection.getTextContent();
       const promptHeader = documents.join("\n").replace(text, "");
       const prompt = applyTemplate(promptTemplates[promptTemplateKey], text);
       const promptWithHeader =
@@ -111,7 +117,6 @@ export default function ContextMenu({ hide }: Props) {
         "\n" +
         prompt;
       setGenerationState("loading");
-      const root = $getRoot();
       const newParagraphNode = $createParagraphNode();
       root.append(newParagraphNode);
       provider.generateText(
@@ -130,6 +135,10 @@ export default function ContextMenu({ hide }: Props) {
       );
     });
   }
+
+  useCtrlHotkey(() => {
+    generate("newScene");
+  }, " ");
 
   return (
     <div className={"context-menu"}>
