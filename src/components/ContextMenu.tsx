@@ -112,7 +112,7 @@ export default function ContextMenu({ hide }: Props) {
       const promptHeader = documents.join("\n").replace(text, "");
       const prompt = applyTemplate(promptTemplates[promptTemplateKey], text);
       const promptWithHeader =
-        "Use these Documents as a repository of information for satisfying the request at the end\n" +
+        "You may reference these Documents as a repository of information for satisfying the request at the end. If they are not relevent to the request you may ignore them.\n" +
         promptHeader +
         "\n" +
         prompt;
