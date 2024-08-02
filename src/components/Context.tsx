@@ -13,7 +13,7 @@ export default function Context() {
 
   const [isOpen, setIsOpen] = useState(false);
 
-  const sortedStories = stories.sort((a, b) => {
+  const sortedStories = [...stories].sort((a, b) => {
     if (a.id === activeStoryId) return -1;
     if (b.id === activeStoryId) return 1;
     return 0;
