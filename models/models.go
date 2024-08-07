@@ -44,8 +44,9 @@ func GetModel(c *gin.Context) {
 	})
 }
 
+
+
 func ListModels(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"models": []Model{{Name: "Claude 3 Haiku"}},
-	})
+		"models": []Model{{Name: "claude-3-haiku-20240307"}, {Name: "claude-3-5-sonnet-20240620" }}})
 }

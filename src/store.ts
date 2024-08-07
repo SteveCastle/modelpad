@@ -143,7 +143,7 @@ const defaultStories: Story[] = [
 
 const defaultAvailableServers: AvailableServers = {
   modelPadServer: {
-    host: "https://modelpad.app",
+    host: "http://localhost:8080",
     name: "Cloud",
     providerKey: "claude",
   },

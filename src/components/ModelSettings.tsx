@@ -7,6 +7,7 @@ import { useOnClickOutside } from "../hooks/useOnClickOutside";
 
 import "./ModelSettings.css";
 import { providers } from "../providers";
+import { modelPrettyNameMap } from "../modelPrettyNameMap";
 
 export default function ModelSettings({ model }: { model: string }) {
   const {
@@ -60,7 +61,7 @@ export default function ModelSettings({ model }: { model: string }) {
         {...getReferenceProps()}
         ref={refs.setReference}
       >
-        {`${model ? model : "None"}`}
+        {`${model ? modelPrettyNameMap[model] || model : "None"}`}
       </button>
       {isOpen && (
         <div
@@ -80,7 +81,7 @@ export default function ModelSettings({ model }: { model: string }) {
                     changeModel(m);
                   }}
                 >
-                  {m}
+                  {modelPrettyNameMap[m] || m}
                 </button>
               ))}
           </div>

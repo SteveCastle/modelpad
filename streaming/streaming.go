@@ -81,12 +81,26 @@ func Stream(c *gin.Context) {
 		return
 	}
 
+// Check if the model is allowed if not return an error
+allowedModels := []string{"claude-3-haiku-20240307", "claude-3-5-sonnet-20240620"}
+modelAllowed := false
+for _, model := range allowedModels {
+	if model == reqBody.Model {
+		modelAllowed = true
+	}
+}
 
+if !modelAllowed {
+	c.JSON(http.StatusBadRequest, gin.H{
+		"error": "Model not allowed",
+	})
+	return
+}
 
 
 	// Create your request body
 	body := AnthropicRequestOptions{
-		Model:  "claude-3-5-sonnet-20240620",
+		Model:  reqBody.Model,
 		System: "You are an expert assistant. When provided with a prompt you generate a response to satisfy that prompt.",
 		Messages: []struct {
 			Role    string `json:"role"`
@@ -125,6 +139,13 @@ func Stream(c *gin.Context) {
 		return
 	}
 	defer resp.Body.Close()
+
+	// If the response status is not 200, print the status and return
+	if resp.StatusCode != 200 {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Error getting response from Anthropic",
+		})
+	}
 	reader := bufio.NewReader(resp.Body)
 	flusher, ok := w.(http.Flusher)
 	if !ok {
@@ -168,7 +189,7 @@ func Stream(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, CompletedStreamChunk{
-		Model:              "gpt-3.5-turbo",
+		Model:              reqBody.Model,
 		CreatedAt:          time.Now(),
 		Response:           "",
 		Done:               true,
