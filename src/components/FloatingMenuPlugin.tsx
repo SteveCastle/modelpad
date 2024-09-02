@@ -99,21 +99,19 @@ export function FloatingMenuPlugin({
   if (!MenuComponent) return null;
 
   return createPortal(
-    <div
-      ref={ref}
-      aria-hidden={!show}
-      style={{
-        position: "fixed",
-        bottom: "46px",
-        left: "calc(50% - 70px)",
-      }}
-    >
-      <MenuComponent
-        editor={editor}
-        hide={(): void => {
-          setCoords(undefined);
+    <div ref={ref} aria-hidden={!show} className="menu-portal">
+      <div
+        style={{
+          pointerEvents: "auto",
         }}
-      />
+      >
+        <MenuComponent
+          editor={editor}
+          hide={(): void => {
+            setCoords(undefined);
+          }}
+        />
+      </div>
     </div>,
     element ?? DEFAULT_DOM_ELEMENT
   );

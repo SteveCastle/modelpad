@@ -141,77 +141,88 @@ export default function ContextMenu({ hide }: Props) {
   }, " ");
 
   return (
-    <div className={"context-menu"}>
-      <div className={"button-area"}>
-        <button
-          type="button"
-          className={`new-scene-button ${
-            activeTab === "newScene" ? "active" : ""
-          }`}
-          onClick={() => {
-            if (editing) {
-              setActiveTab("newScene");
-              return;
-            }
-            hide();
-            generate("newScene");
-          }}
-        >
-          <SparklesIcon aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className={`rewrite-button ${
-            activeTab === "rewrite" ? "active" : ""
-          }`}
-          onClick={() => {
-            if (editing) {
-              setActiveTab("rewrite");
-              return;
-            }
-            generate("rewrite");
-            hide();
-          }}
-        >
-          <ArrowPathIcon aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className={`summarize-button ${
-            activeTab === "summarize" ? "active" : ""
-          }`}
-          onClick={() => {
-            if (editing) {
-              setActiveTab("summarize");
-              return;
-            }
-            generate("summarize");
-            hide();
-          }}
-        >
-          <ArrowsPointingInIcon aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          className={`edit-button ${editing ? "active" : ""}`}
-          onClick={() => {
-            setActiveTab("newScene");
-            setEditing((editing) => !editing);
-          }}
-        >
-          <PencilIcon aria-hidden="true" />
-        </button>
-      </div>
-      {editing && activeTab ? (
-        <div className="editing-area">
-          <textarea
-            value={promptTemplates[activeTab]}
-            onChange={(e) => {
-              changePromptTemplate(activeTab, e.target.value);
+    <div className={"context-menu-container"}>
+      <div className={"context-menu"}>
+        <div className={"button-area"}>
+          <button
+            type="button"
+            className={`new-scene-button ${
+              activeTab === "newScene" ? "active" : ""
+            }`}
+            onClick={() => {
+              if (editing) {
+                setActiveTab("newScene");
+                return;
+              }
+              hide();
+              generate("newScene");
             }}
-          ></textarea>
+          >
+            <SparklesIcon aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={`rewrite-button ${
+              activeTab === "rewrite" ? "active" : ""
+            }`}
+            onClick={() => {
+              if (editing) {
+                setActiveTab("rewrite");
+                return;
+              }
+              generate("rewrite");
+              hide();
+            }}
+          >
+            <ArrowPathIcon aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={`summarize-button ${
+              activeTab === "summarize" ? "active" : ""
+            }`}
+            onClick={() => {
+              if (editing) {
+                setActiveTab("summarize");
+                return;
+              }
+              generate("summarize");
+              hide();
+            }}
+          >
+            <ArrowsPointingInIcon aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={`edit-button ${editing ? "active" : ""}`}
+            onClick={() => {
+              setActiveTab("newScene");
+              setEditing((editing) => !editing);
+            }}
+          >
+            <PencilIcon aria-hidden="true" />
+          </button>
         </div>
-      ) : null}
+        {editing && activeTab ? (
+          <div className="editing-area">
+            <textarea
+              value={promptTemplates[activeTab]}
+              onChange={(e) => {
+                changePromptTemplate(activeTab, e.target.value);
+              }}
+            ></textarea>
+          </div>
+        ) : null}
+      </div>
+      {editing ? (
+        <span>
+          <strong> Selected Text:</strong> &lt;text&gt;
+          <strong> System Prompt:</strong> &lt;system&gt;
+          <strong> RAG Docs:</strong> &lt;docs&gt;
+        </span>
+      ) : (
+        <span>CTRL+SPACE</span>
+      )}
     </div>
   );
 }
