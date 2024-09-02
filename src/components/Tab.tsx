@@ -10,7 +10,6 @@ import { XMarkIcon } from "@heroicons/react/24/solid";
 import "./Tab.css";
 import { useStore } from "../store";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
-import useCtrlHotkey from "../hooks/useCtrlHotkey";
 
 type Props = {
   story: Story;
@@ -75,13 +74,6 @@ export function Tab({ story, activeStoryId, setActive }: Props) {
     setIsOpen(false);
   });
 
-  // useCtrlHotkey(() => {
-  //   if (story.id === activeStoryId) {
-  //     updateTitle(story.id, removeNewLineChars(newTitle) || "");
-  //     setEditingTitle(false);
-  //   }
-  // }, "s");
-
   return (
     <>
       <a
@@ -120,7 +112,10 @@ export function Tab({ story, activeStoryId, setActive }: Props) {
               story.synced ? "synced" : "",
             ].join(" ")}
             onKeyDown={(e) => {
-              if (e.key === "Enter") {
+              if (
+                e.key === "Enter" ||
+                ((e.ctrlKey || e.metaKey) && e.key === "s")
+              ) {
                 e.preventDefault();
                 updateTitle(story.id, removeNewLineChars(newTitle) || "");
                 setEditingTitle(false);
