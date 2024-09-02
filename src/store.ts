@@ -71,6 +71,8 @@ type State = {
   stories: Story[];
   activeStoryId: string;
   promptTemplateKey: PromptTypeKeys;
+  systemPromptTemplates: PromptTemplates;
+  ragPromptTemplates: PromptTemplates;
   promptTemplates: PromptTemplates;
   abortController?: AbortController;
   generationState: LoadingStates;
@@ -86,6 +88,8 @@ type State = {
   setServerHost: (host: string) => void;
   setServerName: (title: string) => void;
   changePromptTemplate: (key: PromptTypeKeys, text: string) => void;
+  changeSystemPromptTemplate: (key: PromptTypeKeys, text: string) => void;
+  changeRagPromptTemplate: (key: PromptTypeKeys, text: string) => void;
   toggleReadingMode: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -172,17 +176,25 @@ export const useStore = create<State>()(
       modelSettings: ollamaSettings,
       promptTemplateKey: "newScene",
       promptTemplates: {
-        newScene: `<text>
-      `,
-        rewrite: `A Rewording of this text:
-<text>
-ALTERNATE VERSION:
-        `,
-        summarize: `A summary of the following text:
-<text>
-
-BEGIN SUMMARY:
-        `,
+        newScene: `<text>`,
+        rewrite: `<text>`,
+        summarize: `<text>`,
+      },
+      systemPromptTemplates: {
+        newScene:
+          "You are a writer creating a new scene. Write a scene that fits the story you are working on. Remember to include the setting, characters, and plot.",
+        rewrite:
+          "You are a writer rewriting a scene. Rewrite the scene in a different style or from a different perspective.",
+        summarize:
+          "You are a writer summarizing a scene. Summarize the scene in a few sentences.",
+      },
+      ragPromptTemplates: {
+        newScene:
+          "Below is a list of documents that you can use to help you write a new scene. You can use these documents to help you generate ideas for your scene.\n<docs>",
+        rewrite:
+          "Below is a list of documents that you can use to help you rewrite a scene. You can use these documents to help you generate ideas for your scene.\n<docs>",
+        summarize:
+          "Below is a list of documents that you can use to help you summarize a scene. You can use these documents to help you generate ideas for your scene.\n<docs>",
       },
       activeStoryId: initialStories[0].id,
       abortController: new AbortController(),
@@ -264,6 +276,22 @@ BEGIN SUMMARY:
         set(() => ({
           promptTemplates: {
             ...get().promptTemplates,
+            [key]: text,
+          },
+        }));
+      },
+      changeSystemPromptTemplate: (key: PromptTypeKeys, text: string) => {
+        set(() => ({
+          systemPromptTemplates: {
+            ...get().systemPromptTemplates,
+            [key]: text,
+          },
+        }));
+      },
+      changeRagPromptTemplate: (key: PromptTypeKeys, text: string) => {
+        set(() => ({
+          ragPromptTemplates: {
+            ...get().ragPromptTemplates,
             [key]: text,
           },
         }));
@@ -467,6 +495,9 @@ BEGIN SUMMARY:
         modelSettings: state.modelSettings,
         availableServers: state.availableServers,
         sideBarOpen: state.sideBarOpen,
+        promptTemplates: state.promptTemplates,
+        systemPromptTempltaes: state.systemPromptTemplates,
+        ragPromptTemplates: state.ragPromptTemplates,
       }),
     }
   )

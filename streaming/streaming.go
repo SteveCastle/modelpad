@@ -56,6 +56,7 @@ type ContentBlockDelta struct {
 
 type GenerateRequest struct {
 	Model     string `json:"model"`
+	System    string `json:"system"`
 	Prompt    string `json:"prompt"`
 	UseRag   bool   `json:"useRag"`
 }
@@ -101,7 +102,7 @@ if !modelAllowed {
 	// Create your request body
 	body := AnthropicRequestOptions{
 		Model:  reqBody.Model,
-		System: "You are an expert assistant. When provided with a prompt you generate a response to satisfy that prompt.",
+		System: reqBody.System,
 		Messages: []struct {
 			Role    string `json:"role"`
 			Content string `json:"content"`

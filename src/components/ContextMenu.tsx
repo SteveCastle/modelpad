@@ -37,15 +37,24 @@ function applyTemplate(template: string, text: string) {
   return template.replace("<text>", text);
 }
 
+function applyRagTemplate(template: string, text: string) {
+  return template.replace("<docs>", text);
+}
+
 export default function ContextMenu({ hide }: Props) {
   const [editing, setEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<PromptTypeKeys | null>(null); // ["newScene", "rewrite", "summarize"
   const abortController = useStore((state) => state.abortController);
   const {
     model,
+
     modelSettings,
     promptTemplates,
+    systemPromptTemplates,
+    ragPromptTemplates,
     changePromptTemplate,
+    changeSystemPromptTemplate,
+    changeRagPromptTemplate,
     useRag,
   } = useStore((state) => state);
 
@@ -109,18 +118,19 @@ export default function ContextMenu({ hide }: Props) {
         text = root.getTextContent();
       }
 
-      const promptHeader = documents.join("\n").replace(text, "");
+      const ragDocs = documents.join("\n").replace(text, "");
+      const promptHeader = applyRagTemplate(
+        ragPromptTemplates[promptTemplateKey],
+        ragDocs
+      );
       const prompt = applyTemplate(promptTemplates[promptTemplateKey], text);
-      const promptWithHeader =
-        "You may reference these Documents as a repository of information for satisfying the request at the end. If they are not relevent to the request you may ignore them.\n" +
-        promptHeader +
-        "\n" +
-        prompt;
+      const promptWithHeader = promptHeader + "\n" + prompt;
       setGenerationState("loading");
       const newParagraphNode = $createParagraphNode();
       root.append(newParagraphNode);
       provider.generateText(
         promptWithHeader,
+        systemPromptTemplates[promptTemplateKey],
         startCallback,
         tokenCallback,
         completedCallback,
@@ -205,7 +215,25 @@ export default function ContextMenu({ hide }: Props) {
         </div>
         {editing && activeTab ? (
           <div className="editing-area">
+            <span className="label">System Prompt</span>
             <textarea
+              className="custom-scrollbar"
+              value={systemPromptTemplates[activeTab]}
+              onChange={(e) => {
+                changeSystemPromptTemplate(activeTab, e.target.value);
+              }}
+            ></textarea>
+            <span className="label">RAG Prefix</span>
+            <textarea
+              className="custom-scrollbar"
+              value={ragPromptTemplates[activeTab]}
+              onChange={(e) => {
+                changeRagPromptTemplate(activeTab, e.target.value);
+              }}
+            ></textarea>
+            <span className="label">Main Prompt Template</span>
+            <textarea
+              className="custom-scrollbar"
               value={promptTemplates[activeTab]}
               onChange={(e) => {
                 changePromptTemplate(activeTab, e.target.value);
@@ -217,7 +245,6 @@ export default function ContextMenu({ hide }: Props) {
       {editing ? (
         <span>
           <strong> Selected Text:</strong> &lt;text&gt;
-          <strong> System Prompt:</strong> &lt;system&gt;
           <strong> RAG Docs:</strong> &lt;docs&gt;
         </span>
       ) : (

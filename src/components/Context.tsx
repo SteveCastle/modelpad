@@ -80,7 +80,7 @@ export default function Context() {
                 </span>
               </button>
             ))}
-            <h2 className="rag-header">RAG Settings</h2>
+            <h2 className="rag-header">Library</h2>
             <div className="context-list">
               <button
                 className={`context-item`}
@@ -92,7 +92,7 @@ export default function Context() {
               >
                 <div>
                   <span className="context-name">
-                    Use Related Documents in Context
+                    Automatically Use Related Docs
                   </span>
                 </div>
                 <span className="context-edit">

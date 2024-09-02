@@ -2,6 +2,7 @@ import { Config } from ".";
 
 async function generateText(
   prompt: string,
+  systemPrompt: string,
   startCallback: () => void,
   tokenCallback: (text: string) => void,
   completedCallback: (context: number[]) => void,
@@ -16,8 +17,7 @@ async function generateText(
     },
     body: JSON.stringify({
       model: model,
-      system:
-        "You are a helpful assistant. You respond to prompts using markdown to format the text.",
+      system: systemPrompt,
       prompt,
       context,
       useRag,

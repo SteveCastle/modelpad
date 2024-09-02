@@ -23,6 +23,7 @@ export type Config = {
 type Provider = {
   generateText: (
     prompt: string,
+    systemPrompt: string,
     startCallback: () => void,
     tokenCallback: (text: string) => void,
     completedCallback: (context: number[]) => void,

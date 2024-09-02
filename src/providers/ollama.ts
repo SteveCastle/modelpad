@@ -2,6 +2,7 @@ import { Config } from ".";
 
 async function generateText(
   prompt: string,
+  systemPrompt: string,
   startCallback: () => void,
   tokenCallback: (text: string) => void,
   completedCallback: (context: number[]) => void,
