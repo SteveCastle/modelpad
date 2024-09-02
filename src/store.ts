@@ -54,6 +54,7 @@ export type Note = {
   title: string;
   body: string;
   created_at: string;
+  includeInContext?: boolean;
 };
 
 type LoadingStates =
@@ -108,7 +109,7 @@ type State = {
   closeOtherStories: (id: string) => void;
   closeToTheRight: (id: string) => void;
   createStory: (title: string) => void;
-  mergeNotes: (notes: Note[]) => void; // Updates stories if ID exists, otherwise creates a new story
+  mergeNotes: (notes: Note[], updateActiveStory: boolean) => void; // Updates stories if ID exists, otherwise creates a new story
 };
 
 const ollamaSettings: ModelSettings = {
@@ -194,7 +195,7 @@ BEGIN SUMMARY:
           newTitle: title,
         }));
       },
-      mergeNotes: (notes: Note[]) => {
+      mergeNotes: (notes: Note[], updateActiveStory: boolean) => {
         set(() => {
           // Iterate over the existing stories and if the note ID exists, update the story
           const openTabs = get().stories.map((s) => {
@@ -217,10 +218,13 @@ BEGIN SUMMARY:
               content: JSON.parse(n.body),
               open: true,
               synced: true,
+              includeInContext: n.includeInContext || false,
             }));
           return {
             stories: [...openTabs, ...newStories],
-            activeStoryId: notes[0].id,
+            activeStoryId: updateActiveStory
+              ? notes[0].id
+              : get().activeStoryId,
           };
         });
       },

@@ -114,7 +114,7 @@ const NoteItem = ({ note }) => {
     <li
       className="note-item"
       onClick={() => {
-        mergeNotes([note]);
+        mergeNotes([note], true);
       }}
     >
       <div className="note-item-content">
@@ -141,6 +141,16 @@ const NoteItem = ({ note }) => {
             style={floatingStyles}
             {...getFloatingProps()}
           >
+            <button
+              className="note-action"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                mergeNotes([{ ...note, includeInContext: true }], false);
+              }}
+            >
+              Add To Context
+            </button>
             <button
               className="note-action delete"
               onClick={(e) => {
