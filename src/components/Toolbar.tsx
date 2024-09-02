@@ -28,6 +28,7 @@ type MenuOptions = {
 export function Toolbar() {
   const queryClient = useQueryClient();
   const {
+    newTitle,
     cancelGeneration,
     model,
     createStory,
@@ -62,7 +63,7 @@ export function Toolbar() {
           body: JSON.stringify({
             id: activeStoryId,
             body: JSON.stringify(activeStory.content),
-            title: activeStory.title,
+            title: newTitle ? newTitle : activeStory.title,
           }),
         }
       );

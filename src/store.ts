@@ -78,6 +78,8 @@ type State = {
   modelSettings: ModelSettings;
   sideBarOpen: boolean;
   useRag: boolean;
+  newTitle: string;
+  setNewTitle: (title: string) => void;
   setUseRag: (useRag: boolean) => void;
   setSideBarOpen: (open: boolean) => void;
   setServerHost: (host: string) => void;
@@ -186,6 +188,12 @@ BEGIN SUMMARY:
       generationState: "no-connection",
       sideBarOpen: false,
       useRag: false,
+      newTitle: "",
+      setNewTitle: (title: string) => {
+        set(() => ({
+          newTitle: title,
+        }));
+      },
       mergeNotes: (notes: Note[]) => {
         set(() => {
           // Iterate over the existing stories and if the note ID exists, update the story

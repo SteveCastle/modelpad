@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Story } from "../store";
 import { offset, shift } from "@floating-ui/dom";
 import {
@@ -10,6 +10,7 @@ import { XMarkIcon } from "@heroicons/react/24/solid";
 import "./Tab.css";
 import { useStore } from "../store";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
+import useCtrlHotkey from "../hooks/useCtrlHotkey";
 
 type Props = {
   story: Story;
@@ -21,6 +22,7 @@ export function Tab({ story, activeStoryId, setActive }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
+  const titleRef = useRef<HTMLInputElement>(null);
   const { refs, floatingStyles } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
@@ -50,18 +52,35 @@ export function Tab({ story, activeStoryId, setActive }: Props) {
     refs.setReference(virtualReference);
   }, [refs, mousePosition, isOpen]);
 
-  useOnClickOutside(refs.floating, () => {
-    setIsOpen(false);
-  });
-
   const [editingTitle, setEditingTitle] = useState(false);
   const {
+    newTitle,
+    setNewTitle,
     updateTitle,
     closeStory,
     closeAllStories,
     closeOtherStories,
     closeToTheRight,
   } = useStore((state) => state);
+
+  useOnClickOutside(titleRef, () => {
+    if (newTitle.length > 0) {
+      updateTitle(story.id, removeNewLineChars(newTitle) || "");
+      setNewTitle("");
+      setEditingTitle(false);
+    }
+  });
+
+  useOnClickOutside(refs.floating, () => {
+    setIsOpen(false);
+  });
+
+  // useCtrlHotkey(() => {
+  //   if (story.id === activeStoryId) {
+  //     updateTitle(story.id, removeNewLineChars(newTitle) || "");
+  //     setEditingTitle(false);
+  //   }
+  // }, "s");
 
   return (
     <>
@@ -92,34 +111,48 @@ export function Tab({ story, activeStoryId, setActive }: Props) {
           },
         })}
       >
-        <span
-          contentEditable={editingTitle}
-          className={[
-            "editable-title",
-            editingTitle ? "editing" : "",
-            story.synced ? "synced" : "",
-          ].join(" ")}
-          onDoubleClick={() => setEditingTitle(true)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
+        {editingTitle ? (
+          <input
+            ref={titleRef}
+            className={[
+              "editable-title",
+              editingTitle ? "editing" : "",
+              story.synced ? "synced" : "",
+            ].join(" ")}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                updateTitle(story.id, removeNewLineChars(newTitle) || "");
+                setEditingTitle(false);
+                setNewTitle("");
+              }
+            }}
+            onChange={(e) => {
               e.preventDefault();
-              e.currentTarget.blur();
-            }
-          }}
-          onBlur={(e) => {
-            if (e.currentTarget.textContent.length > 0) {
-              updateTitle(
-                story.id,
-                removeNewLineChars(e.currentTarget.textContent) || ""
-              );
-            } else {
-              e.currentTarget.textContent = story.title;
-            }
-            setEditingTitle(false);
-          }}
-        >
-          {removeNewLineChars(story.title)}
-        </span>
+              setNewTitle(e.currentTarget.value);
+            }}
+            onBlur={() => {
+              updateTitle(story.id, removeNewLineChars(newTitle) || "");
+              setEditingTitle(false);
+              setNewTitle("");
+            }}
+            value={newTitle}
+          />
+        ) : (
+          <span
+            className={[
+              "editable-title",
+              editingTitle ? "editing" : "",
+              story.synced ? "synced" : "",
+            ].join(" ")}
+            onDoubleClick={() => {
+              setNewTitle(story.title);
+              setEditingTitle(true);
+            }}
+          >
+            {removeNewLineChars(story.title)}
+          </span>
+        )}
         <button
           className="close"
           onClick={(e) => {

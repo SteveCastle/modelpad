@@ -30,8 +30,11 @@
   outline: none;
   border: none;
   box-shadow: none;
-  font-weight: 600;
+  font-size: small;
   background: none;
+  margin: 0;
+  padding: 0;
+  border: none;
 }
 
 .App .tabs .tab-container .tab .editable-title:not(.synced)::after {
@@ -106,4 +109,21 @@
 
 .tab-actions button:hover {
   color: var(--hovered-button-bg-color);
+}
+
+.App .tabs .tab-container .tab .editable-title.editing:after {
+  content: "|";
+  top: 0;
+  color: #ffffff;
+  animation: blink 0.7s infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
 }
