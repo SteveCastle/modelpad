@@ -18,6 +18,7 @@ async function generateText(
     body: JSON.stringify({
       model: model,
       prompt,
+      system: systemPrompt,
       context,
       options: modelSettings,
     }),
