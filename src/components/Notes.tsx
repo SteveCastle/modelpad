@@ -115,6 +115,10 @@ const NoteItem = ({ note }) => {
       className="note-item"
       onClick={() => {
         mergeNotes([note], true);
+        //If window width is less than 768 pixels also collapse the menu
+        if (window.innerWidth < 768) {
+          setIsOpen(false);
+        }
       }}
     >
       <div className="note-item-content">
