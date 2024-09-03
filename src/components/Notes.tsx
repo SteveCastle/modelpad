@@ -109,7 +109,9 @@ const NoteItem = ({ note }) => {
     setIsOpen(false);
   });
 
-  const { mergeNotes, updateSyncState } = useStore((state) => state);
+  const { mergeNotes, updateSyncState, setSideBarOpen } = useStore(
+    (state) => state
+  );
   return (
     <li
       className="note-item"
@@ -117,7 +119,7 @@ const NoteItem = ({ note }) => {
         mergeNotes([note], true);
         //If window width is less than 768 pixels also collapse the menu
         if (window.innerWidth < 768) {
-          setIsOpen(false);
+          setSideBarOpen(false);
         }
       }}
     >
@@ -151,6 +153,7 @@ const NoteItem = ({ note }) => {
                 e.preventDefault();
                 e.stopPropagation();
                 mergeNotes([{ ...note, includeInContext: true }], false);
+                setIsOpen(false);
               }}
             >
               Add To Context
@@ -162,6 +165,7 @@ const NoteItem = ({ note }) => {
                 e.stopPropagation();
                 updateSyncState(note.id, false);
                 mutate(note.id);
+                setIsOpen(false);
               }}
             >
               Delete
