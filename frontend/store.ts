@@ -150,7 +150,7 @@ const defaultStories: Story[] = [
 
 const defaultAvailableServers: AvailableServers = {
   modelPadServer: {
-    host: import.meta.env.VITE_BACKEND_HOST as string,
+    host: import.meta.env.VITE_BACKEND_HOST || "https://modelpad.app",
     name: "Cloud",
     providerKey: "claude",
   },
