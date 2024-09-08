@@ -158,7 +158,7 @@ export default function ModelSettings({ model }: { model: string }) {
             <label>Temperature</label>
             <RangeSlider
               showLabel
-              max={2}
+              max={providerKey === "claude" ? 1 : 2}
               min={0}
               step={0.01}
               value={modelSettings.temperature}
@@ -230,8 +230,8 @@ export default function ModelSettings({ model }: { model: string }) {
             <label>Generation Length</label>
             <RangeSlider
               showLabel
-              max={2048}
-              min={-1}
+              max={4096}
+              min={providerKey === "claude" ? 16 : -1}
               step={1}
               value={modelSettings.num_predict}
               onChange={(v) =>

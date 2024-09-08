@@ -13,6 +13,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type ModelOptions struct {
+    Mirostat       int       `json:"mirostat,omitempty"`
+    MirostatEta    float64   `json:"mirostat_eta,omitempty"`
+    MirostatTau    float64   `json:"mirostat_tau,omitempty"`
+    NumCtx         int       `json:"num_ctx,omitempty"`
+    NumGqa         int       `json:"num_gqa,omitempty"`
+    NumGpu         int       `json:"num_gpu,omitempty"`
+    NumThread      int       `json:"num_thread,omitempty"`
+    RepeatLastN    int       `json:"repeat_last_n,omitempty"`
+    RepeatPenalty  float64   `json:"repeat_penalty,omitempty"`
+    Temperature    float64   `json:"temperature,omitempty"`
+    Seed           int       `json:"seed,omitempty"`
+    Stop           []string  `json:"stop,omitempty"`
+    TfsZ           float64   `json:"tfs_z,omitempty"`
+    NumPredict     int       `json:"num_predict,omitempty"`
+    TopK           int       `json:"top_k,omitempty"`
+    TopP           float64   `json:"top_p,omitempty"`
+}
+
 type StreamChunk struct {
 	Model string `json:"model"`
 	Response string `json:"response"`
@@ -42,6 +61,7 @@ type AnthropicRequestOptions struct {
         Content string `json:"content"`
     } `json:"messages"`
     MaxTokens int  `json:"max_tokens"`
+	Temperature float64 `json:"temperature"`
     Stream    bool `json:"stream"`
 }
 
@@ -58,6 +78,7 @@ type GenerateRequest struct {
 	Model     string `json:"model"`
 	System    string `json:"system"`
 	Prompt    string `json:"prompt"`
+	Options ModelOptions `json:"options"`
 	UseRag   bool   `json:"useRag"`
 }
 
@@ -109,7 +130,8 @@ if !modelAllowed {
 		}{
 			{Role: "user", Content: reqBody.Prompt},
 		},
-		MaxTokens: 1256,
+		MaxTokens: reqBody.Options.NumPredict,
+		Temperature: reqBody.Options.Temperature,
 		Stream:    true,
 	}
 
