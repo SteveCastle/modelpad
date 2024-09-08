@@ -12,6 +12,7 @@ You will need the following installed to run this app.
 https://go.dev/doc/install
 https://nodejs.org/en/download/package-manager
 https://docs.docker.com/engine/install/
+https://supertokens.com/
 
 ### SuperTokens Auth
 
