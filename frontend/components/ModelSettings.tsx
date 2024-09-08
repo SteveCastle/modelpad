@@ -8,6 +8,7 @@ import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import "./ModelSettings.css";
 import { providers } from "../providers";
 import { modelPrettyNameMap } from "../modelPrettyNameMap";
+import RangeSlider from "./RangeSlider";
 
 export default function ModelSettings({ model }: { model: string }) {
   const {
@@ -85,7 +86,6 @@ export default function ModelSettings({ model }: { model: string }) {
                 </button>
               ))}
           </div>
-
           <div
             className={`setting ${
               providerKey === "claude" ? "hidden" : ""
@@ -122,13 +122,15 @@ export default function ModelSettings({ model }: { model: string }) {
             } number-setting`}
           >
             <label>Mirostat ETA</label>
-            <input
-              type="number"
-              step=".01"
+            <RangeSlider
+              showLabel
+              max={1}
+              min={0}
+              step={0.01}
               value={modelSettings.mirostat_eta}
-              onChange={(e) =>
+              onChange={(v) =>
                 updateModelSettings({
-                  mirostat_eta: parseFloat(e.target.value),
+                  mirostat_eta: v,
                 })
               }
             />
@@ -139,26 +141,30 @@ export default function ModelSettings({ model }: { model: string }) {
             } number-setting`}
           >
             <label>Mirostat TAU</label>
-            <input
-              type="number"
-              step="1"
+            <RangeSlider
+              showLabel
+              max={10}
+              min={0}
+              step={0.1}
               value={modelSettings.mirostat_tau}
-              onChange={(e) =>
+              onChange={(v) =>
                 updateModelSettings({
-                  mirostat_tau: parseFloat(e.target.value),
+                  mirostat_tau: v,
                 })
               }
             />
           </div>
           <div className={`setting  number-setting`}>
             <label>Temperature</label>
-            <input
-              type="number"
-              step=".01"
+            <RangeSlider
+              showLabel
+              max={2}
+              min={0}
+              step={0.01}
               value={modelSettings.temperature}
-              onChange={(e) =>
+              onChange={(v) =>
                 updateModelSettings({
-                  temperature: parseFloat(e.target.value),
+                  temperature: v,
                 })
               }
             />
@@ -169,13 +175,15 @@ export default function ModelSettings({ model }: { model: string }) {
             } number-setting`}
           >
             <label>Top P</label>
-            <input
-              type="number"
-              step=".01"
+            <RangeSlider
+              showLabel
+              max={1}
+              min={0}
+              step={0.01}
               value={modelSettings.top_p}
-              onChange={(e) =>
+              onChange={(v) =>
                 updateModelSettings({
-                  top_p: parseFloat(e.target.value),
+                  top_p: v,
                 })
               }
             />
@@ -186,13 +194,15 @@ export default function ModelSettings({ model }: { model: string }) {
             } number-setting`}
           >
             <label>Top K</label>
-            <input
-              type="number"
-              step=".01"
+            <RangeSlider
+              showLabel
+              max={100}
+              min={0}
+              step={1}
               value={modelSettings.top_k}
-              onChange={(e) =>
+              onChange={(v) =>
                 updateModelSettings({
-                  top_k: parseFloat(e.target.value),
+                  top_k: v,
                 })
               }
             />
@@ -203,34 +213,32 @@ export default function ModelSettings({ model }: { model: string }) {
             } number-setting`}
           >
             <label>Frequency Penalty</label>
-            <input
-              type="number"
-              step=".01"
+            <RangeSlider
+              showLabel
+              max={2}
+              min={0}
+              step={0.01}
               value={modelSettings.repeat_penalty}
-              onChange={(e) =>
+              onChange={(v) =>
                 updateModelSettings({
-                  repeat_penalty: parseFloat(e.target.value),
+                  repeat_penalty: v,
                 })
               }
             />
           </div>
           <div className={`setting  number-setting`}>
             <label>Generation Length</label>
-            <input
-              type="tel"
-              pattern="-?[0-9]+"
-              step="1"
+            <RangeSlider
+              showLabel
+              max={2048}
+              min={-1}
+              step={1}
               value={modelSettings.num_predict}
-              onChange={(e) => {
-                let value = parseInt(e.target.value);
-                // if value is NaN, do nothing
-                if (isNaN(value)) {
-                  value = -1;
-                }
+              onChange={(v) =>
                 updateModelSettings({
-                  num_predict: value,
-                });
-              }}
+                  num_predict: v,
+                })
+              }
             />
           </div>
           <div
