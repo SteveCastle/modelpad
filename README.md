@@ -8,9 +8,10 @@ https://github.com/SteveCastle/modelpad/assets/1828509/f61fe937-88ec-4aa6-a541-7
 
 ## Prerequisites
 
-You will need Go and Node installed to run this app.
+You will need the following installed to run this app.
 https://go.dev/doc/install
 https://nodejs.org/en/download/package-manager
+https://docs.docker.com/engine/install/
 
 ### SuperTokens Auth
 
