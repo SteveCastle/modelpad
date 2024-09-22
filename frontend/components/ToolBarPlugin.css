@@ -12,6 +12,12 @@
   vertical-align: middle;
 }
 
+@media (max-width: 1200px) {
+  .toolbar button.toolbar-item {
+    display: none;
+  }
+}
+
 .toolbar button.toolbar-item:disabled {
   cursor: not-allowed;
 }
