@@ -159,7 +159,9 @@ export default function ContextMenu({ hide }: Props) {
             className={`new-scene-button ${
               activeTab === "newScene" ? "active" : ""
             }`}
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               if (editing) {
                 setActiveTab("newScene");
                 return;
@@ -175,7 +177,9 @@ export default function ContextMenu({ hide }: Props) {
             className={`rewrite-button ${
               activeTab === "rewrite" ? "active" : ""
             }`}
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               if (editing) {
                 setActiveTab("rewrite");
                 return;
@@ -191,7 +195,9 @@ export default function ContextMenu({ hide }: Props) {
             className={`summarize-button ${
               activeTab === "summarize" ? "active" : ""
             }`}
-            onClick={() => {
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
               if (editing) {
                 setActiveTab("summarize");
                 return;
