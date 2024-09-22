@@ -120,11 +120,11 @@ const ollamaSettings: ModelSettings = {
   mirostat: 2, // Mirostat disabled
   mirostat_eta: 0.1, // Learning rate for feedback response
   mirostat_tau: 5.0, // Balance between coherence and diversity
-  temperature: 1.2, // Model temperature for creativity
+  temperature: 1.0, // Model temperature for creativity
   top_p: 0.9, // Top p sampling
   top_k: 40, // Top k sampling
   repeat_penalty: 1.0, // Penalty for repeating
-  num_predict: -1, // Number of predictions to generate
+  num_predict: 4096, // Number of predictions to generate
   stop: ["user:"],
 };
 
