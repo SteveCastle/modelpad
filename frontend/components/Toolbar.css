@@ -93,18 +93,22 @@
 }
 
 .App .menubar .toolbar-right .login {
-  background-color: orange;
+  background-color: rgb(206, 45, 83);
   color: white;
-  padding: 0.1rem 1rem;
+  padding: 0.4rem;
+  margin: 0.4rem 0;
   font-size: 0.8rem;
   border-radius: 2px;
   text-decoration: none;
   cursor: pointer;
-  text-transform: capitalize;
+  text-transform: uppercase;
+  font-size: 0.6rem;
+  font-weight: bold;
+}
 }
 
 .App .menubar .toolbar-right .login:hover {
-  background-color: rgb(255, 165, 0);
+  background-color: rgb(206, 45, 83);
 }
 
 .App .menubar .toolbar-right .logout {
@@ -212,6 +216,10 @@
   .App .menubar {
     background-color: transparent;
     justify-content: flex-end;
+    position: fixed;
+    width: 100%;
+    bottom: 50px;
+    left: 0;
   }
   .App .menubar .toolbar-left {
     display: none;
@@ -225,12 +233,31 @@
   }
 
   .App .menubar .toolbar-right .login {
-    padding: 0.4rem;
+    padding: 0.4rem 0.6rem;
     margin: 0.4rem;
     display: flex !important;
     flex: 1 1 0;
     text-align: center;
     align-items: center;
     justify-content: center;
+  }
+  .App .menubar .toolbar-right .save {
+    padding: 0.4rem;
+    margin: 0.4rem 0;
+    display: flex !important;
+    flex: 1 1 0;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+    height: 32px;
+    width: 32px;
+    border-radius: 50%;
+    border: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .App .menubar .toolbar-right .save {
+    display: none;
   }
 }

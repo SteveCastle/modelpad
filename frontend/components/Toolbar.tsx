@@ -20,6 +20,7 @@ import {
 } from "supertokens-auth-react/recipe/session";
 import useCtrlHotkey from "../hooks/useCtrlHotkey";
 import Context from "./Context";
+import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
 
 type MenuOptions = {
   [key: string]: { label: string; action: () => void }[];
@@ -294,6 +295,16 @@ export function Toolbar() {
               Sign In
             </a>
           )}
+          {session.loading === false && session.userId ? (
+            <button
+              className="save"
+              onClick={() => {
+                saveDocument();
+              }}
+            >
+              <CloudArrowUpIcon />
+            </button>
+          ) : null}
         </div>
       </div>
       <div className={cx("drop-down-menu", activeMenu)} ref={menuRef}>
