@@ -102,9 +102,6 @@
 
 /*Media query to hide the edit button on small screens*/
 @media (max-width: 768px) {
-  .context-menu button.edit-button {
-    display: none;
-  }
   .menu-portal {
     bottom: 42px;
   }

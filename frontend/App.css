@@ -6,26 +6,6 @@
   overflow: hidden;
 }
 
-@media (max-width: 768px) {
-  .App {
-    flex-direction: column-reverse;
-  }
-  .App .app-container .side-bar.open {
-    width: 100%;
-    min-width: 100%;
-    margin-top: 30px;
-  }
-  .App .tab-container {
-    overflow-y: hidden;
-    overflow-x: auto;
-  }
-}
-@media (min-width: 768px) {
-  .App .app-container .side-bar.open {
-    width: 300px;
-  }
-}
-
 .App .tabs {
   display: flex;
   flex-direction: row;
@@ -275,3 +255,26 @@
 .codeHighlight .editor-tokenPunctuation {
   color: #f8f8f2;
 } /* Punctuation */
+
+@media (max-width: 768px) {
+  .App {
+    flex-direction: column-reverse;
+  }
+  .App .app-container .side-bar.open {
+    width: 100%;
+    min-width: 100%;
+    margin-top: 30px;
+  }
+  .App .tab-container {
+    overflow-y: hidden;
+    overflow-x: auto;
+  }
+  .App .app-container .editor-container {
+    height: 95%;
+  }
+}
+@media (min-width: 768px) {
+  .App .app-container .side-bar.open {
+    width: 300px;
+  }
+}
