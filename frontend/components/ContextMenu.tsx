@@ -65,14 +65,10 @@ export default function ContextMenu({ hide }: Props) {
   const { setGenerationState, updateContext } = useStore((state) => state);
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
-  const activeStory = stories.find((s) => s.id === activeStoryId);
-  const activeStoryMarkdown = activeStory?.content
-    ? convertJSONToMarkdown(JSON.stringify(activeStory?.content) || "")
-    : "";
-  const inActiveStoryMarkdowns = stories
+
+  const tabContext = stories
     .filter((story) => story.id !== activeStoryId && story.includeInContext)
     .map((s) => convertJSONToMarkdown(JSON.stringify(s.content)));
-  const documents = inActiveStoryMarkdowns.concat(activeStoryMarkdown);
 
   const provider = providers[providerKey];
 
@@ -112,24 +108,31 @@ export default function ContextMenu({ hide }: Props) {
       const selection = $getSelection();
       const root = $getRoot();
       let text;
-      if (!$isRangeSelection(selection)) {
+      if ($isRangeSelection(selection)) {
         text = selection.getTextContent();
+        if (text.length < 2) {
+          text = root.getTextContent();
+        }
       } else {
         text = root.getTextContent();
       }
-
-      const ragDocs = documents.join("\n").replace(text, "");
-      const promptHeader = applyRagTemplate(
-        ragPromptTemplates[promptTemplateKey],
-        ragDocs
+      const ragText =
+        tabContext.length > 0
+          ? applyRagTemplate(
+              ragPromptTemplates[promptTemplateKey],
+              tabContext
+            ) + "\n"
+          : "";
+      const selectedText = applyTemplate(
+        promptTemplates[promptTemplateKey],
+        text
       );
-      const prompt = applyTemplate(promptTemplates[promptTemplateKey], text);
-      const promptWithHeader = promptHeader + "\n" + prompt;
+      const prompt = ragText + selectedText;
       setGenerationState("loading");
       const newParagraphNode = $createParagraphNode();
       root.append(newParagraphNode);
       provider.generateText(
-        promptWithHeader,
+        prompt,
         systemPromptTemplates[promptTemplateKey],
         startCallback,
         tokenCallback,

@@ -190,11 +190,11 @@ export const useStore = create<State>()(
       },
       ragPromptTemplates: {
         newScene:
-          "Below is a list of documents that you can use to help you write a new scene. You can use these documents to help you generate ideas for your scene.\n<docs>\nEND OF DOCS IF THERE ARE NO DOCS IGNORE THIS",
+          "Below is a list of documents that you can use to help you write a new scene. You can use these documents to help you generate ideas for your scene.\n<docs>\nEND OF DOCS",
         rewrite:
-          "Below is a list of documents that you can use to help you rewrite a scene. You can use these documents to help you generate ideas for your scene.\n<docs>\nEND OF DOCS IF THERE ARE NO DOCS IGNORE THIS",
+          "Below is a list of documents that you can use to help you rewrite a scene. You can use these documents to help you generate ideas for your scene.\n<docs>\nEND OF DOCS",
         summarize:
-          "Below is a list of documents that you can use to help you summarize a scene. You can use these documents to help you generate ideas for your scene.\n<docs>\nEND OF DOCS IF THERE ARE NO DOCS IGNORE THIS",
+          "Below is a list of documents that you can use to help you summarize a scene. You can use these documents to help you generate ideas for your scene.\n<docs>\nEND OF DOCS",
       },
       activeStoryId: initialStories[0].id,
       abortController: new AbortController(),
