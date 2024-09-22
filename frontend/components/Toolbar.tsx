@@ -291,7 +291,7 @@ export function Toolbar() {
             </button>
           ) : (
             <a href="/auth" className="login">
-              Sign In / Sign Up
+              Sign In
             </a>
           )}
         </div>

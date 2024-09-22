@@ -211,6 +211,7 @@
 @media (max-width: 768px) {
   .App .menubar {
     background-color: transparent;
+    justify-content: flex-end;
   }
   .App .menubar .toolbar-left {
     display: none;
@@ -221,7 +222,6 @@
   }
   .App .menubar .toolbar-right {
     justify-content: flex-end;
-    width: 100%;
   }
 
   .App .menubar .toolbar-right .login {

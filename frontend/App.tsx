@@ -245,7 +245,7 @@ function App() {
               maxWidth: viewSettings.readingMode ? "960px" : "",
               margin: viewSettings.readingMode ? "0 auto" : "0 20px",
               padding: viewSettings.readingMode ? "20px" : "0",
-              height: "95%",
+              height: "100%",
               overflow: "hidden",
               fontSize: `${viewSettings.zoom}em`,
             }}
