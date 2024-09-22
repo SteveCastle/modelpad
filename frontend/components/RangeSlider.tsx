@@ -28,7 +28,20 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
     updateValue(e.clientX);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    updateValue(e.touches[0].clientX);
+  };
+
   const handleMouseUp = (e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleTouchEnd = (e: TouchEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -39,6 +52,14 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
     e.stopPropagation();
     if (isDragging) {
       updateValue(e.clientX);
+    }
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isDragging) {
+      updateValue(e.touches[0].clientX);
     }
   };
 
@@ -62,13 +83,19 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
     if (isDragging) {
       window.addEventListener("mousemove", handleMouseMove);
       window.addEventListener("mouseup", handleMouseUp);
+      window.addEventListener("touchmove", handleTouchMove);
+      window.addEventListener("touchend", handleTouchEnd);
     } else {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
     }
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
     };
   }, [isDragging]);
 
@@ -80,6 +107,7 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
         className="range-slider"
         ref={sliderRef}
         onMouseDown={handleMouseDown}
+        onTouchStart={handleTouchStart}
       >
         <div className="range-slider-track">
           <div
