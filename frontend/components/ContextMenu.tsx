@@ -120,7 +120,7 @@ export default function ContextMenu({ hide }: Props) {
         tabContext.length > 0
           ? applyRagTemplate(
               ragPromptTemplates[promptTemplateKey],
-              tabContext
+              tabContext.join("\n")
             ) + "\n"
           : "";
       const selectedText = applyTemplate(
