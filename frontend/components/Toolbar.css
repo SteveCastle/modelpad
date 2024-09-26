@@ -4,6 +4,11 @@
   align-items: center;
   justify-content: space-between;
   background-color: var(--toolbar-bg-color);
+  position: fixed;
+  top: 44px;
+  height: 35px;
+  width: 100%;
+  z-index: 999;
 }
 
 .App .menubar .toolbar-left {
@@ -104,7 +109,6 @@
   text-transform: uppercase;
   font-size: 0.6rem;
   font-weight: bold;
-}
 }
 
 .App .menubar .toolbar-right .login:hover {
@@ -219,7 +223,8 @@
     position: fixed;
     width: 100%;
     bottom: 50px;
-    left: 0;
+    top: auto;
+    right: 20px;
   }
   .App .menubar .toolbar-left {
     display: none;

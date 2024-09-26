@@ -1,6 +1,4 @@
 .App {
-  display: flex;
-  flex-direction: column;
   height: 100%;
   width: 100vw;
   overflow: hidden;
@@ -9,21 +7,24 @@
 .App .tabs {
   display: flex;
   flex-direction: row;
-  align-items: center;
-  align-items: center;
+  align-items: flex-end;
   background-color: var(--tabs-bg-color);
   justify-content: flex-start;
   width: 100%;
+  position: fixed;
+  top: 0;
+  height: 45px;
+  z-index: 999;
 }
 
 .App .tab-container {
   display: flex;
   flex-direction: row;
-  align-items: center;
-  align-items: center;
+  align-items: flex-end;
   background-color: var(--tabs-bg-color);
   justify-content: flex-start;
   flex: 1;
+  height: 100%;
 }
 
 .App .tabs .add {
@@ -38,7 +39,7 @@
   color: var(--text-color);
   cursor: pointer;
   transition: background-color 0.2s ease;
-  height: 22px;
+  height: 35px;
 }
 
 .App .tabs .add .button {
@@ -125,6 +126,7 @@
   width: 100%;
   outline: none;
   caret-color: rgb(195, 133, 1);
+  margin-top: 55px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
@@ -258,8 +260,21 @@
 
 @media (max-width: 768px) {
   .App {
+    display: flex;
     flex-direction: column-reverse;
   }
+  .App .tabs {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    align-items: center;
+    background-color: var(--tabs-bg-color);
+    justify-content: flex-start;
+    width: 100%;
+    height: 45px;
+    position: relative;
+  }
+
   .App .app-container .side-bar.open {
     width: 100%;
     min-width: 100%;
