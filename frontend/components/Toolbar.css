@@ -221,10 +221,11 @@
     background-color: transparent;
     justify-content: flex-end;
     position: fixed;
-    width: 100%;
-    bottom: 50px;
+    width: 90px;
+    bottom: 65px;
     top: auto;
-    right: 20px;
+    right: 0;
+    z-index: 999;
   }
   .App .menubar .toolbar-left {
     display: none;
