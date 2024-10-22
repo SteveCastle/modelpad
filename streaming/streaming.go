@@ -104,7 +104,7 @@ func Stream(c *gin.Context) {
 	}
 
 // Check if the model is allowed if not return an error
-allowedModels := []string{"claude-3-haiku-20240307", "claude-3-5-sonnet-20240620"}
+allowedModels := []string{"claude-3-haiku-20240307", "claude-3-5-sonnet-20241022"}
 modelAllowed := false
 for _, model := range allowedModels {
 	if model == reqBody.Model {
