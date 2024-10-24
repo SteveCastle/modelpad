@@ -12,6 +12,7 @@
   padding: 8px;
   background-color: var(--header-bg-color);
   color: var(--text-color);
+  margin-top: 80px;
 }
 
 .Notes .notes-header .search-input {
