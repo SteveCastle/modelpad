@@ -30,11 +30,11 @@ type Details struct {
 func GetModel(c *gin.Context) {
 	c.JSON(http.StatusOK, LicenseAgreement{
 		License:    "COMMERCIAL",
-		Modelfile:  "claude-3-haiku-20240307",
-		Parameters: "claude-3-haiku-20240307",
-		Template:   "claude-3-haiku-20240307",
+		Modelfile:  "claude-3-5-haiku-20241022",
+		Parameters: "claude-3-5-haiku-20241022",
+		Template:   "claude-3-5-haiku-20241022",
 		Details: Details{
-			ParentModel:       "claude-3-haiku-20240307",
+			ParentModel:       "claude-3-5-haiku-20241022",
 			Format:            "openai",
 			Family:            "claude",
 			Families:          []string{"claude"},
@@ -48,5 +48,5 @@ func GetModel(c *gin.Context) {
 
 func ListModels(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
-		"models": []Model{{Name: "claude-3-haiku-20240307"}, {Name: "claude-3-5-sonnet-20241022" }}})
+		"models": []Model{{Name: "claude-3-5-haiku-20241022"}, {Name: "claude-3-5-sonnet-20241022" }}})
 }

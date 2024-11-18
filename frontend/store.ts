@@ -182,7 +182,7 @@ export const useStore = create<State>()(
       },
       systemPromptTemplates: {
         newScene:
-          "You are a writer creating a new scene. Write a scene that fits the story you are working on. Remember to include the setting, characters, and plot.",
+          "You are a researcher researching a topic and helping me collect information, and understand a topic.",
         rewrite:
           "You are a writer rewriting a scene. Rewrite the scene in a different style or from a different perspective.",
         summarize:

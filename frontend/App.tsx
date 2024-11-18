@@ -19,7 +19,7 @@ import { TRANSFORMERS } from "@lexical/markdown";
 import { useDebouncedCallback } from "use-debounce";
 import { useQuery } from "react-query";
 
-import { ThirdPartyEmailPasswordPreBuiltUI } from "supertokens-auth-react/recipe/thirdpartyemailpassword/prebuiltui";
+import { EmailPasswordPreBuiltUI } from "supertokens-auth-react/recipe/emailpassword/prebuiltui";
 import { canHandleRoute, getRoutingComponent } from "supertokens-auth-react/ui";
 import { FloatingMenuPlugin } from "./components/FloatingMenuPlugin";
 import ContextMenu from "./components/ContextMenu";
@@ -190,9 +190,9 @@ function App() {
     },
   });
 
-  if (canHandleRoute([ThirdPartyEmailPasswordPreBuiltUI])) {
+  if (canHandleRoute([EmailPasswordPreBuiltUI])) {
     // This renders the login UI on the /auth route
-    return getRoutingComponent([ThirdPartyEmailPasswordPreBuiltUI]);
+    return getRoutingComponent([EmailPasswordPreBuiltUI]);
   }
 
   return (

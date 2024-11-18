@@ -15,10 +15,9 @@ import (
 	"github.com/stevecastle/modelpad/streaming"
 	"github.com/stevecastle/modelpad/usersync"
 	"github.com/supertokens/supertokens-golang/recipe/dashboard"
+	"github.com/supertokens/supertokens-golang/recipe/emailpassword"
 	"github.com/supertokens/supertokens-golang/recipe/session"
 	"github.com/supertokens/supertokens-golang/recipe/session/sessmodels"
-	"github.com/supertokens/supertokens-golang/recipe/thirdpartyemailpassword"
-	"github.com/supertokens/supertokens-golang/recipe/thirdpartyemailpassword/tpepmodels"
 	"github.com/supertokens/supertokens-golang/supertokens"
 )
 
@@ -38,7 +37,7 @@ func me(c *gin.Context) {
     sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
 
     userID := sessionContainer.GetUserID()
-    userInfo, err := thirdpartyemailpassword.GetUserById(userID)
+    userInfo, err := emailpassword.GetUserByID(userID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Error getting user info",
@@ -84,7 +83,7 @@ func main() {
             WebsiteBasePath: &websiteBasePath,
         },
         RecipeList: []supertokens.Recipe{
-            thirdpartyemailpassword.Init(&tpepmodels.TypeInput{/*TODO: See next step*/}),
+            emailpassword.Init(nil),
 			dashboard.Init(nil),
             session.Init(nil), // initializes session features
         },

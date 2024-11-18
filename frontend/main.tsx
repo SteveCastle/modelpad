@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "react-query";
 import SuperTokens, { SuperTokensWrapper } from "supertokens-auth-react";
-import ThirdPartyEmailPassword from "supertokens-auth-react/recipe/thirdpartyemailpassword";
+import EmailPassword from "supertokens-auth-react/recipe/emailpassword";
 import Session from "supertokens-auth-react/recipe/session";
 import App from "./App.tsx";
 import "./index.css";
@@ -18,14 +18,7 @@ SuperTokens.init({
     apiBasePath: "/api/auth",
     websiteBasePath: "/auth",
   },
-  recipeList: [
-    ThirdPartyEmailPassword.init({
-      signInAndUpFeature: {
-        providers: [],
-      },
-    }),
-    Session.init(),
-  ],
+  recipeList: [EmailPassword.init(), Session.init()],
 });
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
