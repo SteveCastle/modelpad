@@ -496,7 +496,7 @@ export const useStore = create<State>()(
         availableServers: state.availableServers,
         sideBarOpen: state.sideBarOpen,
         promptTemplates: state.promptTemplates,
-        systemPromptTempltaes: state.systemPromptTemplates,
+        systemPromptTemplates: state.systemPromptTemplates,
         ragPromptTemplates: state.ragPromptTemplates,
       }),
     }
