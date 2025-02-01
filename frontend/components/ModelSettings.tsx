@@ -227,6 +227,21 @@ export default function ModelSettings({ model }: { model: string }) {
             />
           </div>
           <div className={`setting  number-setting`}>
+            <label>Context Length</label>
+            <RangeSlider
+              showLabel
+              max={131072}
+              min={providerKey === "claude" ? 16 : 2048}
+              step={1}
+              value={modelSettings.num_ctx}
+              onChange={(v) =>
+                updateModelSettings({
+                  num_ctx: v,
+                })
+              }
+            />
+          </div>
+          <div className={`setting  number-setting`}>
             <label>Generation Length</label>
             <RangeSlider
               showLabel
