@@ -226,7 +226,11 @@ export default function ModelSettings({ model }: { model: string }) {
               }
             />
           </div>
-          <div className={`setting  number-setting`}>
+          <div
+            className={`setting ${
+              providerKey === "claude" ? "hidden" : ""
+            } number-setting`}
+          >
             <label>Context Length</label>
             <RangeSlider
               showLabel
