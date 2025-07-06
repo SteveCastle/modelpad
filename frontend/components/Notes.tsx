@@ -9,6 +9,8 @@ import {
   EyeSlashIcon,
   ClipboardIcon,
   CheckIcon,
+  PlusCircleIcon,
+  TrashIcon,
 } from "@heroicons/react/24/solid";
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
@@ -214,6 +216,7 @@ const NoteItem = ({ note }) => {
                 setIsOpen(false);
               }}
             >
+              <PlusCircleIcon className="action-icon" />
               Add To Context
             </button>
             <button
@@ -222,7 +225,7 @@ const NoteItem = ({ note }) => {
                 e.preventDefault();
                 e.stopPropagation();
                 handleShareToggle();
-                setIsOpen(false);
+                // Don't close the popover after sharing so user can copy/navigate
               }}
             >
               {note.is_shared ? (
@@ -283,6 +286,7 @@ const NoteItem = ({ note }) => {
                 setIsOpen(false);
               }}
             >
+              <TrashIcon className="action-icon" />
               Delete
             </button>
           </div>
