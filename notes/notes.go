@@ -126,13 +126,14 @@ func UpsertNote(c *gin.Context) {
 	// Append a new line to the start of the markdown with the Note title
 	markdown = "# " + note.Title + "\n" + markdown
 
-	var newVector pgvector.Vector
+	var newVector *pgvector.Vector
 	embedding, err := embeddings.CreateEmbedding(markdown)
 	if err != nil {
-		// If embedding creation fails, use an empty vector
-		newVector = pgvector.NewVector([]float32{})
+		// If embedding creation fails, use NULL
+		newVector = nil
 	} else {
-		newVector = pgvector.NewVector(embedding.Embedding)
+		vector := pgvector.NewVector(embedding.Embedding)
+		newVector = &vector
 	}
 	db := c.MustGet("db").(*pgxpool.Pool)
 
