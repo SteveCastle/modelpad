@@ -2,7 +2,15 @@ import { useQuery, useMutation, useQueryClient } from "react-query";
 import { Note, useStore } from "../store";
 import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
-import { EllipsisVerticalIcon, XMarkIcon } from "@heroicons/react/24/solid";
+import {
+  EllipsisVerticalIcon,
+  XMarkIcon,
+  ShareIcon,
+  EyeSlashIcon,
+  ClipboardIcon,
+  CheckIcon,
+} from "@heroicons/react/24/solid";
+import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
 
 import "./Notes.css";
@@ -33,6 +41,25 @@ async function deleteStory(id: string) {
       method: "DELETE",
     }
   );
+}
+
+async function shareNote(id: string, isShared: boolean) {
+  const response = await fetch(
+    `${
+      import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
+    }/api/notes/${id}/share`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ is_shared: isShared }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error("Failed to update share status");
+  }
+  return response.json();
 }
 
 const Notes = () => {
@@ -89,6 +116,7 @@ const Notes = () => {
 
 const NoteItem = ({ note }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
 
   const { mutate } = useMutation(deleteStory, {
@@ -96,6 +124,36 @@ const NoteItem = ({ note }) => {
       queryClient.invalidateQueries("stories");
     },
   });
+
+  const { mutate: shareNoteMutation } = useMutation(
+    ({ id, isShared }: { id: string; isShared: boolean }) =>
+      shareNote(id, isShared),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("stories");
+      },
+    }
+  );
+
+  const shareUrl = `${window.location.origin}/doc/${note.id}`;
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy URL:", error);
+    }
+  };
+
+  const handleShareToggle = () => {
+    shareNoteMutation({ id: note.id, isShared: !note.is_shared });
+  };
+
+  const openSharedUrl = () => {
+    window.open(shareUrl, "_blank");
+  };
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
@@ -158,6 +216,63 @@ const NoteItem = ({ note }) => {
             >
               Add To Context
             </button>
+            <button
+              className="note-action"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleShareToggle();
+                setIsOpen(false);
+              }}
+            >
+              {note.is_shared ? (
+                <>
+                  <EyeSlashIcon className="action-icon" />
+                  Unshare
+                </>
+              ) : (
+                <>
+                  <ShareIcon className="action-icon" />
+                  Share
+                </>
+              )}
+            </button>
+            {note.is_shared && (
+              <>
+                <button
+                  className="note-action share-control"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCopyUrl();
+                  }}
+                >
+                  {copied ? (
+                    <>
+                      <CheckIcon className="action-icon" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <ClipboardIcon className="action-icon" />
+                      Copy Link
+                    </>
+                  )}
+                </button>
+                <button
+                  className="note-action share-control"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openSharedUrl();
+                    setIsOpen(false);
+                  }}
+                >
+                  <ArrowTopRightOnSquareIcon className="action-icon" />
+                  Open Link
+                </button>
+              </>
+            )}
             <button
               className="note-action delete"
               onClick={(e) => {

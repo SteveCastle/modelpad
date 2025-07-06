@@ -55,6 +55,7 @@ export type Note = {
   body: string;
   created_at: string;
   includeInContext?: boolean;
+  is_shared?: boolean;
 };
 
 type LoadingStates =

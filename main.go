@@ -283,6 +283,60 @@ func ViewDocument(c *gin.Context) {
 	}
 }
 
+// ShareNote toggles the is_shared status of a note
+func ShareNote(c *gin.Context) {
+	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
+	userID := sessionContainer.GetUserID()
+	noteID := c.Param("id")
+
+	// Parse the note ID
+	noteUUID, err := uuid.FromString(noteID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid document ID",
+		})
+		return
+	}
+
+	// Get the request body to see what sharing status to set
+	var requestBody struct {
+		IsShared bool `json:"is_shared"`
+	}
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request body",
+		})
+		return
+	}
+
+	// Update the note's sharing status - only if it belongs to the user
+	db := c.MustGet("db").(*pgxpool.Pool)
+	result, err := db.Exec(context.Background(),
+		"UPDATE notes SET is_shared = $1, updated_at = now() WHERE id = $2 AND user_id = $3",
+		requestBody.IsShared, noteUUID, userID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to update note sharing status",
+		})
+		return
+	}
+
+	// Check if any rows were affected (i.e., note exists and belongs to user)
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Note not found or you don't have permission to share it",
+		})
+		return
+	}
+
+	// Return success response
+	c.JSON(http.StatusOK, gin.H{
+		"message":   "Note sharing status updated successfully",
+		"is_shared": requestBody.IsShared,
+	})
+}
+
 func main() {
 	godotenv.Load()
 
@@ -357,6 +411,7 @@ func main() {
 	r.PUT("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.UpsertNote)
 	r.DELETE("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.DeleteNote)
 	r.GET("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.GetNote)
+	r.PATCH("/api/notes/:id/share", verifySession(&sessmodels.VerifySessionOptions{}), ShareNote)
 
 	// Document viewing endpoint (public, no authentication required)
 	r.GET("/doc/:id", ViewDocument)

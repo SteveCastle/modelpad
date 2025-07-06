@@ -45,6 +45,7 @@ type Note struct {
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
 	Distance  float64         `json:"distance"`
+	IsShared  bool            `json:"is_shared"`
 }
 
 func RagSearch(text string, userID string, distance float64, c *gin.Context) []Note {
@@ -62,9 +63,9 @@ func RagSearch(text string, userID string, distance float64, c *gin.Context) []N
 	var rows pgx.Rows
 	var err error
 	if text != "" {
-		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, embedding <-> $2 as distance FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3 ORDER BY embedding <-> $2", userID, vector, distance)
+		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, embedding <-> $2 as distance, COALESCE(is_shared, false) as is_shared FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3 ORDER BY embedding <-> $2", userID, vector, distance)
 	} else {
-		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, 0 as distance FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
+		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, 0 as distance, COALESCE(is_shared, false) as is_shared FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
 	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -73,7 +74,7 @@ func RagSearch(text string, userID string, distance float64, c *gin.Context) []N
 
 	for rows.Next() {
 		var note Note
-		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.CreatedAt, &note.UpdatedAt, &note.Distance)
+		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return nil
@@ -100,7 +101,7 @@ func GetNote(c *gin.Context) {
 	note := Note{}
 
 	db := c.MustGet("db").(*pgxpool.Pool)
-	err := db.QueryRow(context.Background(), "SELECT * FROM notes WHERE id = $1 AND user_id = $2", noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.CreatedAt, &note.UpdatedAt)
+	err := db.QueryRow(context.Background(), "SELECT id, title, body, user_id, created_at, updated_at, COALESCE(is_shared, false) as is_shared FROM notes WHERE id = $1 AND user_id = $2", noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.CreatedAt, &note.UpdatedAt, &note.IsShared)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
