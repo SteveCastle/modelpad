@@ -36,16 +36,15 @@ import (
 //     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 // );
 
-
 type Note struct {
-	ID    uuid.UUID `json:"id"`
-	Title string `json:"title"`
-	Body string `json:"body"`
+	ID        uuid.UUID       `json:"id"`
+	Title     string          `json:"title"`
+	Body      string          `json:"body"`
 	Embedding pgvector.Vector `json:"embedding"`
-	UserId uuid.UUID `json:"user_id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Distance float64 `json:"distance"`
+	UserId    uuid.UUID       `json:"user_id"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+	Distance  float64         `json:"distance"`
 }
 
 func RagSearch(text string, userID string, distance float64, c *gin.Context) []Note {
@@ -65,7 +64,7 @@ func RagSearch(text string, userID string, distance float64, c *gin.Context) []N
 	if text != "" {
 		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, embedding <-> $2 as distance FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3 ORDER BY embedding <-> $2", userID, vector, distance)
 	} else {
-	rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, 0 as distance FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
+		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, 0 as distance FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
 	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -74,7 +73,7 @@ func RagSearch(text string, userID string, distance float64, c *gin.Context) []N
 
 	for rows.Next() {
 		var note Note
-		err := rows.Scan(&note.ID, &note.Title,&note.Body, &note.CreatedAt, &note.UpdatedAt, &note.Distance)
+		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.CreatedAt, &note.UpdatedAt, &note.Distance)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return nil
@@ -84,13 +83,12 @@ func RagSearch(text string, userID string, distance float64, c *gin.Context) []N
 	return notes
 }
 
-
 func ListNotes(c *gin.Context) {
 	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-    userID := sessionContainer.GetUserID()
+	userID := sessionContainer.GetUserID()
 	searchParam := c.Query("search")
-	distance:= .8
-	notes := RagSearch(searchParam,userID, distance, c )
+	distance := .8
+	notes := RagSearch(searchParam, userID, distance, c)
 
 	c.JSON(200, gin.H{"notes": notes})
 }
@@ -120,19 +118,22 @@ func UpsertNote(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	markdown, err:= markdown.ConvertJSONToMarkdown(note.Body)
+	markdown, err := markdown.ConvertJSONToMarkdown(note.Body)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	// Append a new line to the start of the markdown with the Note title
 	markdown = "# " + note.Title + "\n" + markdown
+
+	var newVector pgvector.Vector
 	embedding, err := embeddings.CreateEmbedding(markdown)
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return
+		// If embedding creation fails, use an empty vector
+		newVector = pgvector.NewVector([]float32{})
+	} else {
+		newVector = pgvector.NewVector(embedding.Embedding)
 	}
-	newVector := pgvector.NewVector(embedding.Embedding)
 	db := c.MustGet("db").(*pgxpool.Pool)
 
 	tx, err := db.Begin(context.Background())
@@ -170,7 +171,7 @@ func DeleteNote(c *gin.Context) {
 
 	db := c.MustGet("db").(*pgxpool.Pool)
 
-	 //In a transaction delete any revisions and then the note
+	//In a transaction delete any revisions and then the note
 	tx, err := db.Begin(context.Background())
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
