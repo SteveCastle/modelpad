@@ -153,13 +153,19 @@ export function StoryEditor({
     <LexicalComposer initialConfig={editorConfig}>
       {isActive && <Toolbar />}
       <div
+        className="story-editor-container"
         style={{
           display: isActive ? "block" : "none",
           width: "100%",
-          height: "calc(100vh - 79px)", // Full height minus toolbar space (44px top + 35px height)
+          height: window.innerWidth >= 768 ? "calc(100vh - 55px)" : "100vh", // Full height minus toolbar space on desktop only
           boxSizing: "border-box",
           maxWidth: viewSettings.readingMode ? "960px" : "",
-          margin: viewSettings.readingMode ? "79px auto 0" : "79px 0 0", // Push content below the fixed toolbar
+          margin:
+            window.innerWidth >= 768
+              ? viewSettings.readingMode
+                ? "55px auto 0"
+                : "55px 0 0"
+              : "0", // Push content below the fixed toolbar on desktop only
           padding: viewSettings.readingMode ? "20px" : "0 20px", // Use padding for horizontal spacing in non-reading mode
           overflow: "auto", // Allow scrolling when content exceeds container
           fontSize: `${viewSettings.zoom}em`,

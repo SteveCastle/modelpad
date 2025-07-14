@@ -7,15 +7,20 @@
   position: fixed;
   top: 44px;
   height: 35px;
-  width: 100%;
   z-index: 999;
+  left: 0;
+  right: 0;
+  box-sizing: border-box;
+  transition: left 0.3s ease;
 }
 
 .App .menubar .toolbar-left {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  flex: 10 1 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .App .menubar .toolbar-left .style-tools {
@@ -23,7 +28,9 @@
   flex-direction: row;
   align-items: stretch;
   margin-left: 20px;
-  flex: 10 1 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .App .menubar .toolbar-right {
@@ -32,6 +39,8 @@
   align-items: center;
   justify-content: flex-end;
   margin-right: 20px;
+  flex-shrink: 0;
+  gap: 8px;
 }
 
 .App .menubar .toolbar-right .model {
@@ -263,7 +272,18 @@
   }
 }
 
+/* Desktop adjustments for sidebar state */
 @media (min-width: 768px) {
+  .App .side-bar.open ~ .main-content .menubar {
+    left: 300px;
+    width: calc(100% - 300px);
+  }
+
+  .App .side-bar.closed ~ .main-content .menubar {
+    left: 20px;
+    width: calc(100% - 20px);
+  }
+
   .App .menubar .toolbar-right .save {
     display: none;
   }
