@@ -141,7 +141,7 @@
   border-radius: 5px;
   padding: 8px;
   width: 200px;
-  z-index: 999;
+  z-index: 9998;
 }
 
 .note-actions .note-action {
