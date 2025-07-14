@@ -26,6 +26,10 @@
   --hovered-grid-button-bg-color: rgb(218, 218, 218);
   --active-grid-button-bg-color: #524a5d;
   --hovered-toolbar-bg-color: rgb(158, 153, 153);
+  --side-bar-bg-color: rgb(24, 24, 24);
+  --editor-bg-color: #1e1e1e;
+  --header-bg-color: rgb(28, 28, 28);
+  --input-bg-color: rgb(38, 38, 38);
   --text-color: #fff;
   --low-contrast-text-color: #999;
   --link-color: #d2678a;

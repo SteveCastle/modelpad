@@ -62,46 +62,48 @@ function App() {
 
   return (
     <div className="App">
-      <div className="tabs">
-        <div className="tab-container">
-          {stories.map((story: Story) => (
-            <Tab
-              key={story.id}
-              story={story}
-              activeStoryId={activeStoryId}
-              setActive={setActive}
-            />
-          ))}
-        </div>
-        <div className="add">
-          <button className="button" onClick={() => createStory("Untitled")}>
-            <PlusIcon />
-          </button>
-        </div>
-      </div>
-      <div className="app-container">
-        {session.loading === false && session.userId ? (
+      {session.loading === false && session.userId ? (
+        <div
+          className={["side-bar", sideBarOpen ? "open" : "closed"].join(" ")}
+        >
+          {sideBarOpen ? <Notes /> : null}
           <div
-            className={["side-bar", sideBarOpen ? "open" : "closed"].join(" ")}
-          >
-            {sideBarOpen ? <Notes /> : null}
-            <div
-              className="toggle-handle"
-              onClick={() => {
-                setSideBarOpen(!sideBarOpen);
-              }}
-            ></div>
+            className="toggle-handle"
+            onClick={() => {
+              setSideBarOpen(!sideBarOpen);
+            }}
+          ></div>
+        </div>
+      ) : null}
+      <div className="main-content">
+        <div className="tabs">
+          <div className="tab-container">
+            {stories.map((story: Story) => (
+              <Tab
+                key={story.id}
+                story={story}
+                activeStoryId={activeStoryId}
+                setActive={setActive}
+              />
+            ))}
           </div>
-        ) : null}
-        <div className="editor-container">
-          {stories.map((story: Story) => (
-            <StoryEditor
-              key={story.id}
-              story={story}
-              isActive={story.id === activeStoryId}
-              viewSettings={viewSettings}
-            />
-          ))}
+          <div className="add">
+            <button className="button" onClick={() => createStory("Untitled")}>
+              <PlusIcon />
+            </button>
+          </div>
+        </div>
+        <div className="app-container">
+          <div className="editor-container">
+            {stories.map((story: Story) => (
+              <StoryEditor
+                key={story.id}
+                story={story}
+                isActive={story.id === activeStoryId}
+                viewSettings={viewSettings}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

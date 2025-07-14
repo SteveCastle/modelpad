@@ -2,22 +2,79 @@
   height: 100%;
   width: 100vw;
   overflow: hidden;
+  display: flex;
+  flex-direction: row;
 }
 
-.App .tabs {
+.App .side-bar {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--side-bar-bg-color);
+  flex-shrink: 0;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.App .side-bar.closed {
+  width: 20px;
+}
+
+.App .side-bar.open {
+  width: 300px;
+}
+
+.App .side-bar .toggle-handle {
+  position: absolute;
+  right: 0;
+  width: 20px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  background-color: #161616;
+  transition: background-color 0.2s ease;
+}
+
+.App .side-bar .toggle-handle::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 15px);
+  left: calc(50% - 2px);
+  width: 4px;
+  border-radius: 2px;
+  height: 30px;
+  background-color: gray;
+  opacity: 0.3;
+}
+
+.App .side-bar .toggle-handle:hover {
+  background-color: #322f2f;
+  cursor: pointer;
+}
+
+.App .side-bar .toggle-handle:hover::after {
+  opacity: 0.6;
+}
+
+.App .main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.App .main-content .tabs {
   display: flex;
   flex-direction: row;
   align-items: flex-end;
   background-color: var(--tabs-bg-color);
   justify-content: flex-start;
   width: 100%;
-  position: fixed;
-  top: 0;
   height: 45px;
   z-index: 999;
+  flex-shrink: 0;
 }
 
-.App .tab-container {
+.App .main-content .tabs .tab-container {
   display: flex;
   flex-direction: row;
   align-items: flex-end;
@@ -27,7 +84,7 @@
   height: 100%;
 }
 
-.App .tabs .add {
+.App .main-content .tabs .add {
   font-size: 0.8rem;
   display: flex;
   flex-direction: row;
@@ -42,7 +99,7 @@
   height: 35px;
 }
 
-.App .tabs .add .button {
+.App .main-content .tabs .add .button {
   border: none;
   background-color: transparent;
   display: flex;
@@ -54,66 +111,26 @@
   padding: 3px 1rem;
 }
 
-.App .tabs .add .button svg {
+.App .main-content .tabs .add .button svg {
   fill: var(--text-color);
   width: 12px;
   height: 12px;
   cursor: pointer;
 }
 
-.App .tabs .add:hover {
+.App .main-content .tabs .add:hover {
   background-color: var(--hovered-tab-bg-color);
 }
 
-.App .app-container {
-  display: flex;
-  height: 100%;
-}
-
-.App .app-container .side-bar {
-  position: relative;
+.App .main-content .app-container {
   display: flex;
   flex-direction: column;
-  background-color: var(--side-bar-bg-color);
-}
-
-.App .app-container .side-bar.closed {
-  width: 20px;
-}
-
-.App .app-container .side-bar .toggle-handle {
-  position: absolute;
-  right: 0;
-  width: 20px;
   height: 100%;
-  display: flex;
-  align-items: center;
-  background-color: #161616;
-  transition: background-color 0.2s ease;
+  flex: 1;
+  overflow: hidden;
 }
 
-.App .app-container .side-bar .toggle-handle::after {
-  content: "";
-  position: absolute;
-  top: calc(50% - 15px);
-  left: calc(50% - 2px);
-  width: 4px;
-  border-radius: 2px;
-  height: 30px;
-  background-color: gray;
-  opacity: 0.3;
-}
-
-.App .app-container .side-bar .toggle-handle:hover {
-  background-color: #322f2f;
-  cursor: pointer;
-}
-
-.App .app-container .side-bar .toggle-handle:hover::after {
-  opacity: 0.6;
-}
-
-.App .app-container .editor-container {
+.App .main-content .app-container .editor-container {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -127,7 +144,6 @@
   width: 100%;
   outline: none;
   caret-color: rgb(195, 133, 1);
-  margin-top: 55px;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: none;
@@ -261,36 +277,79 @@
 
 @media (max-width: 768px) {
   .App {
-    display: flex;
     flex-direction: column-reverse;
   }
-  .App .tabs {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    align-items: center;
-    background-color: var(--tabs-bg-color);
-    justify-content: flex-start;
-    width: 100%;
-    height: 45px;
+
+  .App .main-content {
     position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    margin-left: 20px;
+    transition: margin-left 0.3s ease;
   }
 
-  .App .app-container .side-bar.open {
-    width: 100%;
-    min-width: 100%;
-    margin-top: 30px;
+  .App .main-content .tabs {
+    order: 2;
+    position: relative;
+    z-index: 999;
   }
-  .App .tab-container {
+
+  .App .main-content .app-container {
+    order: 1;
+    flex: 1;
+  }
+
+  .App .main-content .tabs .tab-container {
     overflow-y: hidden;
     overflow-x: auto;
   }
-  .App .app-container .editor-container {
+
+  .App .side-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
     height: 100%;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+  }
+
+  .App .side-bar.open {
+    width: 100%;
+    min-width: 100%;
+    transform: translateX(0);
+  }
+
+  .App .side-bar.open ~ .main-content {
+    margin-left: 0;
+  }
+
+  .App .side-bar.closed {
+    width: 20px;
+    transform: translateX(0);
+  }
+
+  .App .side-bar.closed .toggle-handle {
+    display: flex;
+    background-color: rgba(22, 22, 22, 0.9);
+    border-radius: 0 8px 8px 0;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .App .side-bar.closed .toggle-handle::after {
+    opacity: 0.8;
+  }
+
+  .App .side-bar.closed .toggle-handle:hover::after {
+    opacity: 1;
   }
 }
 @media (min-width: 768px) {
-  .App .app-container .side-bar.open {
+  .App .side-bar.open {
     width: 300px;
+  }
+
+  .App .side-bar.closed {
+    width: 20px;
   }
 }
