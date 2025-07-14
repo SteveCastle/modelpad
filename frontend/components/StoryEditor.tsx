@@ -156,19 +156,33 @@ export function StoryEditor({
         style={{
           display: isActive ? "block" : "none",
           width: "100%",
+          height: "calc(100vh - 79px)", // Full height minus toolbar space (44px top + 35px height)
           boxSizing: "border-box",
           maxWidth: viewSettings.readingMode ? "960px" : "",
-          margin: viewSettings.readingMode ? "0 auto" : "0 20px",
-          padding: viewSettings.readingMode ? "20px" : "0",
-          overflow: "hidden",
+          margin: viewSettings.readingMode ? "79px auto 0" : "79px 0 0", // Push content below the fixed toolbar
+          padding: viewSettings.readingMode ? "20px" : "0 20px", // Use padding for horizontal spacing in non-reading mode
+          overflow: "auto", // Allow scrolling when content exceeds container
           fontSize: `${viewSettings.zoom}em`,
         }}
       >
-        <RichTextPlugin
-          contentEditable={<ContentEditable className="editor-input" />}
-          placeholder={null}
-          ErrorBoundary={LexicalErrorBoundary}
-        />
+        <div style={{ height: "100%", position: "relative" }}>
+          <RichTextPlugin
+            contentEditable={
+              <ContentEditable
+                className="editor-input"
+                style={{
+                  minHeight: "100%",
+                  height: "100%",
+                  outline: "none",
+                  padding: "0",
+                  margin: "0",
+                }}
+              />
+            }
+            placeholder={null}
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+        </div>
         <FloatingMenuPlugin MenuComponent={ContextMenu} />
         <HistoryPlugin />
         <OnChangePlugin
