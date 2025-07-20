@@ -11,6 +11,8 @@ import { ListItemNode, ListNode } from "@lexical/list";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
+import { AIGenerationNode } from "./AIGenerationNode";
+import "./AIGenerationNode.css";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "./LexicalMarkdownShortcutPlugin";
@@ -324,6 +326,7 @@ export function StoryEditor({
         TableRowNode,
         AutoLinkNode,
         LinkNode,
+        AIGenerationNode,
       ],
       editorState: initialContent,
     }),
@@ -406,7 +409,7 @@ export function StoryEditor({
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>
-        <FloatingMenuPlugin MenuComponent={ContextMenu} />
+        {isActive && <FloatingMenuPlugin MenuComponent={ContextMenu} />}
         <BlockHoverPlugin />
         <HistoryPlugin />
         <OnChangePlugin

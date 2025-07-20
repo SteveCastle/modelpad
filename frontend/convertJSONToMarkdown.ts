@@ -16,6 +16,7 @@ export function convertJSONToMarkdown(jsonInput: string): string {
   let root: Root;
   try {
     root = JSON.parse(jsonInput);
+    root.root;
   } catch (error) {
     return "";
   }

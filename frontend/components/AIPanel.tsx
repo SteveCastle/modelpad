@@ -1,13 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "react-query";
-import { useStore } from "../store";
+import { useStore, PromptTypeKeys } from "../store";
 import { providers } from "../providers";
 import { modelPrettyNameMap } from "../modelPrettyNameMap";
 import RangeSlider from "./RangeSlider";
-import { CheckCircleIcon, XCircleIcon } from "@heroicons/react/24/solid";
-import "./RightPanel.css";
+import {
+  CheckCircleIcon,
+  XCircleIcon,
+  PaperAirplaneIcon,
+} from "@heroicons/react/24/solid";
+import "./AIPanel.css";
 
 type TabType = "model-settings" | "context-control" | "agent";
+type PromptEditTab = PromptTypeKeys | null;
 
 interface Message {
   id: string;
@@ -16,8 +21,16 @@ interface Message {
   timestamp: Date;
 }
 
-export default function RightPanel() {
-  const [activeTab, setActiveTab] = useState<TabType>("model-settings");
+interface AIPanelProps {
+  defaultTab?: TabType;
+}
+
+export default function AIPanel({
+  defaultTab = "model-settings",
+}: AIPanelProps) {
+  const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+  const [activePromptTab, setActivePromptTab] =
+    useState<PromptEditTab>("newScene");
   const [chatInput, setChatInput] = useState("");
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -43,6 +56,11 @@ export default function RightPanel() {
     },
   ]);
 
+  // Update active tab when defaultTab prop changes
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
+
   // Model Settings state and logic
   const {
     model,
@@ -65,9 +83,18 @@ export default function RightPanel() {
   });
 
   // Context Control state and logic
-  const { stories, setIncludeInContext, useRag, setUseRag } = useStore(
-    (state) => state
-  );
+  const {
+    stories,
+    setIncludeInContext,
+    useRag,
+    setUseRag,
+    promptTemplates,
+    systemPromptTemplates,
+    ragPromptTemplates,
+    changePromptTemplate,
+    changeSystemPromptTemplate,
+    changeRagPromptTemplate,
+  } = useStore((state) => state);
 
   const sortedStories = [...stories].sort((a, b) => {
     if (a.id === activeStoryId) return -1;
@@ -354,6 +381,79 @@ export default function RightPanel() {
           </button>
         </div>
       </div>
+
+      <h2>Prompt Templates</h2>
+      <div className="prompt-template-section">
+        <div className="prompt-tab-buttons">
+          <button
+            className={`prompt-tab-button ${
+              activePromptTab === "newScene" ? "active" : ""
+            }`}
+            onClick={() => setActivePromptTab("newScene")}
+          >
+            New Scene
+          </button>
+          <button
+            className={`prompt-tab-button ${
+              activePromptTab === "rewrite" ? "active" : ""
+            }`}
+            onClick={() => setActivePromptTab("rewrite")}
+          >
+            Rewrite
+          </button>
+          <button
+            className={`prompt-tab-button ${
+              activePromptTab === "summarize" ? "active" : ""
+            }`}
+            onClick={() => setActivePromptTab("summarize")}
+          >
+            Summarize
+          </button>
+        </div>
+
+        {activePromptTab && (
+          <div className="prompt-editing-area">
+            <div className="prompt-field">
+              <label className="prompt-label">System Prompt</label>
+              <textarea
+                className="prompt-textarea custom-scrollbar"
+                value={systemPromptTemplates[activePromptTab]}
+                onChange={(e) => {
+                  changeSystemPromptTemplate(activePromptTab, e.target.value);
+                }}
+                rows={4}
+              />
+            </div>
+            <div className="prompt-field">
+              <label className="prompt-label">RAG Prefix</label>
+              <textarea
+                className="prompt-textarea custom-scrollbar"
+                value={ragPromptTemplates[activePromptTab]}
+                onChange={(e) => {
+                  changeRagPromptTemplate(activePromptTab, e.target.value);
+                }}
+                rows={3}
+              />
+            </div>
+            <div className="prompt-field">
+              <label className="prompt-label">Main Prompt Template</label>
+              <textarea
+                className="prompt-textarea custom-scrollbar"
+                value={promptTemplates[activePromptTab]}
+                onChange={(e) => {
+                  changePromptTemplate(activePromptTab, e.target.value);
+                }}
+                rows={4}
+              />
+            </div>
+            <div className="prompt-info">
+              <strong>Selected Text:</strong> &lt;text&gt;
+              <br />
+              <strong>RAG Docs:</strong> &lt;docs&gt;
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 
@@ -401,7 +501,7 @@ export default function RightPanel() {
             disabled={!chatInput.trim()}
             className="send-button"
           >
-            Send
+            <PaperAirplaneIcon className="send-icon" />
           </button>
         </div>
       </div>
@@ -409,7 +509,7 @@ export default function RightPanel() {
   );
 
   return (
-    <div className="right-panel-component">
+    <div className="ai-tab-component">
       <div className="tab-navigation">
         <button
           className={`tab-button ${

@@ -16,7 +16,7 @@ import { providers } from "./providers";
 import "./App.css";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
 import Notes from "./components/Notes";
-import RightPanel from "./components/RightPanel";
+import AIPanel from "./components/AIPanel";
 
 type Model = {
   name: string;
@@ -64,6 +64,9 @@ function App() {
   const rightPanelRef = useRef<ImperativePanelHandle>(null);
   const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [activeAITab, setActiveAITab] = useState<
+    "model-settings" | "context-control" | "agent"
+  >("model-settings");
 
   // If activeStory changes cancel generation
   useEffect(() => {
@@ -106,14 +109,39 @@ function App() {
   );
 
   const RightNavBar = () => (
-    <div className="vertical-nav-bar right">
+    <div className="vertical-nav-bar right multiple-buttons">
       <button
         className="nav-button"
-        onClick={() => rightPanelRef.current?.expand()}
-        title="Open Right Panel"
+        onClick={() => {
+          setActiveAITab("model-settings");
+          rightPanelRef.current?.expand();
+        }}
+        title="Model Settings"
       >
         <span className="nav-icon">⚙️</span>
-        <span className="nav-label">Panel</span>
+        <span className="nav-label">Model</span>
+      </button>
+      <button
+        className="nav-button"
+        onClick={() => {
+          setActiveAITab("context-control");
+          rightPanelRef.current?.expand();
+        }}
+        title="Context Control"
+      >
+        <span className="nav-icon">📄</span>
+        <span className="nav-label">Context</span>
+      </button>
+      <button
+        className="nav-button"
+        onClick={() => {
+          setActiveAITab("agent");
+          rightPanelRef.current?.expand();
+        }}
+        title="AI Agent"
+      >
+        <span className="nav-icon">🤖</span>
+        <span className="nav-label">Agent</span>
       </button>
     </div>
   );
@@ -220,7 +248,11 @@ function App() {
               onExpand={() => setRightPanelCollapsed(false)}
               order={3}
             >
-              {rightPanelCollapsed ? <RightNavBar /> : <RightPanel />}
+              {rightPanelCollapsed ? (
+                <RightNavBar />
+              ) : (
+                <AIPanel defaultTab={activeAITab} />
+              )}
             </Panel>
           </>
         ) : null}

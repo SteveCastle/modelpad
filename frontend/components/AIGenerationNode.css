@@ -1,0 +1,53 @@
+.ai-generation-text {
+  font-family: "Fira Code", "Monaco", "Consolas", "Liberation Mono",
+    "Courier New", monospace;
+  position: relative;
+  color: #6b7280;
+  font-weight: 500;
+  animation: ai-fade-in 0.3s ease-in, ai-underline-pulse 2s ease-in-out infinite;
+  border-bottom: 1px solid transparent;
+}
+
+/* Only show cursor on the last AI generation node in the document */
+.ai-generation-text:last-of-type::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -2px;
+  width: 2px;
+  background: #374151;
+  animation: ai-cursor 1s ease-in-out infinite;
+}
+
+@keyframes ai-fade-in {
+  from {
+    opacity: 0.3;
+    transform: translateY(1px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes ai-underline-pulse {
+  0%,
+  100% {
+    border-bottom-color: transparent;
+  }
+  50% {
+    border-bottom-color: rgba(107, 114, 128, 0.3);
+  }
+}
+
+@keyframes ai-cursor {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0.2;
+  }
+}

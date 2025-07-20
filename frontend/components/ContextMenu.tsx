@@ -6,13 +6,19 @@ import {
 } from "@heroicons/react/24/outline";
 import {
   $createParagraphNode,
-  $createTextNode,
   $getRoot,
   $getSelection,
+  $isElementNode,
   $isRangeSelection,
   LexicalEditor,
+  LexicalNode,
   ParagraphNode,
 } from "lexical";
+import {
+  $createAIGenerationNode,
+  $isAIGenerationNode,
+  AIGenerationNode,
+} from "./AIGenerationNode";
 import {
   TRANSFORMERS,
   $convertFromMarkdownString,
@@ -23,8 +29,7 @@ import "./ContextMenu.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useStore, PromptTypeKeys } from "../store";
 import { providers } from "../providers";
-import { PencilIcon } from "@heroicons/react/24/solid";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
 import useCtrlHotkey from "../hooks/useCtrlHotkey";
 
@@ -42,19 +47,15 @@ function applyRagTemplate(template: string, text: string) {
 }
 
 export default function ContextMenu({ hide }: Props) {
-  const [editing, setEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState<PromptTypeKeys | null>(null); // ["newScene", "rewrite", "summarize"
+  const [selectedPrompt, setSelectedPrompt] =
+    useState<PromptTypeKeys>("newScene");
   const abortController = useStore((state) => state.abortController);
   const {
     model,
-
     modelSettings,
     promptTemplates,
     systemPromptTemplates,
     ragPromptTemplates,
-    changePromptTemplate,
-    changeSystemPromptTemplate,
-    changeRagPromptTemplate,
     useRag,
   } = useStore((state) => state);
 
@@ -72,24 +73,49 @@ export default function ContextMenu({ hide }: Props) {
 
   const provider = providers[providerKey];
 
-  //if editing becomes false clear the active tab
-  useEffect(() => {
-    if (!editing) {
-      setActiveTab(null);
+  // Get context pills showing what's included in the prompt
+  const getContextPills = () => {
+    const pills = [];
+    let hasSelection = false;
+
+    editor.getEditorState().read(() => {
+      const selection = $getSelection();
+      if ($isRangeSelection(selection)) {
+        const selectedText = selection.getTextContent();
+        if (selectedText.length >= 2) {
+          hasSelection = true;
+        }
+      }
+    });
+
+    // Add selection or current document pill
+    if (hasSelection) {
+      pills.push({ type: "selection", label: "Selection" });
+    } else {
+      pills.push({ type: "document", label: "Current Document" });
     }
-  }, [editing]);
+
+    // Add RAG document pills
+    const ragStories = stories
+      .filter((story) => story.id !== activeStoryId && story.includeInContext)
+      .map((story) => ({ type: "rag", label: story.title }));
+
+    pills.push(...ragStories);
+
+    return pills;
+  };
 
   const startCallback = () => {
     setGenerationState("generating");
   };
 
   const tokenCallback = (text: string) => {
-    // loop over each character in the text and add it to the new paragraph
+    // loop over each character in the text and add it to the new paragraph using AI generation node
     editor.update(() => {
       const root = $getRoot();
       const lastParagraphNode = root.getLastChild() as ParagraphNode;
-      const textNode = $createTextNode(text);
-      lastParagraphNode.append(textNode);
+      const aiGenerationNode = $createAIGenerationNode(text);
+      lastParagraphNode.append(aiGenerationNode);
     });
   };
 
@@ -98,6 +124,31 @@ export default function ContextMenu({ hide }: Props) {
     updateContext(activeStoryId, context);
     editor.update(() => {
       const root = $getRoot();
+
+      // Convert all AI generation nodes to regular text nodes
+      const aiNodes: AIGenerationNode[] = [];
+
+      // Recursively find all AI generation nodes
+      function findAINodes(node: LexicalNode): void {
+        if ($isAIGenerationNode(node)) {
+          aiNodes.push(node);
+        }
+        if ($isElementNode(node)) {
+          const children = node.getChildren();
+          for (const child of children) {
+            findAINodes(child);
+          }
+        }
+      }
+
+      findAINodes(root);
+
+      aiNodes.forEach((aiNode) => {
+        const textNode = aiNode.convertToTextNode();
+        aiNode.replace(textNode);
+      });
+
+      // Then apply markdown formatting
       $convertFromMarkdownString($convertToMarkdownString(TRANSFORMERS, root));
     });
   }
@@ -160,17 +211,12 @@ export default function ContextMenu({ hide }: Props) {
           <button
             type="button"
             className={`new-scene-button ${
-              activeTab === "newScene" ? "active" : ""
+              selectedPrompt === "newScene" ? "active" : ""
             }`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (editing) {
-                setActiveTab("newScene");
-                return;
-              }
-              hide();
-              generate("newScene");
+              setSelectedPrompt("newScene");
             }}
           >
             <SparklesIcon aria-hidden="true" />
@@ -178,17 +224,12 @@ export default function ContextMenu({ hide }: Props) {
           <button
             type="button"
             className={`rewrite-button ${
-              activeTab === "rewrite" ? "active" : ""
+              selectedPrompt === "rewrite" ? "active" : ""
             }`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (editing) {
-                setActiveTab("rewrite");
-                return;
-              }
-              generate("rewrite");
-              hide();
+              setSelectedPrompt("rewrite");
             }}
           >
             <ArrowPathIcon aria-hidden="true" />
@@ -196,69 +237,38 @@ export default function ContextMenu({ hide }: Props) {
           <button
             type="button"
             className={`summarize-button ${
-              activeTab === "summarize" ? "active" : ""
+              selectedPrompt === "summarize" ? "active" : ""
             }`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              if (editing) {
-                setActiveTab("summarize");
-                return;
-              }
-              generate("summarize");
-              hide();
+              setSelectedPrompt("summarize");
             }}
           >
             <ArrowsPointingInIcon aria-hidden="true" />
           </button>
           <button
             type="button"
-            className={`edit-button ${editing ? "active" : ""}`}
+            className="generate-button"
             onClick={() => {
-              setActiveTab("newScene");
-              setEditing((editing) => !editing);
+              hide();
+              generate(selectedPrompt);
             }}
           >
-            <PencilIcon aria-hidden="true" />
+            <span className="generate-text">Generate</span>
+            <span className="hotkey">CTRL+SPACE</span>
           </button>
         </div>
-        {editing && activeTab ? (
-          <div className="editing-area">
-            <span className="label">System Prompt</span>
-            <textarea
-              className="custom-scrollbar"
-              value={systemPromptTemplates[activeTab]}
-              onChange={(e) => {
-                changeSystemPromptTemplate(activeTab, e.target.value);
-              }}
-            ></textarea>
-            <span className="label">RAG Prefix</span>
-            <textarea
-              className="custom-scrollbar"
-              value={ragPromptTemplates[activeTab]}
-              onChange={(e) => {
-                changeRagPromptTemplate(activeTab, e.target.value);
-              }}
-            ></textarea>
-            <span className="label">Main Prompt Template</span>
-            <textarea
-              className="custom-scrollbar"
-              value={promptTemplates[activeTab]}
-              onChange={(e) => {
-                changePromptTemplate(activeTab, e.target.value);
-              }}
-            ></textarea>
+        <div className="context-pills-area">
+          <div className="context-pills">
+            {getContextPills().map((pill, index) => (
+              <span key={index} className={`context-pill ${pill.type}`}>
+                {pill.label}
+              </span>
+            ))}
           </div>
-        ) : null}
+        </div>
       </div>
-      {editing ? (
-        <span>
-          <strong> Selected Text:</strong> &lt;text&gt;
-          <strong> RAG Docs:</strong> &lt;docs&gt;
-        </span>
-      ) : (
-        <span>CTRL+SPACE</span>
-      )}
     </div>
   );
 }
