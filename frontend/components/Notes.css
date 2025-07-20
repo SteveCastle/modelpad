@@ -265,8 +265,8 @@
 
 /* Drag and drop styles */
 .note-item.dragging {
-  opacity: 0.5;
-  transform: scale(0.95);
+  background-color: rgba(74, 144, 226, 0.2);
+  border-left: 3px solid #4a90e2;
 }
 
 .note-item.dragging .drag-handle {

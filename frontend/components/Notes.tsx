@@ -212,7 +212,16 @@ const Notes = () => {
   };
 
   function handleDragStart(event: DragStartEvent) {
-    setActiveId(event.active.id as string);
+    const draggedId = event.active.id as string;
+    setActiveId(draggedId);
+
+    // Automatically expand the dragged item if it has children
+    const draggedNote = displayNotes.find((note) => note.id === draggedId);
+    if (draggedNote && draggedNote.children.length > 0) {
+      const newExpanded = new Set(expandedNotes);
+      newExpanded.add(draggedId);
+      setExpandedNotes(newExpanded);
+    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
