@@ -1,8 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import { useQuery } from "react-query";
 import { EmailPasswordPreBuiltUI } from "supertokens-auth-react/recipe/emailpassword/prebuiltui";
 import { canHandleRoute, getRoutingComponent } from "supertokens-auth-react/ui";
+import {
+  PanelGroup,
+  Panel,
+  PanelResizeHandle,
+  ImperativePanelHandle,
+} from "react-resizable-panels";
 import { useStore, Story } from "./store";
 import { StoryEditor } from "./components/StoryEditor";
 import { Tab } from "./components/Tab";
@@ -22,8 +28,6 @@ function App() {
     setAvailableModels,
     setGenerationState,
     stories,
-    sideBarOpen,
-    setSideBarOpen,
     cancelGeneration,
     viewSettings,
     generationState,
@@ -34,6 +38,12 @@ function App() {
   );
   const provider = providers[providerKey];
   const activeStoryId = useStore((state) => state.activeStoryId);
+
+  // Panel refs and state
+  const leftPanelRef = useRef<ImperativePanelHandle>(null);
+  const rightPanelRef = useRef<ImperativePanelHandle>(null);
+  const [leftPanelCollapsed, setLeftPanelCollapsed] = useState(false);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
 
   // If activeStory changes cancel generation
   useEffect(() => {
@@ -55,6 +65,33 @@ function App() {
     },
   });
 
+  // Vertical Navigation Components
+  const LeftNavBar = () => (
+    <div className="vertical-nav-bar left">
+      <button
+        className="nav-button"
+        onClick={() => leftPanelRef.current?.expand()}
+        title="Open Notes Panel"
+      >
+        <span className="nav-icon">📝</span>
+        <span className="nav-label">Notes</span>
+      </button>
+    </div>
+  );
+
+  const RightNavBar = () => (
+    <div className="vertical-nav-bar right">
+      <button
+        className="nav-button"
+        onClick={() => rightPanelRef.current?.expand()}
+        title="Open Right Panel"
+      >
+        <span className="nav-icon">⚙️</span>
+        <span className="nav-label">Panel</span>
+      </button>
+    </div>
+  );
+
   if (canHandleRoute([EmailPasswordPreBuiltUI])) {
     // This renders the login UI on the /auth route
     return getRoutingComponent([EmailPasswordPreBuiltUI]);
@@ -62,50 +99,110 @@ function App() {
 
   return (
     <div className="App">
-      {session.loading === false && session.userId ? (
-        <div
-          className={["side-bar", sideBarOpen ? "open" : "closed"].join(" ")}
+      <PanelGroup direction="horizontal">
+        {/* Left Sidebar Panel */}
+        {session.loading === false && session.userId ? (
+          <>
+            <Panel
+              id="left-panel"
+              ref={leftPanelRef}
+              defaultSize={20}
+              minSize={8}
+              maxSize={35}
+              className="side-bar-panel"
+              collapsible={true}
+              collapsedSize={4}
+              onCollapse={() => setLeftPanelCollapsed(true)}
+              onExpand={() => setLeftPanelCollapsed(false)}
+            >
+              {leftPanelCollapsed ? (
+                <LeftNavBar />
+              ) : (
+                <div className="side-bar-content">
+                  <Notes />
+                </div>
+              )}
+            </Panel>
+            <PanelResizeHandle className="resize-handle" />
+          </>
+        ) : null}
+
+        {/* Main Content Panel */}
+        <Panel
+          id="main-panel"
+          defaultSize={session.loading === false && session.userId ? 60 : 100}
+          minSize={40}
+          maxSize={85}
         >
-          {sideBarOpen ? <Notes /> : null}
-          <div
-            className="toggle-handle"
-            onClick={() => {
-              setSideBarOpen(!sideBarOpen);
-            }}
-          ></div>
-        </div>
-      ) : null}
-      <div className="main-content">
-        <div className="tabs">
-          <div className="tab-container">
-            {stories.map((story: Story) => (
-              <Tab
-                key={story.id}
-                story={story}
-                activeStoryId={activeStoryId}
-                setActive={setActive}
-              />
-            ))}
+          <div className="main-content">
+            <div className="tabs">
+              <div className="tab-container">
+                {stories.map((story: Story) => (
+                  <Tab
+                    key={story.id}
+                    story={story}
+                    activeStoryId={activeStoryId}
+                    setActive={setActive}
+                  />
+                ))}
+              </div>
+              <div className="add">
+                <button
+                  className="button"
+                  onClick={() => createStory("Untitled")}
+                >
+                  <PlusIcon />
+                </button>
+              </div>
+            </div>
+            <div className="app-container">
+              <div className="editor-container">
+                {stories.map((story: Story) => (
+                  <StoryEditor
+                    key={story.id}
+                    story={story}
+                    isActive={story.id === activeStoryId}
+                    viewSettings={viewSettings}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="add">
-            <button className="button" onClick={() => createStory("Untitled")}>
-              <PlusIcon />
-            </button>
-          </div>
-        </div>
-        <div className="app-container">
-          <div className="editor-container">
-            {stories.map((story: Story) => (
-              <StoryEditor
-                key={story.id}
-                story={story}
-                isActive={story.id === activeStoryId}
-                viewSettings={viewSettings}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+        </Panel>
+
+        {/* Right Placeholder Panel */}
+        {session.loading === false && session.userId ? (
+          <>
+            <PanelResizeHandle className="resize-handle" />
+            <Panel
+              id="right-panel"
+              ref={rightPanelRef}
+              defaultSize={20}
+              minSize={8}
+              maxSize={35}
+              className="right-panel"
+              collapsible={true}
+              collapsedSize={4}
+              onCollapse={() => setRightPanelCollapsed(true)}
+              onExpand={() => setRightPanelCollapsed(false)}
+            >
+              {rightPanelCollapsed ? (
+                <RightNavBar />
+              ) : (
+                <div className="right-panel-content">
+                  <div className="placeholder-content">
+                    <h3>Right Panel</h3>
+                    <p>
+                      This is a placeholder panel that can be used for
+                      additional features.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </Panel>
+          </>
+        ) : null}
+      </PanelGroup>
     </div>
   );
 }

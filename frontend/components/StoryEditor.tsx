@@ -351,15 +351,10 @@ export function StoryEditor({
         style={{
           display: isActive ? "flex" : "none",
           width: "100%",
-          height: window.innerWidth >= 768 ? "calc(100vh - 55px)" : "100vh", // Full height minus toolbar space on desktop only
+          height: "100%", // Use full height within the panel
           boxSizing: "border-box",
           maxWidth: viewSettings.readingMode ? "960px" : "",
-          margin:
-            window.innerWidth >= 768
-              ? viewSettings.readingMode
-                ? "55px auto 0"
-                : "55px 0 0"
-              : "0", // Push content below the fixed toolbar on desktop only
+          margin: viewSettings.readingMode ? "0 auto" : "0", // Center in reading mode
           overflow: "hidden", // Prevent the main container from scrolling
           fontSize: `${viewSettings.zoom}em`,
         }}
@@ -373,9 +368,7 @@ export function StoryEditor({
               minWidth: "250px",
               height: "100%",
               overflowY: "auto",
-              borderRight: "1px solid var(--border-color)",
               padding: "20px 16px",
-              backgroundColor: "var(--side-bar-bg-color)",
             }}
           >
             <TableOfContentsPlugin>

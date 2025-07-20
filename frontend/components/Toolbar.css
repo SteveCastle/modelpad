@@ -4,14 +4,13 @@
   align-items: center;
   justify-content: space-between;
   background-color: var(--toolbar-bg-color);
-  position: fixed;
-  top: 44px;
+  position: relative;
+  top: 0;
   height: 35px;
   z-index: 999;
-  left: 0;
-  right: 0;
+  width: 100%;
   box-sizing: border-box;
-  transition: left 0.3s ease;
+  flex-shrink: 0;
 }
 
 .App .menubar .toolbar-left {
@@ -224,12 +223,40 @@
   background-color: var(--hovered-toolbar-bg-color);
 }
 
+/* New floating dropdown styles using @floating-ui/react */
+.floating-dropdown {
+  z-index: 100;
+  width: 200px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 0 2px 2px 2px;
+  background-color: var(--context-menu-bg-color);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  padding: 4px 0;
+  margin: 0;
+  overflow-y: hidden;
+}
+
+.dropdown-item {
+  background-color: transparent;
+  color: var(--text-color);
+  border: none;
+  padding: 8px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: var(--hovered-toolbar-bg-color);
+}
+
 /* media query for mobile to hide toolbar-left */
 @media (max-width: 768px) {
   .App .menubar {
     background-color: transparent;
     justify-content: flex-end;
-    position: fixed;
+    position: absolute;
     width: 90px;
     bottom: 65px;
     top: auto;
@@ -272,18 +299,8 @@
   }
 }
 
-/* Desktop adjustments for sidebar state */
+/* Desktop adjustments for resizable panels */
 @media (min-width: 768px) {
-  .App .side-bar.open ~ .main-content .menubar {
-    left: 300px;
-    width: calc(100% - 300px);
-  }
-
-  .App .side-bar.closed ~ .main-content .menubar {
-    left: 20px;
-    width: calc(100% - 20px);
-  }
-
   .App .menubar .toolbar-right .save {
     display: none;
   }
