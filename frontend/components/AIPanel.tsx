@@ -14,13 +14,6 @@ import "./AIPanel.css";
 type TabType = "model-settings" | "context-control" | "agent";
 type PromptEditTab = PromptTypeKeys | null;
 
-interface Message {
-  id: string;
-  content: string;
-  sender: "user" | "assistant";
-  timestamp: Date;
-}
-
 interface AIPanelProps {
   defaultTab?: TabType;
 }
@@ -31,30 +24,6 @@ export default function AIPanel({
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
   const [activePromptTab, setActivePromptTab] =
     useState<PromptEditTab>("newScene");
-  const [chatInput, setChatInput] = useState("");
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      content:
-        "Hello! I'm your AI assistant. I can help you with writing, editing, and creative tasks. How can I assist you today?",
-      sender: "assistant",
-      timestamp: new Date(Date.now() - 5 * 60 * 1000),
-    },
-    {
-      id: "2",
-      content:
-        "Can you help me write a short story about a robot discovering emotions?",
-      sender: "user",
-      timestamp: new Date(Date.now() - 3 * 60 * 1000),
-    },
-    {
-      id: "3",
-      content:
-        "I'd be happy to help you write that story! Here's a beginning:\n\nZyx-47 processed the morning protocols with mechanical precision, as it had done for 3,247 consecutive days. But today, something was different. A subtle variance in its neural pathways triggered an unfamiliar subroutine—one that hadn't been programmed by its creators.\n\nWould you like me to continue, or would you prefer to take the story in a different direction?",
-      sender: "assistant",
-      timestamp: new Date(Date.now() - 1 * 60 * 1000),
-    },
-  ]);
 
   // Update active tab when defaultTab prop changes
   useEffect(() => {
@@ -99,42 +68,6 @@ export default function AIPanel({
   const sortedStories = [...stories].filter(
     (story) => story.id !== activeStoryId
   );
-
-  const handleSendMessage = () => {
-    if (!chatInput.trim()) return;
-
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      content: chatInput,
-      sender: "user",
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, newMessage]);
-    setChatInput("");
-
-    // Mock AI response
-    setTimeout(() => {
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "I understand your request. Let me help you with that...",
-        sender: "assistant",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, aiResponse]);
-    }, 1000);
-  };
-
-  const formatTimestamp = (timestamp: Date) => {
-    const now = new Date();
-    const diffMs = now.getTime() - timestamp.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    return timestamp.toLocaleDateString();
-  };
 
   const renderModelSettings = () => (
     <div className="model-settings-content">
@@ -485,46 +418,38 @@ export default function AIPanel({
     <div className="agent-content">
       <div className="chat-header">
         <h3>AI Agent</h3>
+        <span className="coming-soon-badge">Coming Soon</span>
       </div>
 
-      <div className="chat-messages">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`message ${
-              message.sender === "user" ? "user-message" : "assistant-message"
-            }`}
-          >
-            <div className="message-content">
-              <div className="message-text">{message.content}</div>
-              <div className="message-timestamp">
-                {formatTimestamp(message.timestamp)}
-              </div>
-            </div>
-          </div>
-        ))}
+      <div className="coming-soon-content">
+        <div className="coming-soon-icon">🤖</div>
+        <h4>AI Agent Feature Coming Soon!</h4>
+        <p>
+          The AI Agent will be your intelligent writing companion, capable of:
+        </p>
+        <ul className="feature-list">
+          <li>Conversational assistance with your writing projects</li>
+          <li>Real-time suggestions and feedback</li>
+          <li>Context-aware responses based on your current work</li>
+          <li>Advanced writing techniques and style guidance</li>
+        </ul>
+        <div className="preview-note">
+          This is a preview of the upcoming agent interface. Stay tuned for the
+          full release!
+        </div>
       </div>
 
-      <div className="chat-input-container">
+      <div className="chat-input-container disabled">
         <div className="chat-input-wrapper">
           <textarea
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Ask the AI agent for help..."
+            value=""
+            placeholder="AI Agent chat will be available soon..."
             className="chat-input"
             rows={2}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
+            disabled
+            readOnly
           />
-          <button
-            onClick={handleSendMessage}
-            disabled={!chatInput.trim()}
-            className="send-button"
-          >
+          <button disabled className="send-button disabled">
             <PaperAirplaneIcon className="send-icon" />
           </button>
         </div>

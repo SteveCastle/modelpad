@@ -40,6 +40,68 @@ function useIsMobile() {
   return isMobile;
 }
 
+// Props interfaces for navigation components
+interface LeftNavBarProps {
+  leftPanelRef: React.RefObject<ImperativePanelHandle>;
+}
+
+interface RightNavBarProps {
+  rightPanelRef: React.RefObject<ImperativePanelHandle>;
+  setActiveAITab: (tab: "model-settings" | "context-control" | "agent") => void;
+}
+
+// Vertical Navigation Components (defined outside App to prevent re-creation)
+const LeftNavBar = ({ leftPanelRef }: LeftNavBarProps) => (
+  <div className="vertical-nav-bar left">
+    <button
+      className="nav-button"
+      onClick={() => leftPanelRef.current?.expand()}
+      title="Open Notes Panel"
+    >
+      <span className="nav-icon">📝</span>
+      <span className="nav-label">Notes</span>
+    </button>
+  </div>
+);
+
+const RightNavBar = ({ rightPanelRef, setActiveAITab }: RightNavBarProps) => (
+  <div className="vertical-nav-bar right multiple-buttons">
+    <button
+      className="nav-button"
+      onClick={() => {
+        setActiveAITab("model-settings");
+        rightPanelRef.current?.expand();
+      }}
+      title="Model Settings"
+    >
+      <span className="nav-icon">⚙️</span>
+      <span className="nav-label">Model</span>
+    </button>
+    <button
+      className="nav-button"
+      onClick={() => {
+        setActiveAITab("context-control");
+        rightPanelRef.current?.expand();
+      }}
+      title="Context Control"
+    >
+      <span className="nav-icon">📄</span>
+      <span className="nav-label">Context</span>
+    </button>
+    <button
+      className="nav-button"
+      onClick={() => {
+        setActiveAITab("agent");
+        rightPanelRef.current?.expand();
+      }}
+      title="AI Agent"
+    >
+      <span className="nav-icon">🤖</span>
+      <span className="nav-label">Agent</span>
+    </button>
+  </div>
+);
+
 function App() {
   const {
     setActive,
@@ -94,58 +156,6 @@ function App() {
     },
   });
 
-  // Vertical Navigation Components
-  const LeftNavBar = () => (
-    <div className="vertical-nav-bar left">
-      <button
-        className="nav-button"
-        onClick={() => leftPanelRef.current?.expand()}
-        title="Open Notes Panel"
-      >
-        <span className="nav-icon">📝</span>
-        <span className="nav-label">Notes</span>
-      </button>
-    </div>
-  );
-
-  const RightNavBar = () => (
-    <div className="vertical-nav-bar right multiple-buttons">
-      <button
-        className="nav-button"
-        onClick={() => {
-          setActiveAITab("model-settings");
-          rightPanelRef.current?.expand();
-        }}
-        title="Model Settings"
-      >
-        <span className="nav-icon">⚙️</span>
-        <span className="nav-label">Model</span>
-      </button>
-      <button
-        className="nav-button"
-        onClick={() => {
-          setActiveAITab("context-control");
-          rightPanelRef.current?.expand();
-        }}
-        title="Context Control"
-      >
-        <span className="nav-icon">📄</span>
-        <span className="nav-label">Context</span>
-      </button>
-      <button
-        className="nav-button"
-        onClick={() => {
-          setActiveAITab("agent");
-          rightPanelRef.current?.expand();
-        }}
-        title="AI Agent"
-      >
-        <span className="nav-icon">🤖</span>
-        <span className="nav-label">Agent</span>
-      </button>
-    </div>
-  );
-
   if (canHandleRoute([EmailPasswordPreBuiltUI])) {
     // This renders the login UI on the /auth route
     return getRoutingComponent([EmailPasswordPreBuiltUI]);
@@ -164,7 +174,7 @@ function App() {
               id="left-panel"
               ref={leftPanelRef}
               defaultSize={20}
-              minSize={8}
+              minSize={12}
               maxSize={35}
               className="side-bar-panel"
               collapsible={true}
@@ -174,7 +184,7 @@ function App() {
               order={1}
             >
               {leftPanelCollapsed ? (
-                <LeftNavBar />
+                <LeftNavBar leftPanelRef={leftPanelRef} />
               ) : (
                 <div className="side-bar-content">
                   <Notes />
@@ -239,7 +249,7 @@ function App() {
               id="right-panel"
               ref={rightPanelRef}
               defaultSize={20}
-              minSize={8}
+              minSize={20}
               maxSize={35}
               className="right-panel"
               collapsible={true}
@@ -249,7 +259,10 @@ function App() {
               order={3}
             >
               {rightPanelCollapsed ? (
-                <RightNavBar />
+                <RightNavBar
+                  rightPanelRef={rightPanelRef}
+                  setActiveAITab={setActiveAITab}
+                />
               ) : (
                 <AIPanel defaultTab={activeAITab} />
               )}

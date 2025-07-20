@@ -11,14 +11,11 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
+  useDraggable,
+  useDroppable,
+  DragOverEvent,
+  DragOverlay,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
   EllipsisVerticalIcon,
   XMarkIcon,
@@ -172,6 +169,7 @@ const Notes = () => {
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [initializedExpansion, setInitializedExpansion] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,10 +183,12 @@ const Notes = () => {
   });
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor)
   );
 
   const { mutate: updateParentMutation } = useMutation(
@@ -224,9 +224,33 @@ const Notes = () => {
     }
   }
 
+  function handleDragOver(event: DragOverEvent) {
+    const overId = event.over?.id as string | null;
+    setOverId(overId);
+
+    // Auto-expand the note being hovered over if it has children
+    if (overId) {
+      const hoveredNote = displayNotes.find((note) => note.id === overId);
+      if (
+        hoveredNote &&
+        hoveredNote.children.length > 0 &&
+        !hoveredNote.isExpanded
+      ) {
+        const newExpanded = new Set(expandedNotes);
+        newExpanded.add(overId);
+        setExpandedNotes(newExpanded);
+      }
+    }
+  }
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    setActiveId(null);
+
+    // Small delay to allow for snap-back animation if needed
+    setTimeout(() => {
+      setActiveId(null);
+      setOverId(null);
+    }, 150);
 
     if (!over || active.id === over.id) {
       return;
@@ -285,6 +309,10 @@ const Notes = () => {
         return flattenTree(expandedTreeNotes);
       })()
     : [];
+
+  const draggedNote = activeId
+    ? displayNotes.find((note) => note.id === activeId)
+    : null;
 
   const EmptyState = () => {
     const hasSearchQuery = searchQuery.trim().length > 0;
@@ -347,23 +375,32 @@ const Notes = () => {
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <SortableContext
-              items={displayNotes.map((note) => note.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <ul className="note-list">
-                {displayNotes.map((note) => (
+            <ul className="note-list">
+              {displayNotes.map((note) => (
+                <TreeNoteItem
+                  key={note.id}
+                  note={note}
+                  onToggleExpanded={toggleExpanded}
+                  isDragging={activeId === note.id}
+                  isDropTarget={overId === note.id}
+                />
+              ))}
+            </ul>
+            <DragOverlay>
+              {draggedNote ? (
+                <div className="drag-overlay-item">
                   <TreeNoteItem
-                    key={note.id}
-                    note={note}
-                    onToggleExpanded={toggleExpanded}
-                    isDragging={activeId === note.id}
+                    note={draggedNote}
+                    onToggleExpanded={() => {}}
+                    isDragging={true}
+                    isDropTarget={false}
                   />
-                ))}
-              </ul>
-            </SortableContext>
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         ) : (
           <EmptyState />
@@ -381,21 +418,32 @@ const TreeNoteItem = ({
   note,
   onToggleExpanded,
   isDragging,
+  isDropTarget,
 }: {
   note: TreeNote;
   onToggleExpanded: (id: string) => void;
   isDragging: boolean;
+  isDropTarget: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
 
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: note.id });
+  const {
+    attributes,
+    listeners,
+    setNodeRef: setDragNodeRef,
+  } = useDraggable({
+    id: note.id,
+  });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+  const { setNodeRef: setDropNodeRef } = useDroppable({
+    id: note.id,
+  });
+
+  const setNodeRef = (element: HTMLLIElement | null) => {
+    setDragNodeRef(element);
+    setDropNodeRef(element);
   };
 
   const { mutate } = useMutation(deleteStory, {
@@ -452,11 +500,13 @@ const TreeNoteItem = ({
   return (
     <li
       ref={setNodeRef}
-      className={`note-item ${isDragging ? "dragging" : ""}`}
+      className={`note-item ${isDragging ? "dragging" : ""} ${
+        isDropTarget ? "drop-target" : ""
+      }`}
       style={{
         paddingLeft: `${note.level * 20 + 10}px`,
-        ...style,
       }}
+      onMouseLeave={() => setIsOpen(false)}
     >
       <div className="note-item-wrapper">
         <button
@@ -514,7 +564,7 @@ const TreeNoteItem = ({
             <div
               className="note-actions"
               ref={refs.setFloating}
-              style={floatingStyles}
+              style={{ ...floatingStyles, zIndex: 1000, position: "fixed" }}
               {...getFloatingProps()}
             >
               <button

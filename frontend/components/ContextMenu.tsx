@@ -49,6 +49,7 @@ function applyRagTemplate(template: string, text: string) {
 export default function ContextMenu({ hide }: Props) {
   const [selectedPrompt, setSelectedPrompt] =
     useState<PromptTypeKeys>("newScene");
+  const [customPrompt, setCustomPrompt] = useState("");
   const abortController = useStore((state) => state.abortController);
   const {
     model,
@@ -178,7 +179,10 @@ export default function ContextMenu({ hide }: Props) {
         promptTemplates[promptTemplateKey],
         text
       );
-      const prompt = ragText + selectedText;
+      const customPromptText = customPrompt.trim()
+        ? `\n\n${customPrompt.trim()}`
+        : "";
+      const prompt = ragText + selectedText + customPromptText;
       setGenerationState("loading");
       const newParagraphNode = $createParagraphNode();
       root.append(newParagraphNode);
@@ -198,6 +202,8 @@ export default function ContextMenu({ hide }: Props) {
         }
       );
     });
+    // Clear the custom prompt after submitting
+    setCustomPrompt("");
   }
 
   useCtrlHotkey(() => {
@@ -207,6 +213,22 @@ export default function ContextMenu({ hide }: Props) {
   return (
     <div className={"context-menu-container"}>
       <div className={"context-menu"}>
+        <div className="custom-prompt-area">
+          <input
+            type="text"
+            className="custom-prompt-input"
+            placeholder="Tell me what you want to write about..."
+            value={customPrompt}
+            onChange={(e) => setCustomPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                hide();
+                generate(selectedPrompt);
+              }
+            }}
+          />
+        </div>
         <div className={"button-area"}>
           <button
             type="button"
