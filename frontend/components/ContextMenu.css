@@ -152,7 +152,6 @@
   color: rgba(100, 150, 255, 1);
   font-weight: 600;
   min-width: 120px;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
   flex-direction: column;
   gap: 2px;
   padding: 8px 1rem;

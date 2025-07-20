@@ -96,11 +96,9 @@ export default function AIPanel({
     changeRagPromptTemplate,
   } = useStore((state) => state);
 
-  const sortedStories = [...stories].sort((a, b) => {
-    if (a.id === activeStoryId) return -1;
-    if (b.id === activeStoryId) return 1;
-    return 0;
-  });
+  const sortedStories = [...stories].filter(
+    (story) => story.id !== activeStoryId
+  );
 
   const handleSendMessage = () => {
     if (!chatInput.trim()) return;
@@ -340,11 +338,7 @@ export default function AIPanel({
             }}
           >
             <div>
-              <span className="context-name">
-                {story.id === activeStoryId
-                  ? `${story.title} (Active Tab)`
-                  : story.title}
-              </span>
+              <span className="context-name">{story.title}</span>
             </div>
             <span className="context-edit">
               {story.includeInContext ? (
@@ -356,7 +350,7 @@ export default function AIPanel({
           </button>
         ))}
 
-        <h2 className="rag-header">Library</h2>
+        <h2 className="rag-header">Resources</h2>
         <div className="rag-section">
           <button
             className="context-item"
@@ -367,9 +361,7 @@ export default function AIPanel({
             }}
           >
             <div>
-              <span className="context-name">
-                Automatically Use Related Docs
-              </span>
+              <span className="context-name">Library</span>
             </div>
             <span className="context-edit">
               {useRag ? (
@@ -377,6 +369,38 @@ export default function AIPanel({
               ) : (
                 <XCircleIcon className="x-icon" />
               )}
+            </span>
+          </button>
+
+          <button
+            className="context-item"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              // TODO: Implement internet toggle functionality
+            }}
+          >
+            <div>
+              <span className="context-name">Internet</span>
+            </div>
+            <span className="context-edit">
+              <XCircleIcon className="x-icon" />
+            </span>
+          </button>
+
+          <button
+            className="context-item"
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              // TODO: Implement add MCP server functionality
+            }}
+          >
+            <div>
+              <span className="context-name">Add MCP Server</span>
+            </div>
+            <span className="context-edit">
+              <span style={{ fontSize: "14px", opacity: 0.7 }}>+</span>
             </span>
           </button>
         </div>
