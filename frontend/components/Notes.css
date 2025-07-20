@@ -95,9 +95,81 @@
   border-radius: 5px;
 }
 
+.note-item-wrapper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.drag-handle {
+  background: none;
+  border: none;
+  cursor: grab;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0;
+  color: var(--low-contrast-text-color);
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.drag-handle:hover {
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+.drag-icon {
+  width: 12px;
+  height: 12px;
+}
+
 .note-item-content {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  cursor: pointer;
+}
+
+.note-title-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.expand-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  margin: 0;
+  color: var(--low-contrast-text-color);
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.expand-button:hover {
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+}
+
+.expand-icon {
+  width: 12px;
+  height: 12px;
 }
 
 .note-icon {
@@ -117,6 +189,7 @@
 
 .note-actions-container {
   display: flex;
+  flex-shrink: 0;
 }
 
 .note-action-btn {
@@ -187,5 +260,33 @@
 
 .note-actions .note-action.share-control:hover {
   background-color: var(--header-bg-color);
+  opacity: 1;
+}
+
+/* Drag and drop styles */
+.note-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.note-item.dragging .drag-handle {
+  cursor: grabbing;
+}
+
+.note-item.drag-over {
+  background-color: var(--input-bg-color);
+  border-left: 3px solid #4a90e2;
+}
+
+.drop-indicator {
+  height: 2px;
+  background-color: #4a90e2;
+  margin: 2px 0;
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.drop-indicator.active {
   opacity: 1;
 }

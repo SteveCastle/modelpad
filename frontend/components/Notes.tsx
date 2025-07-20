@@ -3,6 +3,23 @@ import { Note, useStore } from "../store";
 import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   EllipsisVerticalIcon,
   XMarkIcon,
   ShareIcon,
@@ -11,6 +28,9 @@ import {
   CheckIcon,
   PlusCircleIcon,
   TrashIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
+  Bars3Icon,
 } from "@heroicons/react/24/solid";
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
@@ -23,6 +43,69 @@ import { LoadingSpinner } from "./LoadingSpinner";
 type NoteReponse = {
   notes: Note[];
 };
+
+type TreeNote = Note & {
+  children: TreeNote[];
+  level: number;
+  isExpanded?: boolean;
+};
+
+// Utility functions for tree structure
+function buildNoteTree(notes: Note[]): TreeNote[] {
+  const noteMap = new Map<string, TreeNote>();
+  const rootNotes: TreeNote[] = [];
+
+  // First pass: create TreeNote objects
+  notes.forEach((note) => {
+    noteMap.set(note.id, {
+      ...note,
+      children: [],
+      level: 0,
+      isExpanded: true,
+    });
+  });
+
+  // Second pass: build parent-child relationships
+  notes.forEach((note) => {
+    const treeNote = noteMap.get(note.id)!;
+
+    if (note.parent && noteMap.has(note.parent)) {
+      const parent = noteMap.get(note.parent)!;
+      parent.children.push(treeNote);
+      treeNote.level = parent.level + 1;
+    } else {
+      rootNotes.push(treeNote);
+    }
+  });
+
+  return rootNotes;
+}
+
+function flattenTree(treeNotes: TreeNote[]): TreeNote[] {
+  const result: TreeNote[] = [];
+
+  function traverse(nodes: TreeNote[]) {
+    nodes.forEach((node) => {
+      result.push(node);
+      if (node.isExpanded && node.children.length > 0) {
+        traverse(node.children);
+      }
+    });
+  }
+
+  traverse(treeNotes);
+  return result;
+}
+
+function canDropNote(draggedNote: TreeNote, targetNote: TreeNote): boolean {
+  // Prevent dropping a note onto itself or its descendants
+  function isDescendant(node: TreeNote, ancestorId: string): boolean {
+    if (node.id === ancestorId) return true;
+    return node.children.some((child) => isDescendant(child, ancestorId));
+  }
+
+  return !isDescendant(targetNote, draggedNote.id);
+}
 
 async function getStories({ queryKey }): Promise<NoteReponse> {
   const searchQuery = queryKey[1].searchQuery;
@@ -64,8 +147,31 @@ async function shareNote(id: string, isShared: boolean) {
   return response.json();
 }
 
+async function updateNoteParent(id: string, parentId: string | null) {
+  const response = await fetch(
+    `${
+      import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
+    }/api/notes/${id}/parent`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ parent: parentId }),
+    }
+  );
+  if (!response.ok) {
+    throw new Error("Failed to update note parent");
+  }
+  return response.json();
+}
+
 const Notes = () => {
   const [searchText, setSearchText] = useState("");
+  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
+  const [initializedExpansion, setInitializedExpansion] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedCallback(() => {
@@ -76,6 +182,99 @@ const Notes = () => {
     queryFn: getStories,
     refetchOnWindowFocus: true,
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const { mutate: updateParentMutation } = useMutation(
+    ({ id, parentId }: { id: string; parentId: string | null }) =>
+      updateNoteParent(id, parentId),
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("stories");
+      },
+    }
+  );
+
+  const toggleExpanded = (noteId: string) => {
+    const newExpanded = new Set(expandedNotes);
+    if (newExpanded.has(noteId)) {
+      newExpanded.delete(noteId);
+    } else {
+      newExpanded.add(noteId);
+    }
+    setExpandedNotes(newExpanded);
+  };
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(event.active.id as string);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over || active.id === over.id) {
+      return;
+    }
+
+    const activeNote = displayNotes.find((note) => note.id === active.id);
+    const overNote = displayNotes.find((note) => note.id === over.id);
+
+    if (!activeNote || !overNote) {
+      return;
+    }
+
+    // Check if the drop is valid
+    if (!canDropNote(activeNote, overNote)) {
+      return;
+    }
+
+    // Update parent relationship
+    updateParentMutation({
+      id: activeNote.id,
+      parentId: overNote.id,
+    });
+  }
+
+  // Build tree structure and flatten for display
+  const displayNotes = data?.notes
+    ? (() => {
+        const treeNotes = buildNoteTree(data.notes);
+
+        // Initialize expanded state for all parent notes on first load
+        if (!initializedExpansion && treeNotes.length > 0) {
+          const allParentIds = new Set<string>();
+          const collectParentIds = (nodes: TreeNote[]) => {
+            nodes.forEach((node) => {
+              if (node.children.length > 0) {
+                allParentIds.add(node.id);
+                collectParentIds(node.children);
+              }
+            });
+          };
+          collectParentIds(treeNotes);
+          setExpandedNotes(allParentIds);
+          setInitializedExpansion(true);
+        }
+
+        // Update expanded state for tree notes
+        const updateExpandedState = (notes: TreeNote[]): TreeNote[] => {
+          return notes.map((note) => ({
+            ...note,
+            isExpanded: expandedNotes.has(note.id),
+            children: updateExpandedState(note.children),
+          }));
+        };
+
+        const expandedTreeNotes = updateExpandedState(treeNotes);
+        return flattenTree(expandedTreeNotes);
+      })()
+    : [];
 
   return (
     <div className="Notes">
@@ -102,11 +301,28 @@ const Notes = () => {
         </div>
       </div>
       {data ? (
-        <ul className="note-list">
-          {data.notes?.map((note) => (
-            <NoteItem key={note.id} note={note} />
-          ))}
-        </ul>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={displayNotes.map((note) => note.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="note-list">
+              {displayNotes.map((note) => (
+                <TreeNoteItem
+                  key={note.id}
+                  note={note}
+                  onToggleExpanded={toggleExpanded}
+                  isDragging={activeId === note.id}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       ) : (
         <div className="loading-container">
           <LoadingSpinner />
@@ -116,10 +332,26 @@ const Notes = () => {
   );
 };
 
-const NoteItem = ({ note }) => {
+const TreeNoteItem = ({
+  note,
+  onToggleExpanded,
+  isDragging,
+}: {
+  note: TreeNote;
+  onToggleExpanded: (id: string) => void;
+  isDragging: boolean;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const queryClient = useQueryClient();
+
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: note.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   const { mutate } = useMutation(deleteStory, {
     onSuccess: () => {
@@ -174,123 +406,157 @@ const NoteItem = ({ note }) => {
   );
   return (
     <li
-      className="note-item"
-      onClick={() => {
-        mergeNotes([note], true);
-        //If window width is less than 768 pixels also collapse the menu
-        if (window.innerWidth < 768) {
-          setSideBarOpen(false);
-        }
+      ref={setNodeRef}
+      className={`note-item ${isDragging ? "dragging" : ""}`}
+      style={{
+        paddingLeft: `${note.level * 20 + 10}px`,
+        ...style,
       }}
     >
-      <div className="note-item-content">
-        <div className="note-title">{note.title}</div>
-        <div className="note-date">{prettyDate(note.updated_at)}</div>
-      </div>
-      <div className="note-actions-container">
+      <div className="note-item-wrapper">
         <button
-          className="note-action-btn"
-          {...getReferenceProps({
-            onClick: (e) => {
-              e.stopPropagation();
-              setIsOpen(!isOpen);
-            },
-          })}
-          ref={refs.setReference}
+          className="drag-handle"
+          {...attributes}
+          {...listeners}
+          title="Drag to reorganize"
         >
-          <EllipsisVerticalIcon />
+          <Bars3Icon className="drag-icon" />
         </button>
-        {isOpen && (
-          <div
-            className="note-actions"
-            ref={refs.setFloating}
-            style={floatingStyles}
-            {...getFloatingProps()}
+        <div
+          className="note-item-content"
+          onClick={() => {
+            mergeNotes([note], true);
+            //If window width is less than 768 pixels also collapse the menu
+            if (window.innerWidth < 768) {
+              setSideBarOpen(false);
+            }
+          }}
+        >
+          <div className="note-title-container">
+            {note.children.length > 0 && (
+              <button
+                className="expand-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpanded(note.id);
+                }}
+              >
+                {note.isExpanded ? (
+                  <ChevronDownIcon className="expand-icon" />
+                ) : (
+                  <ChevronRightIcon className="expand-icon" />
+                )}
+              </button>
+            )}
+            <div className="note-title">{note.title}</div>
+          </div>
+          <div className="note-date">{prettyDate(note.updated_at)}</div>
+        </div>
+        <div className="note-actions-container">
+          <button
+            className="note-action-btn"
+            {...getReferenceProps({
+              onClick: (e) => {
+                e.stopPropagation();
+                setIsOpen(!isOpen);
+              },
+            })}
+            ref={refs.setReference}
           >
-            <button
-              className="note-action"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                mergeNotes([{ ...note, includeInContext: true }], false);
-                setIsOpen(false);
-              }}
+            <EllipsisVerticalIcon />
+          </button>
+          {isOpen && (
+            <div
+              className="note-actions"
+              ref={refs.setFloating}
+              style={floatingStyles}
+              {...getFloatingProps()}
             >
-              <PlusCircleIcon className="action-icon" />
-              Add To Context
-            </button>
-            <button
-              className="note-action"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleShareToggle();
-                // Don't close the popover after sharing so user can copy/navigate
-              }}
-            >
-              {note.is_shared ? (
+              <button
+                className="note-action"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  mergeNotes([{ ...note, includeInContext: true }], false);
+                  setIsOpen(false);
+                }}
+              >
+                <PlusCircleIcon className="action-icon" />
+                Add To Context
+              </button>
+              <button
+                className="note-action"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleShareToggle();
+                  // Don't close the popover after sharing so user can copy/navigate
+                }}
+              >
+                {note.is_shared ? (
+                  <>
+                    <EyeSlashIcon className="action-icon" />
+                    Unshare
+                  </>
+                ) : (
+                  <>
+                    <ShareIcon className="action-icon" />
+                    Share
+                  </>
+                )}
+              </button>
+              {note.is_shared && (
                 <>
-                  <EyeSlashIcon className="action-icon" />
-                  Unshare
-                </>
-              ) : (
-                <>
-                  <ShareIcon className="action-icon" />
-                  Share
+                  <button
+                    className="note-action share-control"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleCopyUrl();
+                    }}
+                  >
+                    {copied ? (
+                      <>
+                        <CheckIcon className="action-icon" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <ClipboardIcon className="action-icon" />
+                        Copy Link
+                      </>
+                    )}
+                  </button>
+                  <button
+                    className="note-action share-control"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      openSharedUrl();
+                      setIsOpen(false);
+                    }}
+                  >
+                    <ArrowTopRightOnSquareIcon className="action-icon" />
+                    Open Link
+                  </button>
                 </>
               )}
-            </button>
-            {note.is_shared && (
-              <>
-                <button
-                  className="note-action share-control"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleCopyUrl();
-                  }}
-                >
-                  {copied ? (
-                    <>
-                      <CheckIcon className="action-icon" />
-                      Copied!
-                    </>
-                  ) : (
-                    <>
-                      <ClipboardIcon className="action-icon" />
-                      Copy Link
-                    </>
-                  )}
-                </button>
-                <button
-                  className="note-action share-control"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    openSharedUrl();
-                    setIsOpen(false);
-                  }}
-                >
-                  <ArrowTopRightOnSquareIcon className="action-icon" />
-                  Open Link
-                </button>
-              </>
-            )}
-            <button
-              className="note-action delete"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                updateSyncState(note.id, false);
-                mutate(note.id);
-                setIsOpen(false);
-              }}
-            >
-              <TrashIcon className="action-icon" />
-              Delete
-            </button>
-          </div>
-        )}
+              <button
+                className="note-action delete"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  updateSyncState(note.id, false);
+                  mutate(note.id);
+                  setIsOpen(false);
+                }}
+              >
+                <TrashIcon className="action-icon" />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </li>
   );

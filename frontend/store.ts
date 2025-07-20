@@ -54,6 +54,8 @@ export type Note = {
   title: string;
   body: string;
   created_at: string;
+  updated_at?: string;
+  parent?: string | null;
   includeInContext?: boolean;
   is_shared?: boolean;
 };

@@ -239,7 +239,7 @@ func ViewDocument(c *gin.Context) {
 	// Get the note from database - only if it's shared
 	db := c.MustGet("db").(*pgxpool.Pool)
 	var note notes.Note
-	err = db.QueryRow(context.Background(), "SELECT id, title, body, user_id, created_at, updated_at FROM notes WHERE id = $1 AND is_shared = true", noteUUID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.CreatedAt, &note.UpdatedAt)
+	err = db.QueryRow(context.Background(), "SELECT id, title, body, user_id, parent, created_at, updated_at FROM notes WHERE id = $1 AND is_shared = true", noteUUID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt)
 	if err != nil {
 		c.HTML(http.StatusNotFound, "", gin.H{
 			"error": "Document not found",
@@ -337,6 +337,116 @@ func ShareNote(c *gin.Context) {
 	})
 }
 
+// UpdateNoteParent updates the parent relationship of a note
+func UpdateNoteParent(c *gin.Context) {
+	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
+	userID := sessionContainer.GetUserID()
+	noteID := c.Param("id")
+
+	// Parse the note ID
+	noteUUID, err := uuid.FromString(noteID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid note ID",
+		})
+		return
+	}
+
+	// Get the request body to see what parent to set
+	var requestBody struct {
+		Parent *string `json:"parent"`
+	}
+	if err := c.ShouldBindJSON(&requestBody); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid request body",
+		})
+		return
+	}
+
+	db := c.MustGet("db").(*pgxpool.Pool)
+
+	// Parse parent UUID if provided
+	var parentUUID *uuid.UUID
+	if requestBody.Parent != nil && *requestBody.Parent != "" {
+		parsedParent, err := uuid.FromString(*requestBody.Parent)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Invalid parent ID",
+			})
+			return
+		}
+		parentUUID = &parsedParent
+
+		// Verify parent note exists and belongs to the same user
+		var parentExists bool
+		err = db.QueryRow(context.Background(),
+			"SELECT EXISTS(SELECT 1 FROM notes WHERE id = $1 AND user_id = $2)",
+			parentUUID, userID).Scan(&parentExists)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to verify parent note",
+			})
+			return
+		}
+		if !parentExists {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Parent note not found or you don't have permission to access it",
+			})
+			return
+		}
+
+		// Check for circular reference (prevent setting parent to a descendant)
+		var wouldCreateCycle bool
+		err = db.QueryRow(context.Background(), `
+			WITH RECURSIVE note_hierarchy AS (
+				SELECT id, parent FROM notes WHERE id = $1
+				UNION ALL
+				SELECT n.id, n.parent FROM notes n
+				INNER JOIN note_hierarchy nh ON n.parent = nh.id
+			)
+			SELECT EXISTS(SELECT 1 FROM note_hierarchy WHERE id = $2)
+		`, noteUUID, parentUUID).Scan(&wouldCreateCycle)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"error": "Failed to check for circular reference",
+			})
+			return
+		}
+		if wouldCreateCycle {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "Cannot set parent: would create circular reference",
+			})
+			return
+		}
+	}
+
+	// Update the note's parent - only if it belongs to the user
+	result, err := db.Exec(context.Background(),
+		"UPDATE notes SET parent = $1, updated_at = now() WHERE id = $2 AND user_id = $3",
+		parentUUID, noteUUID, userID)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to update note parent",
+		})
+		return
+	}
+
+	// Check if any rows were affected (i.e., note exists and belongs to user)
+	if result.RowsAffected() == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Note not found or you don't have permission to modify it",
+		})
+		return
+	}
+
+	// Return success response
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Note parent updated successfully",
+		"parent":  requestBody.Parent,
+	})
+}
+
 func main() {
 	godotenv.Load()
 
@@ -382,8 +492,8 @@ func main() {
 
 	// Adding the CORS middleware
 	r.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"https://modelpad.app", "http://localhost:5173"},
-		AllowMethods: []string{"GET", "POST", "DELETE", "PUT", "OPTIONS"},
+		AllowOrigins: []string{"https://modelpad.app", "http://localhost:5173", "http://localhost:5174"},
+		AllowMethods: []string{"GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"},
 		AllowHeaders: append([]string{"content-type"},
 			supertokens.GetAllCORSHeaders()...),
 		AllowCredentials: true,
@@ -412,6 +522,7 @@ func main() {
 	r.DELETE("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.DeleteNote)
 	r.GET("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.GetNote)
 	r.PATCH("/api/notes/:id/share", verifySession(&sessmodels.VerifySessionOptions{}), ShareNote)
+	r.PATCH("/api/notes/:id/parent", verifySession(&sessmodels.VerifySessionOptions{}), UpdateNoteParent)
 
 	// Document viewing endpoint (public, no authentication required)
 	r.GET("/doc/:id", ViewDocument)

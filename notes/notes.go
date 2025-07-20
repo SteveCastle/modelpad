@@ -42,6 +42,7 @@ type Note struct {
 	Body      string          `json:"body"`
 	Embedding pgvector.Vector `json:"embedding"`
 	UserId    uuid.UUID       `json:"user_id"`
+	Parent    *uuid.UUID      `json:"parent"`
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
 	Distance  float64         `json:"distance"`
@@ -63,9 +64,9 @@ func RagSearch(text string, userID string, distance float64, c *gin.Context) []N
 	var rows pgx.Rows
 	var err error
 	if text != "" {
-		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, embedding <-> $2 as distance, COALESCE(is_shared, false) as is_shared FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3 ORDER BY embedding <-> $2", userID, vector, distance)
+		rows, err = db.Query(context.Background(), "SELECT id,title, body, parent, created_at,updated_at, embedding <-> $2 as distance, COALESCE(is_shared, false) as is_shared FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3 ORDER BY embedding <-> $2", userID, vector, distance)
 	} else {
-		rows, err = db.Query(context.Background(), "SELECT id,title, body, created_at,updated_at, 0 as distance, COALESCE(is_shared, false) as is_shared FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
+		rows, err = db.Query(context.Background(), "SELECT id,title, body, parent, created_at,updated_at, 0 as distance, COALESCE(is_shared, false) as is_shared FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
 	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -74,7 +75,7 @@ func RagSearch(text string, userID string, distance float64, c *gin.Context) []N
 
 	for rows.Next() {
 		var note Note
-		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared)
+		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return nil
@@ -101,7 +102,7 @@ func GetNote(c *gin.Context) {
 	note := Note{}
 
 	db := c.MustGet("db").(*pgxpool.Pool)
-	err := db.QueryRow(context.Background(), "SELECT id, title, body, user_id, created_at, updated_at, COALESCE(is_shared, false) as is_shared FROM notes WHERE id = $1 AND user_id = $2", noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.CreatedAt, &note.UpdatedAt, &note.IsShared)
+	err := db.QueryRow(context.Background(), "SELECT id, title, body, user_id, parent, created_at, updated_at, COALESCE(is_shared, false) as is_shared FROM notes WHERE id = $1 AND user_id = $2", noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.IsShared)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
@@ -144,7 +145,7 @@ func UpsertNote(c *gin.Context) {
 		return
 	}
 
-	_, err = tx.Exec(context.Background(), "INSERT INTO notes (id, title, body, user_id, embedding) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (id) DO UPDATE SET id = $1, title = $2, body = $3, embedding = $5, updated_at = now()", note.ID, note.Title, note.Body, userID, newVector)
+	_, err = tx.Exec(context.Background(), "INSERT INTO notes (id, title, body, user_id, parent, embedding) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO UPDATE SET id = $1, title = $2, body = $3, parent = $5, embedding = $6, updated_at = now()", note.ID, note.Title, note.Body, userID, note.Parent, newVector)
 	if err != nil {
 		tx.Rollback(context.Background())
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -173,25 +174,73 @@ func DeleteNote(c *gin.Context) {
 
 	db := c.MustGet("db").(*pgxpool.Pool)
 
-	//In a transaction delete any revisions and then the note
+	//In a transaction delete all descendant notes, their revisions, and then the note itself
 	tx, err := db.Begin(context.Background())
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	_, err = tx.Exec(context.Background(), "DELETE FROM revisions WHERE note_id = $1", noteID)
+	// First, get all descendant note IDs using a recursive CTE
+	// This includes the note itself and all its children, grandchildren, etc.
+	rows, err := tx.Query(context.Background(), `
+		WITH RECURSIVE note_hierarchy AS (
+			-- Start with the note being deleted
+			SELECT id FROM notes WHERE id = $1 AND user_id = $2
+			UNION ALL
+			-- Recursively find all children
+			SELECT n.id FROM notes n
+			INNER JOIN note_hierarchy nh ON n.parent = nh.id
+			WHERE n.user_id = $2
+		)
+		SELECT id FROM note_hierarchy
+	`, noteID, userID)
+
 	if err != nil {
 		tx.Rollback(context.Background())
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 
-	_, err = tx.Exec(context.Background(), "DELETE FROM notes WHERE id = $1 AND user_id = $2", noteID, userID)
-	if err != nil {
+	var noteIDs []string
+	for rows.Next() {
+		var id string
+		err := rows.Scan(&id)
+		if err != nil {
+			tx.Rollback(context.Background())
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+		noteIDs = append(noteIDs, id)
+	}
+	rows.Close()
+
+	// Check if the original note exists and belongs to the user
+	if len(noteIDs) == 0 {
 		tx.Rollback(context.Background())
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(404, gin.H{"error": "Note not found or you don't have permission to delete it"})
 		return
+	}
+
+	// Delete all revisions for all descendant notes
+	for _, id := range noteIDs {
+		_, err = tx.Exec(context.Background(), "DELETE FROM revisions WHERE note_id = $1", id)
+		if err != nil {
+			tx.Rollback(context.Background())
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+	}
+
+	// Delete all descendant notes (this will cascade delete in order due to foreign key constraints)
+	// We need to delete children first, then parents
+	for i := len(noteIDs) - 1; i >= 0; i-- {
+		_, err = tx.Exec(context.Background(), "DELETE FROM notes WHERE id = $1 AND user_id = $2", noteIDs[i], userID)
+		if err != nil {
+			tx.Rollback(context.Background())
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
 	}
 
 	err = tx.Commit(context.Background())
@@ -200,5 +249,13 @@ func DeleteNote(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"message": "Note deleted"})
+	deletedCount := len(noteIDs)
+	if deletedCount == 1 {
+		c.JSON(200, gin.H{"message": "Note deleted"})
+	} else {
+		c.JSON(200, gin.H{
+			"message":       "Note and child notes deleted",
+			"deleted_count": deletedCount,
+		})
+	}
 }
