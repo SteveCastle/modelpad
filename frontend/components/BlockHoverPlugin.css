@@ -1,0 +1,106 @@
+.block-controls {
+  pointer-events: auto;
+}
+
+.block-controls-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--context-menu-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.block-control-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.block-control-btn:hover {
+  background: var(--hovered-button-bg-color);
+}
+
+.block-control-btn.delete-btn:hover {
+  background: rgba(220, 53, 69, 0.2);
+  color: #ff6b6b;
+}
+
+.block-type-menu {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 8px;
+  background: var(--context-menu-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  min-width: 140px;
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1001;
+}
+
+.current-type {
+  padding: 8px 12px;
+  color: var(--text-color);
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 4px;
+  opacity: 0.7;
+}
+
+.block-type-option {
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 3px;
+  font-size: 13px;
+  transition: background-color 0.2s ease;
+  display: block;
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.block-type-option:hover {
+  background: var(--hovered-button-bg-color);
+}
+
+/* Block hover effects */
+.editor-paragraph:hover,
+.editor-heading-h1:hover,
+.editor-heading-h2:hover,
+.editor-heading-h3:hover,
+.editor-heading-h4:hover,
+.editor-heading-h5:hover,
+.editor-heading-h6:hover,
+.editor-blockquote:hover,
+.editor-list-ol:hover,
+.editor-list-ul:hover,
+.codeHighlight:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid var(--link-color);
+  position: relative;
+}
+
+/* Ensure controls don't interfere with editor focus */
+.block-controls * {
+  pointer-events: auto;
+}

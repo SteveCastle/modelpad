@@ -19,6 +19,7 @@ import { useDebouncedCallback } from "use-debounce";
 import { FloatingMenuPlugin } from "./FloatingMenuPlugin";
 import ContextMenu from "./ContextMenu";
 import CodeHighlightPlugin from "./CodeHighlightPlugin";
+import { BlockHoverPlugin } from "./BlockHoverPlugin";
 import { Toolbar } from "./Toolbar";
 import { useStore, Story } from "../store";
 import "./TableOfContents.css";
@@ -406,6 +407,7 @@ export function StoryEditor({
           />
         </div>
         <FloatingMenuPlugin MenuComponent={ContextMenu} />
+        <BlockHoverPlugin />
         <HistoryPlugin />
         <OnChangePlugin
           onChange={debouncedOnChange}
