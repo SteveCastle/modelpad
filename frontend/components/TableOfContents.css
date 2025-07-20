@@ -1,0 +1,155 @@
+.table-of-contents {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  color: var(--text-color);
+}
+
+.toc-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.toc-item {
+  margin-bottom: 4px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.toc-item:hover {
+  background-color: var(--input-bg-color);
+}
+
+.toc-link {
+  display: block;
+  padding: 6px 8px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.toc-link:hover {
+  text-decoration: none;
+  color: var(--text-color);
+}
+
+/* Different indentation levels for different heading types */
+.toc-item.toc-h1 .toc-link {
+  font-weight: 600;
+  font-size: 14px;
+  padding-left: 8px;
+  color: var(--text-color);
+}
+
+.toc-item.toc-h2 .toc-link {
+  font-weight: 500;
+  font-size: 13px;
+  padding-left: 20px;
+  color: var(--text-color);
+}
+
+.toc-item.toc-h3 .toc-link {
+  font-weight: 400;
+  font-size: 12px;
+  padding-left: 32px;
+  color: var(--low-contrast-text-color);
+}
+
+.toc-item.toc-h4 .toc-link {
+  font-weight: 400;
+  font-size: 12px;
+  padding-left: 44px;
+  color: var(--low-contrast-text-color);
+}
+
+.toc-item.toc-h5 .toc-link {
+  font-weight: 400;
+  font-size: 11px;
+  padding-left: 56px;
+  color: var(--low-contrast-text-color);
+}
+
+.toc-item.toc-h6 .toc-link {
+  font-weight: 400;
+  font-size: 11px;
+  padding-left: 68px;
+  color: var(--low-contrast-text-color);
+}
+
+/* Active state for current section */
+.toc-item.active .toc-link {
+  background-color: var(--active-style-button-bg-color);
+  color: var(--link-color);
+  font-weight: 500;
+}
+
+/* Empty state */
+.table-of-contents:empty::before {
+  content: "Add headings to see table of contents";
+  color: var(--low-contrast-text-color);
+  font-size: 12px;
+  font-style: italic;
+  padding: 16px 8px;
+  display: block;
+}
+
+/* Scrollbar styling for the TOC panel */
+.toc-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.toc-panel::-webkit-scrollbar-track {
+  background: var(--editor-bg-color);
+}
+
+.toc-panel::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+.toc-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--low-contrast-text-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .toc-panel {
+    display: none;
+  }
+
+  .story-editor-container {
+    flex-direction: column !important;
+  }
+}
+
+/* Mobile TOC toggle (for future enhancement) */
+.toc-mobile-toggle {
+  display: none;
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  z-index: 1000;
+  background: var(--side-bar-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+@media (max-width: 768px) {
+  .toc-mobile-toggle {
+    display: block;
+  }
+}
