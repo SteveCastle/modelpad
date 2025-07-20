@@ -31,6 +31,7 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   Bars3Icon,
+  DocumentTextIcon,
 } from "@heroicons/react/24/solid";
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
@@ -276,6 +277,37 @@ const Notes = () => {
       })()
     : [];
 
+  const EmptyState = () => {
+    const hasSearchQuery = searchQuery.trim().length > 0;
+
+    return (
+      <div className="empty-state">
+        <div className="empty-state-content">
+          <DocumentTextIcon className="empty-state-icon" />
+          <h3 className="empty-state-title">
+            {hasSearchQuery ? "No notes found" : "No notes yet"}
+          </h3>
+          <p className="empty-state-description">
+            {hasSearchQuery
+              ? `No notes match "${searchQuery}". Try adjusting your search terms.`
+              : "Create your first note to get started with organizing your thoughts and ideas."}
+          </p>
+          {hasSearchQuery && (
+            <button
+              className="empty-state-button"
+              onClick={() => {
+                setSearchText("");
+                setSearchQuery("");
+              }}
+            >
+              Clear search
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="Notes">
       <div className="notes-header">
@@ -301,28 +333,32 @@ const Notes = () => {
         </div>
       </div>
       {data ? (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={displayNotes.map((note) => note.id)}
-            strategy={verticalListSortingStrategy}
+        displayNotes.length > 0 ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
           >
-            <ul className="note-list">
-              {displayNotes.map((note) => (
-                <TreeNoteItem
-                  key={note.id}
-                  note={note}
-                  onToggleExpanded={toggleExpanded}
-                  isDragging={activeId === note.id}
-                />
-              ))}
-            </ul>
-          </SortableContext>
-        </DndContext>
+            <SortableContext
+              items={displayNotes.map((note) => note.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <ul className="note-list">
+                {displayNotes.map((note) => (
+                  <TreeNoteItem
+                    key={note.id}
+                    note={note}
+                    onToggleExpanded={toggleExpanded}
+                    isDragging={activeId === note.id}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
+        ) : (
+          <EmptyState />
+        )
       ) : (
         <div className="loading-container">
           <LoadingSpinner />

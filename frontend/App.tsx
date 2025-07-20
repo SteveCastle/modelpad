@@ -21,6 +21,24 @@ type Model = {
   name: string;
 };
 
+// Custom hook to detect mobile screen size
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkIsMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkIsMobile();
+    window.addEventListener("resize", checkIsMobile);
+
+    return () => window.removeEventListener("resize", checkIsMobile);
+  }, []);
+
+  return isMobile;
+}
+
 function App() {
   const {
     setActive,
@@ -38,6 +56,7 @@ function App() {
   );
   const provider = providers[providerKey];
   const activeStoryId = useStore((state) => state.activeStoryId);
+  const isMobile = useIsMobile();
 
   // Panel refs and state
   const leftPanelRef = useRef<ImperativePanelHandle>(null);
@@ -51,6 +70,12 @@ function App() {
       cancelGeneration();
     }
   }, [activeStoryId]);
+
+  // Reset panel states when switching between mobile and desktop
+  useEffect(() => {
+    setLeftPanelCollapsed(false);
+    setRightPanelCollapsed(false);
+  }, [isMobile]);
 
   useQuery({
     queryKey: ["models", host],
@@ -99,9 +124,12 @@ function App() {
 
   return (
     <div className="App">
-      <PanelGroup direction="horizontal">
+      <PanelGroup
+        direction="horizontal"
+        key={`panel-group-${isMobile ? "mobile" : "desktop"}`}
+      >
         {/* Left Sidebar Panel */}
-        {session.loading === false && session.userId ? (
+        {session.loading === false && session.userId && !isMobile ? (
           <>
             <Panel
               id="left-panel"
@@ -114,6 +142,7 @@ function App() {
               collapsedSize={4}
               onCollapse={() => setLeftPanelCollapsed(true)}
               onExpand={() => setLeftPanelCollapsed(false)}
+              order={1}
             >
               {leftPanelCollapsed ? (
                 <LeftNavBar />
@@ -130,9 +159,12 @@ function App() {
         {/* Main Content Panel */}
         <Panel
           id="main-panel"
-          defaultSize={session.loading === false && session.userId ? 60 : 100}
+          defaultSize={
+            session.loading === false && session.userId && !isMobile ? 60 : 100
+          }
           minSize={40}
-          maxSize={85}
+          maxSize={100}
+          order={2}
         >
           <div className="main-content">
             <div className="tabs">
@@ -171,7 +203,7 @@ function App() {
         </Panel>
 
         {/* Right Placeholder Panel */}
-        {session.loading === false && session.userId ? (
+        {session.loading === false && session.userId && !isMobile ? (
           <>
             <PanelResizeHandle className="resize-handle" />
             <Panel
@@ -185,6 +217,7 @@ function App() {
               collapsedSize={4}
               onCollapse={() => setRightPanelCollapsed(true)}
               onExpand={() => setRightPanelCollapsed(false)}
+              order={3}
             >
               {rightPanelCollapsed ? (
                 <RightNavBar />
