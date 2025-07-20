@@ -241,7 +241,6 @@
   font-weight: bold;
   color: var(--text-color);
   background-color: rgba(210, 103, 138, 0.05);
-  border-left: 3px solid var(--link-color);
 }
 
 .editor-heading-h2 {
@@ -249,7 +248,6 @@
   font-weight: bold;
   color: var(--text-color);
   background-color: rgba(210, 103, 138, 0.03);
-  border-left: 2px solid rgba(210, 103, 138, 0.7);
 }
 
 .editor-heading-h3 {
@@ -257,7 +255,6 @@
   font-weight: bold;
   color: var(--text-color);
   background-color: rgba(210, 103, 138, 0.02);
-  border-left: 2px solid rgba(210, 103, 138, 0.5);
 }
 
 .editor-heading-h4 {
@@ -265,7 +262,6 @@
   font-weight: bold;
   color: var(--text-color);
   background-color: rgba(210, 103, 138, 0.01);
-  border-left: 1px solid rgba(210, 103, 138, 0.4);
 }
 
 .editor-heading-h5 {
@@ -273,7 +269,6 @@
   font-weight: bold;
   color: var(--text-color);
   background-color: rgba(210, 103, 138, 0.01);
-  border-left: 1px solid rgba(210, 103, 138, 0.3);
 }
 
 .editor-heading-h6 {
@@ -281,7 +276,6 @@
   font-weight: bold;
   color: var(--text-color);
   background-color: rgba(210, 103, 138, 0.01);
-  border-left: 1px solid rgba(210, 103, 138, 0.2);
 }
 
 .editor-blockquote {
