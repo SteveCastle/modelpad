@@ -34,7 +34,7 @@ import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
 
 import "./Notes.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { LoadingSpinner } from "./LoadingSpinner";
 
@@ -164,13 +164,26 @@ async function updateNoteParent(id: string, parentId: string | null) {
   return response.json();
 }
 
-const Notes = () => {
+type NotesTabType = "notes" | "vocabulary";
+
+interface NotesProps {
+  defaultTab?: NotesTabType;
+  onTabClick?: () => void;
+}
+
+const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
+  const [activeTab, setActiveTab] = useState<NotesTabType>(defaultTab);
   const [searchText, setSearchText] = useState("");
   const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [initializedExpansion, setInitializedExpansion] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  // Update active tab when defaultTab prop changes
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedCallback(() => {
@@ -345,8 +358,30 @@ const Notes = () => {
     );
   };
 
-  return (
-    <div className="Notes">
+  const VocabularyContent = () => (
+    <div className="vocabulary-content">
+      <div className="coming-soon-content">
+        <div className="coming-soon-icon">📚</div>
+        <h4>Vocabulary Feature Coming Soon!</h4>
+        <p>
+          The Vocabulary feature will help you build and manage your writing
+          vocabulary:
+        </p>
+        <ul className="feature-list">
+          <li>Save and organize important words and phrases</li>
+          <li>Quick access to definitions and synonyms</li>
+          <li>Context-aware suggestions while writing</li>
+          <li>Personal vocabulary building and tracking</li>
+        </ul>
+        <div className="preview-note">
+          This feature is in development and will be available soon!
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderNotesContent = () => (
+    <>
       <div className="notes-header">
         <div className="search-input">
           <input
@@ -410,6 +445,42 @@ const Notes = () => {
           <LoadingSpinner />
         </div>
       )}
+    </>
+  );
+
+  return (
+    <div className="Notes">
+      <div className="tab-navigation">
+        <button
+          className={`tab-button ${activeTab === "notes" ? "active" : ""}`}
+          onClick={() => {
+            if (activeTab === "notes" && onTabClick) {
+              onTabClick();
+            } else {
+              setActiveTab("notes");
+            }
+          }}
+        >
+          Notes
+        </button>
+        <button
+          className={`tab-button ${activeTab === "vocabulary" ? "active" : ""}`}
+          onClick={() => {
+            if (activeTab === "vocabulary" && onTabClick) {
+              onTabClick();
+            } else {
+              setActiveTab("vocabulary");
+            }
+          }}
+        >
+          Vocabulary
+        </button>
+      </div>
+
+      <div className="tab-content">
+        {activeTab === "notes" && renderNotesContent()}
+        {activeTab === "vocabulary" && <VocabularyContent />}
+      </div>
     </div>
   );
 };
@@ -427,6 +498,10 @@ const TreeNoteItem = ({
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   const queryClient = useQueryClient();
 
   const {
@@ -476,22 +551,33 @@ const TreeNoteItem = ({
 
   const handleShareToggle = () => {
     shareNoteMutation({ id: note.id, isShared: !note.is_shared });
+    setContextMenuPosition(null);
   };
 
   const openSharedUrl = () => {
     window.open(shareUrl, "_blank");
   };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenuPosition({ x: e.clientX, y: e.clientY });
+    setIsOpen(true);
+  };
+
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
     onOpenChange: setIsOpen,
-    placement: "right",
+    placement: "bottom-start",
     middleware: [offset(10), shift()],
+    strategy: "fixed",
   });
   const click = useClick(context);
   const { getReferenceProps, getFloatingProps } = useInteractions([click]);
 
   useOnClickOutside(refs.floating, () => {
     setIsOpen(false);
+    setContextMenuPosition(null);
   });
 
   const { mergeNotes, updateSyncState, setSideBarOpen } = useStore(
@@ -507,6 +593,7 @@ const TreeNoteItem = ({
         paddingLeft: `${note.level * 20 + 10}px`,
       }}
       onMouseLeave={() => setIsOpen(false)}
+      onContextMenu={handleContextMenu}
     >
       <div className="note-item-wrapper">
         <button
@@ -553,6 +640,8 @@ const TreeNoteItem = ({
             {...getReferenceProps({
               onClick: (e) => {
                 e.stopPropagation();
+                // Treat button click same as right-click
+                setContextMenuPosition({ x: e.clientX, y: e.clientY });
                 setIsOpen(!isOpen);
               },
             })}
@@ -564,7 +653,16 @@ const TreeNoteItem = ({
             <div
               className="note-actions"
               ref={refs.setFloating}
-              style={{ ...floatingStyles, zIndex: 1000, position: "fixed" }}
+              style={{
+                ...(contextMenuPosition
+                  ? {
+                      position: "fixed",
+                      left: contextMenuPosition.x,
+                      top: contextMenuPosition.y,
+                      zIndex: 1000,
+                    }
+                  : { ...floatingStyles, zIndex: 1000, position: "fixed" }),
+              }}
               {...getFloatingProps()}
             >
               <button
@@ -574,6 +672,7 @@ const TreeNoteItem = ({
                   e.stopPropagation();
                   mergeNotes([{ ...note, includeInContext: true }], false);
                   setIsOpen(false);
+                  setContextMenuPosition(null);
                 }}
               >
                 <PlusCircleIcon className="action-icon" />
@@ -608,6 +707,7 @@ const TreeNoteItem = ({
                       e.preventDefault();
                       e.stopPropagation();
                       handleCopyUrl();
+                      setContextMenuPosition(null);
                     }}
                   >
                     {copied ? (
@@ -629,6 +729,7 @@ const TreeNoteItem = ({
                       e.stopPropagation();
                       openSharedUrl();
                       setIsOpen(false);
+                      setContextMenuPosition(null);
                     }}
                   >
                     <ArrowTopRightOnSquareIcon className="action-icon" />
@@ -644,6 +745,7 @@ const TreeNoteItem = ({
                   updateSyncState(note.id, false);
                   mutate(note.id);
                   setIsOpen(false);
+                  setContextMenuPosition(null);
                 }}
               >
                 <TrashIcon className="action-icon" />
@@ -687,3 +789,4 @@ function prettyDate(date: string): string {
 }
 
 export default Notes;
+export type { NotesProps };

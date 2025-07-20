@@ -43,34 +43,75 @@ function useIsMobile() {
 // Props interfaces for navigation components
 interface LeftNavBarProps {
   leftPanelRef: React.RefObject<ImperativePanelHandle>;
+  setActiveNotesTab: (tab: "notes" | "vocabulary") => void;
+  activeNotesTab: "notes" | "vocabulary";
+  leftPanelCollapsed: boolean;
 }
 
 interface RightNavBarProps {
   rightPanelRef: React.RefObject<ImperativePanelHandle>;
   setActiveAITab: (tab: "model-settings" | "context-control" | "agent") => void;
+  activeAITab: "model-settings" | "context-control" | "agent";
+  rightPanelCollapsed: boolean;
 }
 
 // Vertical Navigation Components (defined outside App to prevent re-creation)
-const LeftNavBar = ({ leftPanelRef }: LeftNavBarProps) => (
-  <div className="vertical-nav-bar left">
+const LeftNavBar = ({
+  leftPanelRef,
+  setActiveNotesTab,
+  activeNotesTab,
+  leftPanelCollapsed,
+}: LeftNavBarProps) => (
+  <div className="vertical-nav-bar left multiple-buttons">
     <button
       className="nav-button"
-      onClick={() => leftPanelRef.current?.expand()}
-      title="Open Notes Panel"
+      onClick={() => {
+        if (!leftPanelCollapsed && activeNotesTab === "notes") {
+          leftPanelRef.current?.collapse();
+        } else {
+          setActiveNotesTab("notes");
+          leftPanelRef.current?.expand();
+        }
+      }}
+      title="Notes"
     >
       <span className="nav-icon">📝</span>
       <span className="nav-label">Notes</span>
     </button>
+    <button
+      className="nav-button"
+      onClick={() => {
+        if (!leftPanelCollapsed && activeNotesTab === "vocabulary") {
+          leftPanelRef.current?.collapse();
+        } else {
+          setActiveNotesTab("vocabulary");
+          leftPanelRef.current?.expand();
+        }
+      }}
+      title="Vocabulary"
+    >
+      <span className="nav-icon">📚</span>
+      <span className="nav-label">Vocabulary</span>
+    </button>
   </div>
 );
 
-const RightNavBar = ({ rightPanelRef, setActiveAITab }: RightNavBarProps) => (
+const RightNavBar = ({
+  rightPanelRef,
+  setActiveAITab,
+  activeAITab,
+  rightPanelCollapsed,
+}: RightNavBarProps) => (
   <div className="vertical-nav-bar right multiple-buttons">
     <button
       className="nav-button"
       onClick={() => {
-        setActiveAITab("model-settings");
-        rightPanelRef.current?.expand();
+        if (!rightPanelCollapsed && activeAITab === "model-settings") {
+          rightPanelRef.current?.collapse();
+        } else {
+          setActiveAITab("model-settings");
+          rightPanelRef.current?.expand();
+        }
       }}
       title="Model Settings"
     >
@@ -80,8 +121,12 @@ const RightNavBar = ({ rightPanelRef, setActiveAITab }: RightNavBarProps) => (
     <button
       className="nav-button"
       onClick={() => {
-        setActiveAITab("context-control");
-        rightPanelRef.current?.expand();
+        if (!rightPanelCollapsed && activeAITab === "context-control") {
+          rightPanelRef.current?.collapse();
+        } else {
+          setActiveAITab("context-control");
+          rightPanelRef.current?.expand();
+        }
       }}
       title="Context Control"
     >
@@ -91,8 +136,12 @@ const RightNavBar = ({ rightPanelRef, setActiveAITab }: RightNavBarProps) => (
     <button
       className="nav-button"
       onClick={() => {
-        setActiveAITab("agent");
-        rightPanelRef.current?.expand();
+        if (!rightPanelCollapsed && activeAITab === "agent") {
+          rightPanelRef.current?.collapse();
+        } else {
+          setActiveAITab("agent");
+          rightPanelRef.current?.expand();
+        }
       }}
       title="AI Agent"
     >
@@ -129,6 +178,9 @@ function App() {
   const [activeAITab, setActiveAITab] = useState<
     "model-settings" | "context-control" | "agent"
   >("model-settings");
+  const [activeNotesTab, setActiveNotesTab] = useState<"notes" | "vocabulary">(
+    "notes"
+  );
 
   // If activeStory changes cancel generation
   useEffect(() => {
@@ -174,20 +226,30 @@ function App() {
               id="left-panel"
               ref={leftPanelRef}
               defaultSize={20}
-              minSize={12}
+              minSize={16}
               maxSize={35}
               className="side-bar-panel"
               collapsible={true}
-              collapsedSize={4}
+              collapsedSize={3}
               onCollapse={() => setLeftPanelCollapsed(true)}
               onExpand={() => setLeftPanelCollapsed(false)}
               order={1}
             >
               {leftPanelCollapsed ? (
-                <LeftNavBar leftPanelRef={leftPanelRef} />
+                <LeftNavBar
+                  leftPanelRef={leftPanelRef}
+                  setActiveNotesTab={setActiveNotesTab}
+                  activeNotesTab={activeNotesTab}
+                  leftPanelCollapsed={leftPanelCollapsed}
+                />
               ) : (
                 <div className="side-bar-content">
-                  <Notes />
+                  <Notes
+                    defaultTab={activeNotesTab}
+                    onTabClick={() => {
+                      leftPanelRef.current?.collapse();
+                    }}
+                  />
                 </div>
               )}
             </Panel>
@@ -253,7 +315,7 @@ function App() {
               maxSize={35}
               className="right-panel"
               collapsible={true}
-              collapsedSize={4}
+              collapsedSize={3}
               onCollapse={() => setRightPanelCollapsed(true)}
               onExpand={() => setRightPanelCollapsed(false)}
               order={3}
@@ -262,9 +324,16 @@ function App() {
                 <RightNavBar
                   rightPanelRef={rightPanelRef}
                   setActiveAITab={setActiveAITab}
+                  activeAITab={activeAITab}
+                  rightPanelCollapsed={rightPanelCollapsed}
                 />
               ) : (
-                <AIPanel defaultTab={activeAITab} />
+                <AIPanel
+                  defaultTab={activeAITab}
+                  onTabClick={() => {
+                    rightPanelRef.current?.collapse();
+                  }}
+                />
               )}
             </Panel>
           </>

@@ -52,7 +52,6 @@
   background-color: var(--side-bar-bg-color);
   display: flex;
   flex-direction: column;
-  border-left: 1px solid var(--border-color, #2d2d2d);
 }
 
 .right-panel-content {
@@ -380,14 +379,15 @@
 /* Vertical Navigation Bars */
 .vertical-nav-bar {
   height: 100%;
-  width: 100%;
+  width: 100%; /* Fill container width */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  padding: 0.5rem 0;
+  padding: 8px 0; /* Reduced padding */
   background-color: var(--side-bar-bg-color);
   position: relative;
+  box-sizing: border-box;
 }
 
 .vertical-nav-bar.left {
@@ -407,13 +407,12 @@
   border: none;
   color: var(--text-color);
   cursor: pointer;
-  padding: 0.75rem 0.5rem;
-  margin: 0.25rem 0;
+  padding: 6px 4px; /* More compact padding */
+  margin: 2px 0; /* Reduced margin */
   border-radius: 4px;
   transition: all 0.2s ease;
-  min-height: 60px;
-  width: 100%;
-  max-width: 48px;
+  min-height: 40px; /* Reduced height */
+  width: 32px; /* Fixed compact width */
   position: relative;
   overflow: hidden;
 }
@@ -421,6 +420,7 @@
 .nav-button:hover {
   background-color: var(--hovered-toolbar-bg-color, rgba(255, 255, 255, 0.1));
   transform: translateX(2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .nav-button:active {
@@ -429,17 +429,17 @@
 }
 
 .nav-icon {
-  font-size: 1.2rem;
-  margin-bottom: 0.25rem;
+  font-size: 14px; /* Smaller icon */
+  margin-bottom: 2px; /* Reduced margin */
   display: block;
   line-height: 1;
 }
 
 .nav-label {
-  font-size: 0.6rem;
+  font-size: 8px; /* Smaller text */
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   line-height: 1;
   text-align: center;
   writing-mode: vertical-rl;
@@ -519,20 +519,22 @@
   }
 
   .vertical-nav-bar {
-    padding: 0.25rem 0;
+    width: 100%; /* Fill container width on mobile too */
+    padding: 6px 0;
   }
 
   .nav-button {
-    min-height: 50px;
-    padding: 0.5rem 0.25rem;
+    min-height: 35px; /* Smaller on mobile */
+    width: 28px;
+    padding: 4px 2px;
   }
 
   .nav-icon {
-    font-size: 1rem;
+    font-size: 12px; /* Smaller on mobile */
   }
 
   .nav-label {
-    font-size: 0.5rem;
+    font-size: 7px; /* Smaller on mobile */
   }
 }
 @media (min-width: 768px) {
@@ -600,17 +602,17 @@
 
 /* Future extensibility - support for more buttons */
 .nav-button + .nav-button {
-  margin-top: 0.5rem;
+  margin-top: 4px; /* Reduced spacing between buttons */
 }
 
 .vertical-nav-bar.multiple-buttons .nav-button {
-  min-height: 50px;
+  min-height: 36px; /* Slightly smaller for multiple buttons */
 }
 
 .vertical-nav-bar.multiple-buttons .nav-icon {
-  font-size: 1rem;
+  font-size: 13px; /* Smaller icon for multiple buttons */
 }
 
 .vertical-nav-bar.multiple-buttons .nav-label {
-  font-size: 0.55rem;
+  font-size: 7px; /* Smaller label for multiple buttons */
 }

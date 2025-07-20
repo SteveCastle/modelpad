@@ -16,10 +16,12 @@ type PromptEditTab = PromptTypeKeys | null;
 
 interface AIPanelProps {
   defaultTab?: TabType;
+  onTabClick?: () => void;
 }
 
 export default function AIPanel({
   defaultTab = "model-settings",
+  onTabClick,
 }: AIPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
   const [activePromptTab, setActivePromptTab] =
@@ -71,7 +73,6 @@ export default function AIPanel({
 
   const renderModelSettings = () => (
     <div className="model-settings-content">
-      <h3>Model Settings</h3>
       <div className="available-models">
         {availableModels.length > 1 &&
           availableModels.map((m) => (
@@ -417,7 +418,6 @@ export default function AIPanel({
   const renderAgent = () => (
     <div className="agent-content">
       <div className="chat-header">
-        <h3>AI Agent</h3>
         <span className="coming-soon-badge">Coming Soon</span>
       </div>
 
@@ -464,21 +464,39 @@ export default function AIPanel({
           className={`tab-button ${
             activeTab === "model-settings" ? "active" : ""
           }`}
-          onClick={() => setActiveTab("model-settings")}
+          onClick={() => {
+            if (activeTab === "model-settings" && onTabClick) {
+              onTabClick();
+            } else {
+              setActiveTab("model-settings");
+            }
+          }}
         >
-          Model Settings
+          Model
         </button>
         <button
           className={`tab-button ${
             activeTab === "context-control" ? "active" : ""
           }`}
-          onClick={() => setActiveTab("context-control")}
+          onClick={() => {
+            if (activeTab === "context-control" && onTabClick) {
+              onTabClick();
+            } else {
+              setActiveTab("context-control");
+            }
+          }}
         >
-          Context Control
+          Context
         </button>
         <button
           className={`tab-button ${activeTab === "agent" ? "active" : ""}`}
-          onClick={() => setActiveTab("agent")}
+          onClick={() => {
+            if (activeTab === "agent" && onTabClick) {
+              onTabClick();
+            } else {
+              setActiveTab("agent");
+            }
+          }}
         >
           Agent
         </button>
