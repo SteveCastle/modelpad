@@ -16,6 +16,7 @@ import { providers } from "./providers";
 import "./App.css";
 import { useSessionContext } from "supertokens-auth-react/recipe/session";
 import Notes from "./components/Notes";
+import RightPanel from "./components/RightPanel";
 
 type Model = {
   name: string;
@@ -219,19 +220,7 @@ function App() {
               onExpand={() => setRightPanelCollapsed(false)}
               order={3}
             >
-              {rightPanelCollapsed ? (
-                <RightNavBar />
-              ) : (
-                <div className="right-panel-content">
-                  <div className="placeholder-content">
-                    <h3>Right Panel</h3>
-                    <p>
-                      This is a placeholder panel that can be used for
-                      additional features.
-                    </p>
-                  </div>
-                </div>
-              )}
+              {rightPanelCollapsed ? <RightNavBar /> : <RightPanel />}
             </Panel>
           </>
         ) : null}
