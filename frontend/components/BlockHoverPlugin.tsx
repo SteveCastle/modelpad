@@ -33,11 +33,12 @@ interface PromptControlsProps {
   onCancel: () => void;
   onUndo: () => void;
   onRedo: () => void;
-  onHide: () => void;
+  onDelete: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  isDeletionDisabled: boolean;
 }
 
 function PromptControls({
@@ -46,11 +47,12 @@ function PromptControls({
   onCancel,
   onUndo,
   onRedo,
-  onHide,
+  onDelete,
   onMouseEnter,
   onMouseLeave,
   canUndo,
   canRedo,
+  isDeletionDisabled,
 }: Omit<PromptControlsProps, "promptId">) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
@@ -75,7 +77,7 @@ function PromptControls({
 
   return (
     <div
-      className="prompt-controls"
+      className="block-controls"
       style={{
         position: "absolute",
         top: position.top,
@@ -85,44 +87,54 @@ function PromptControls({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
-      {status === "generating" && (
+      <div className="block-controls-buttons">
+        {status === "generating" && (
+          <button
+            className="block-control-btn prompt-control-cancel"
+            onClick={onCancel}
+            title="Cancel generation"
+          >
+            ❌
+          </button>
+        )}
+
+        {(status === "completed" || status === "cancelled") && (
+          <>
+            <button
+              className="block-control-btn prompt-control-undo"
+              onClick={onUndo}
+              disabled={!canUndo}
+              title={
+                status === "cancelled"
+                  ? "Restore original content"
+                  : "Undo generation"
+              }
+            >
+              ↶
+            </button>
+            <button
+              className="block-control-btn prompt-control-redo"
+              onClick={onRedo}
+              disabled={!canRedo}
+              title={
+                status === "cancelled" ? "Retry generation" : "Redo generation"
+              }
+            >
+              {status === "cancelled" ? "🔄" : "↷"}
+            </button>
+          </>
+        )}
         <button
-          className="prompt-control-btn prompt-control-cancel"
-          onClick={onCancel}
-          title="Cancel generation"
+          className="block-control-btn prompt-control-delete"
+          onClick={onDelete}
+          disabled={isDeletionDisabled}
+          title={
+            isDeletionDisabled ? "Cannot delete the last block" : "Delete block"
+          }
         >
-          Cancel
+          🗑️
         </button>
-      )}
-
-      {status === "completed" && (
-        <>
-          <button
-            className="prompt-control-btn prompt-control-undo"
-            onClick={onUndo}
-            disabled={!canUndo}
-            title="Undo generation"
-          >
-            Undo
-          </button>
-          <button
-            className="prompt-control-btn prompt-control-redo"
-            onClick={onRedo}
-            disabled={!canRedo}
-            title="Redo generation"
-          >
-            Redo
-          </button>
-        </>
-      )}
-
-      <button
-        className="prompt-control-btn prompt-control-hide"
-        onClick={onHide}
-        title="Hide controls"
-      >
-        Hide
-      </button>
+      </div>
     </div>
   );
 }
@@ -357,9 +369,9 @@ export function BlockHoverPlugin(): JSX.Element | null {
       // Clear any pending hide timeout
       clearHideTimeout();
 
-      // Find the closest block element (including prompt nodes)
+      // Find the closest block element (excluding prompt nodes which are inline)
       const blockElement = target.closest(
-        ".editor-paragraph, .editor-heading-h1, .editor-heading-h2, .editor-heading-h3, .editor-heading-h4, .editor-heading-h5, .editor-heading-h6, .editor-blockquote, .editor-list-ol, .editor-list-ul, .codeHighlight, .prompt-text"
+        ".editor-paragraph, .editor-heading-h1, .editor-heading-h2, .editor-heading-h3, .editor-heading-h4, .editor-heading-h5, .editor-heading-h6, .editor-blockquote, .editor-list-ol, .editor-list-ul, .codeHighlight"
       ) as HTMLElement;
 
       if (blockElement && blockElement !== hoveredElement) {
@@ -521,9 +533,8 @@ export function BlockHoverPlugin(): JSX.Element | null {
     }
   };
 
-  const handlePromptHide = () => {
-    setHoveredElement(null);
-    setPromptNodeInfo(null);
+  const handlePromptDelete = () => {
+    deleteBlock();
   };
 
   const handleControlsMouseEnter = () => {
@@ -547,11 +558,12 @@ export function BlockHoverPlugin(): JSX.Element | null {
         onCancel={handlePromptCancel}
         onUndo={handlePromptUndo}
         onRedo={handlePromptRedo}
-        onHide={handlePromptHide}
+        onDelete={handlePromptDelete}
         onMouseEnter={handleControlsMouseEnter}
         onMouseLeave={handleControlsMouseLeave}
         canUndo={promptNodeInfo.canUndo}
         canRedo={promptNodeInfo.canRedo}
+        isDeletionDisabled={isDeletionDisabled}
       />
     );
   }

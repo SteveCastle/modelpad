@@ -14,11 +14,6 @@ import {
   AIGenerationNode,
 } from "../components/AIGenerationNode";
 import { $createPromptNode, $isPromptNode } from "../components/PromptNode";
-import {
-  TRANSFORMERS,
-  $convertFromMarkdownString,
-  $convertToMarkdownString,
-} from "@lexical/markdown";
 import { useStore, PromptTypeKeys, PromptGeneration } from "../store";
 import { providers } from "../providers";
 import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
@@ -204,21 +199,8 @@ export function useAIGeneration() {
           }
         });
 
-        // Then apply markdown formatting
-        $convertFromMarkdownString(
-          $convertToMarkdownString(TRANSFORMERS, root)
-        );
-
-        // Update prompt generation tracking
+        // Update prompt node status to completed if this is a generation with promptId
         if (action === "generate" && promptId) {
-          updatePromptGeneration(promptId, {
-            status: "completed",
-            generatedNodeKeys: generatedNodeKeys,
-            canUndo: true,
-            canRedo: false,
-          });
-
-          // Update the prompt node status using generation tracking
           const generation = getPromptGeneration(promptId);
           if (generation) {
             const promptNode = $getNodeByKey(generation.promptNodeKey);
@@ -226,6 +208,14 @@ export function useAIGeneration() {
               promptNode.setStatus("completed");
             }
           }
+
+          // Update the generation tracking
+          updatePromptGeneration(promptId, {
+            status: "completed",
+            generatedNodeKeys: generatedNodeKeys,
+            canUndo: true,
+            canRedo: false,
+          });
         }
       });
 
@@ -375,7 +365,11 @@ export function useAIGeneration() {
       setGenerationState("ready");
 
       if (promptId) {
-        updatePromptGeneration(promptId, { status: "cancelled" });
+        updatePromptGeneration(promptId, {
+          status: "cancelled",
+          canUndo: true, // Allow user to undo (restore original content)
+          canRedo: true, // Allow user to redo (retry generation)
+        });
 
         editor.update(() => {
           const generation = getPromptGeneration(promptId);
@@ -404,18 +398,69 @@ export function useAIGeneration() {
         }
       });
 
-      // Restore the original prompt node to regular text
+      // Update prompt node - restore original content and set status
       const promptNode = $getNodeByKey(generation.promptNodeKey);
       if ($isPromptNode(promptNode)) {
-        const textNode = promptNode.convertToTextNode();
-        promptNode.replace(textNode);
+        // If generation was cancelled, restore original content
+        if (generation.status === "cancelled") {
+          promptNode.setTextContent(generation.originalContent);
+        }
+        promptNode.setStatus("completed");
+      }
+    });
+
+    // Update generation state - clear generated nodes but keep prompt node
+    updatePromptGeneration(promptId, {
+      generatedNodeKeys: [],
+      status: "completed",
+      canUndo: false,
+      canRedo: true,
+    });
+  };
+
+  // Regenerate function - clears output and regenerates
+  const regenerateGeneration = (promptId: string) => {
+    const generation = getPromptGeneration(promptId);
+    if (!generation) return;
+
+    editor.update(() => {
+      // Remove all generated nodes
+      generation.generatedNodeKeys.forEach((nodeKey) => {
+        const node = $getNodeByKey(nodeKey);
+        if (node) {
+          node.remove();
+        }
+      });
+
+      // Update prompt node status to pending
+      const promptNode = $getNodeByKey(generation.promptNodeKey);
+      if ($isPromptNode(promptNode)) {
+        promptNode.setStatus("pending");
       }
     });
 
     // Update generation state
     updatePromptGeneration(promptId, {
+      status: "pending",
+      generatedNodeKeys: [],
       canUndo: false,
-      canRedo: true,
+      canRedo: false,
+    });
+
+    // Find the parent element of the PromptNode to use as targetNodeKey
+    editor.getEditorState().read(() => {
+      const promptNode = $getNodeByKey(generation.promptNodeKey);
+      if ($isPromptNode(promptNode)) {
+        const parentElement = promptNode.getParent();
+        if (parentElement && $isElementNode(parentElement)) {
+          // Re-trigger generation using the parent element as target
+          generate("newScene", "", {
+            customText: generation.originalContent,
+            action: "generate",
+            targetNodeKey: parentElement.getKey(),
+          });
+        }
+      }
     });
   };
 
@@ -424,43 +469,36 @@ export function useAIGeneration() {
     const generation = getPromptGeneration(promptId);
     if (!generation || !generation.canRedo) return;
 
-    // Re-run the generation with the same prompt
+    // Update prompt node status to pending
     editor.update(() => {
-      const root = $getRoot();
-      // Find a suitable parent for the prompt node (or create one)
-      let targetParent = root.getLastChild();
-      if (!targetParent || !$isElementNode(targetParent)) {
-        targetParent = $createParagraphNode();
-        root.append(targetParent);
+      const promptNode = $getNodeByKey(generation.promptNodeKey);
+      if ($isPromptNode(promptNode)) {
+        promptNode.setStatus("pending");
       }
-
-      // Create a new prompt node with the original content
-      const promptNode = $createPromptNode(
-        generation.originalContent,
-        promptId,
-        "pending",
-        generation.originalContent
-      );
-
-      if ($isElementNode(targetParent)) {
-        targetParent.append(promptNode);
-      }
-
-      // Update the generation tracking
-      updatePromptGeneration(promptId, {
-        promptNodeKey: promptNode.getKey(),
-        status: "pending",
-        canUndo: false,
-        canRedo: false,
-        generatedNodeKeys: [],
-      });
     });
 
-    // Re-trigger generation
-    generate("newScene", "", {
-      customText: generation.originalContent,
-      action: "generate",
-      targetNodeKey: generation.promptNodeKey,
+    // Update the generation tracking
+    updatePromptGeneration(promptId, {
+      status: "pending",
+      canUndo: false,
+      canRedo: false,
+      generatedNodeKeys: [],
+    });
+
+    // Find the parent element of the PromptNode to use as targetNodeKey
+    editor.getEditorState().read(() => {
+      const promptNode = $getNodeByKey(generation.promptNodeKey);
+      if ($isPromptNode(promptNode)) {
+        const parentElement = promptNode.getParent();
+        if (parentElement && $isElementNode(parentElement)) {
+          // Re-trigger generation using the parent element as target
+          generate("newScene", "", {
+            customText: generation.originalContent,
+            action: "generate",
+            targetNodeKey: parentElement.getKey(),
+          });
+        }
+      }
     });
   };
 
@@ -469,6 +507,7 @@ export function useAIGeneration() {
     cancelGeneration,
     undoGeneration,
     redoGeneration,
+    regenerateGeneration,
     isGenerating: useStore((state) => state.generationState === "generating"),
     canGenerate: !!(abortController && model),
   };
