@@ -10,7 +10,6 @@ import "./ContextMenu.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { useStore, PromptTypeKeys } from "../store";
 import { useState } from "react";
-import useCtrlHotkey from "../hooks/useCtrlHotkey";
 import { useAIGeneration } from "../hooks/useAIGeneration";
 
 interface Props {
@@ -66,10 +65,6 @@ export default function ContextMenu({ hide }: Props) {
     // Clear the custom prompt after submitting
     setCustomPrompt("");
   };
-
-  useCtrlHotkey(() => {
-    handleGenerate("newScene");
-  }, " ");
 
   return (
     <div className={"context-menu-container"}>

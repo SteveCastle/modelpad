@@ -8,13 +8,14 @@ import {
   $getRoot,
 } from "lexical";
 import { mergeRegister } from "@lexical/utils";
-import { useAIGeneration } from "../hooks/useAIGeneration";
+import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
 import "./BlockHoverPlugin.css";
 
 interface BlockControlsProps {
   element: HTMLElement;
   onDelete: () => void;
   onAIGenerate: () => void;
+  onRewrite: (instructions: string) => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   isDeletionDisabled: boolean;
@@ -25,12 +26,15 @@ function BlockControls({
   element,
   onDelete,
   onAIGenerate,
+  onRewrite,
   onMouseEnter,
   onMouseLeave,
   isDeletionDisabled,
   isAIGenerating,
 }: BlockControlsProps) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [showRewriteInput, setShowRewriteInput] = useState(false);
+  const [rewriteInstructions, setRewriteInstructions] = useState("");
 
   useEffect(() => {
     const updatePosition = () => {
@@ -50,6 +54,12 @@ function BlockControls({
       window.removeEventListener("resize", updatePosition);
     };
   }, [element]);
+
+  const handleRewriteSubmit = () => {
+    onRewrite(rewriteInstructions);
+    setRewriteInstructions("");
+    setShowRewriteInput(false);
+  };
 
   return (
     <div
@@ -77,6 +87,18 @@ function BlockControls({
           {isAIGenerating ? "⏳" : "⚡"}
         </button>
         <button
+          className="block-control-btn rewrite-btn"
+          onClick={() => setShowRewriteInput(!showRewriteInput)}
+          disabled={isAIGenerating}
+          title={
+            isAIGenerating
+              ? "AI is generating..."
+              : "Rewrite this block with AI"
+          }
+        >
+          ✏️
+        </button>
+        <button
           className="block-control-btn delete-btn"
           onClick={onDelete}
           disabled={isDeletionDisabled}
@@ -87,6 +109,35 @@ function BlockControls({
           🗑️
         </button>
       </div>
+
+      {showRewriteInput && (
+        <div className="rewrite-input-area">
+          <input
+            type="text"
+            className="rewrite-input"
+            placeholder="How should I rewrite this? (optional)"
+            value={rewriteInstructions}
+            onChange={(e) => setRewriteInstructions(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleRewriteSubmit();
+              } else if (e.key === "Escape") {
+                setShowRewriteInput(false);
+                setRewriteInstructions("");
+              }
+            }}
+            autoFocus
+          />
+          <button
+            className="rewrite-submit-btn"
+            onClick={handleRewriteSubmit}
+            disabled={isAIGenerating}
+          >
+            Rewrite
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -226,7 +277,28 @@ export function BlockHoverPlugin(): JSX.Element | null {
       if (node) {
         const nodeText = node.getTextContent();
         // Use the node's content as the prompt for AI generation
-        generate("newScene", "", { customText: nodeText });
+        generate("newScene", "", {
+          customText: nodeText,
+          action: "generate" as AIActionType,
+        });
+      }
+    });
+    setHoveredElement(null);
+  };
+
+  const handleRewrite = (instructions: string) => {
+    if (!canGenerate || !selectedElementKey) return;
+
+    editor.getEditorState().read(() => {
+      const node = $getNodeByKey(selectedElementKey);
+      if (node) {
+        const nodeText = node.getTextContent();
+        // Use the rewrite action to replace the current node
+        generate("rewrite", instructions, {
+          customText: nodeText,
+          action: "rewrite" as AIActionType,
+          targetNodeKey: selectedElementKey,
+        });
       }
     });
     setHoveredElement(null);
@@ -249,6 +321,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
       element={hoveredElement}
       onDelete={deleteBlock}
       onAIGenerate={handleAIGenerate}
+      onRewrite={handleRewrite}
       onMouseEnter={handleControlsMouseEnter}
       onMouseLeave={handleControlsMouseLeave}
       isDeletionDisabled={isDeletionDisabled}

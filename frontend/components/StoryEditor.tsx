@@ -18,10 +18,9 @@ import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "./LexicalMarkdownShortcutPlugin";
 import { TRANSFORMERS } from "@lexical/markdown";
 import { useDebouncedCallback } from "use-debounce";
-import { FloatingMenuPlugin } from "./FloatingMenuPlugin";
-import ContextMenu from "./ContextMenu";
 import CodeHighlightPlugin from "./CodeHighlightPlugin";
 import { BlockHoverPlugin } from "./BlockHoverPlugin";
+import { KeyboardShortcutsPlugin } from "./KeyboardShortcutsPlugin";
 import { Toolbar } from "./Toolbar";
 import { useStore, Story } from "../store";
 import "./TableOfContents.css";
@@ -430,8 +429,8 @@ export function StoryEditor({
             ErrorBoundary={LexicalErrorBoundary}
           />
         </div>
-        {isActive && <FloatingMenuPlugin MenuComponent={ContextMenu} />}
         <BlockHoverPlugin />
+        <KeyboardShortcutsPlugin />
         <HistoryPlugin />
         <OnChangePlugin
           onChange={debouncedOnChange}

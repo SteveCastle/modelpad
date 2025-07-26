@@ -43,10 +43,70 @@
   color: #3b82f6;
 }
 
+.block-control-btn.rewrite-btn:hover:not(:disabled) {
+  background: rgba(168, 85, 247, 0.2);
+  color: #a855f7;
+}
+
 .block-control-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+.rewrite-input-area {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 8px;
+  background: var(--context-menu-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rewrite-input {
+  background: var(--context-menu-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  color: var(--text-color);
+  padding: 6px 8px;
+  font-size: 12px;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.rewrite-input:focus {
+  border-color: #a855f7;
+  box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.2);
+}
+
+.rewrite-submit-btn {
+  background: #a855f7;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 3px;
+  font-size: 12px;
+  transition: background-color 0.2s ease;
+  align-self: flex-end;
+}
+
+.rewrite-submit-btn:hover:not(:disabled) {
+  background: #9333ea;
+}
+
+.rewrite-submit-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .block-type-menu {
