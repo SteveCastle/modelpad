@@ -7,10 +7,13 @@ import {
   SELECTION_CHANGE_COMMAND,
   $getNodeByKey,
   $getRoot,
+  $createTextNode,
 } from "lexical";
+import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
 import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
 import { $isPromptNode } from "./PromptNode";
+import { $isAIGenerationNode } from "./AIGenerationNode";
 import { useStore } from "../store";
 import "./BlockHoverPlugin.css";
 import "./PromptNode.css";
@@ -38,6 +41,16 @@ interface PromptControlsProps {
   onMouseLeave: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  isDeletionDisabled: boolean;
+}
+
+interface AIGenerationControlsProps {
+  element: HTMLElement;
+  nodeKey: string;
+  onConvert: () => void;
+  onDelete: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
   isDeletionDisabled: boolean;
 }
 
@@ -133,6 +146,68 @@ function PromptControls({
           }
         >
           🗑️
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AIGenerationControls({
+  element,
+  onConvert,
+  onDelete,
+  onMouseEnter,
+  onMouseLeave,
+  isDeletionDisabled,
+}: Omit<AIGenerationControlsProps, "nodeKey">) {
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    const updatePosition = () => {
+      const rect = element.getBoundingClientRect();
+      setPosition({
+        top: rect.top + window.scrollY,
+        left: rect.right + 10,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition);
+    window.addEventListener("resize", updatePosition);
+
+    return () => {
+      window.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [element]);
+
+  return (
+    <div
+      className="block-controls"
+      style={{
+        position: "absolute",
+        top: position.top,
+        left: position.left,
+        zIndex: 1000,
+      }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <div className="block-controls-buttons">
+        <button
+          className="block-control-btn ai-generation-accept"
+          onClick={onConvert}
+          title="Accept"
+        >
+          ✅
+        </button>
+        <button
+          className="block-control-btn ai-generation-reject"
+          onClick={onDelete}
+          disabled={isDeletionDisabled}
+          title="Reject"
+        >
+          ❌
         </button>
       </div>
     </div>
@@ -275,6 +350,9 @@ export function BlockHoverPlugin(): JSX.Element | null {
     canUndo: boolean;
     canRedo: boolean;
   } | null>(null);
+  const [aiGenerationNodeInfo, setAIGenerationNodeInfo] = useState<{
+    nodeKey: string;
+  } | null>(null);
 
   const {
     generate,
@@ -299,13 +377,22 @@ export function BlockHoverPlugin(): JSX.Element | null {
       if (elementDOM !== null) {
         setSelectedElementKey(elementKey);
 
-        // Check if this element contains a PromptNode
+        // Reset states
+        setPromptNodeInfo(null);
+        setAIGenerationNodeInfo(null);
+
+        // Check if this element contains a PromptNode or AIGenerationNode
         let foundPromptNode = null;
+        let foundAIGenerationNode = null;
+
         if ($isElementNode(element)) {
           const children = element.getChildren();
           for (const child of children) {
             if ($isPromptNode(child)) {
               foundPromptNode = child;
+              break;
+            } else if ($isAIGenerationNode(child)) {
+              foundAIGenerationNode = child;
               break;
             }
           }
@@ -328,8 +415,10 @@ export function BlockHoverPlugin(): JSX.Element | null {
               canRedo: false,
             });
           }
-        } else {
-          setPromptNodeInfo(null);
+        } else if (foundAIGenerationNode) {
+          setAIGenerationNodeInfo({
+            nodeKey: foundAIGenerationNode.getKey(),
+          });
         }
       }
     }
@@ -359,6 +448,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
         if (!isControlsHovered) {
           setHoveredElement(null);
           setPromptNodeInfo(null);
+          setAIGenerationNodeInfo(null);
         }
       }, 100); // Small delay to allow mouse movement to controls
     };
@@ -385,15 +475,19 @@ export function BlockHoverPlugin(): JSX.Element | null {
             if (dom === blockElement) {
               setSelectedElementKey(key);
 
-              // Get the node and check if it contains a PromptNode
+              // Get the node and check if it contains a PromptNode or AIGenerationNode
               const node = editor.getEditorState()._nodeMap.get(key);
               let foundPromptNode = null;
+              let foundAIGenerationNode = null;
 
               if (node && $isElementNode(node)) {
                 const children = node.getChildren();
                 for (const child of children) {
                   if ($isPromptNode(child)) {
                     foundPromptNode = child;
+                    break;
+                  } else if ($isAIGenerationNode(child)) {
+                    foundAIGenerationNode = child;
                     break;
                   }
                 }
@@ -418,8 +512,15 @@ export function BlockHoverPlugin(): JSX.Element | null {
                     canRedo: false,
                   });
                 }
+                setAIGenerationNodeInfo(null);
+              } else if (foundAIGenerationNode) {
+                setAIGenerationNodeInfo({
+                  nodeKey: foundAIGenerationNode.getKey(),
+                });
+                setPromptNodeInfo(null);
               } else {
                 setPromptNodeInfo(null);
+                setAIGenerationNodeInfo(null);
               }
               break;
             }
@@ -537,6 +638,88 @@ export function BlockHoverPlugin(): JSX.Element | null {
     deleteBlock();
   };
 
+  const handleAIGenerationConvert = () => {
+    if (!aiGenerationNodeInfo) return;
+
+    editor.update(() => {
+      const aiNode = $getNodeByKey(aiGenerationNodeInfo.nodeKey);
+      if ($isAIGenerationNode(aiNode)) {
+        const markdownText = aiNode.getTextContent();
+
+        try {
+          // Get the parent element where we'll insert the converted content
+          const parentElement = aiNode.getParent();
+          if ($isElementNode(parentElement)) {
+            // Save current editor state
+            const root = $getRoot();
+            const originalChildren = [...root.getChildren()];
+
+            // Clear root and parse markdown
+            root.clear();
+            $convertFromMarkdownString(markdownText, TRANSFORMERS);
+
+            // Extract the parsed nodes
+            const parsedNodes = [...root.getChildren()];
+
+            // Restore original editor content
+            root.clear();
+            originalChildren.forEach((child) => root.append(child));
+
+            // Find where to insert the parsed content
+            const aiNodeParent = aiNode.getParent();
+            if ($isElementNode(aiNodeParent)) {
+              // Remove the AI generation node
+              aiNode.remove();
+
+              // If we have parsed nodes, insert them
+              if (parsedNodes.length > 0) {
+                // Insert parsed nodes after the current parent
+                parsedNodes.forEach((node, index) => {
+                  if (index === 0) {
+                    // Replace the parent's content with first parsed node's content
+                    if ($isElementNode(node)) {
+                      aiNodeParent.clear();
+                      const nodeChildren = [...node.getChildren()];
+                      nodeChildren.forEach((child) =>
+                        aiNodeParent.append(child)
+                      );
+                    } else {
+                      aiNodeParent.clear();
+                      aiNodeParent.append(node);
+                    }
+                  } else {
+                    // Insert additional nodes after the parent
+                    aiNodeParent.insertAfter(node);
+                  }
+                });
+              } else {
+                // Fallback: convert to plain text if parsing failed
+                aiNodeParent.clear();
+                aiNodeParent.append($createTextNode(markdownText));
+              }
+            }
+          } else {
+            // Fallback: just convert to text node
+            const textNode = aiNode.convertToTextNode();
+            aiNode.replace(textNode);
+          }
+        } catch (error) {
+          // If markdown conversion fails, just convert to text
+          console.warn("Markdown conversion failed:", error);
+          const textNode = aiNode.convertToTextNode();
+          aiNode.replace(textNode);
+        }
+      }
+    });
+
+    setHoveredElement(null);
+    setAIGenerationNodeInfo(null);
+  };
+
+  const handleAIGenerationDelete = () => {
+    deleteBlock();
+  };
+
   const handleControlsMouseEnter = () => {
     setIsControlsHovered(true);
   };
@@ -549,7 +732,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
     return null;
   }
 
-  // Show PromptControls for PromptNodes, BlockControls for regular blocks
+  // Show PromptControls for PromptNodes, AIGenerationControls for AIGenerationNodes, BlockControls for regular blocks
   if (promptNodeInfo) {
     return (
       <PromptControls
@@ -563,6 +746,19 @@ export function BlockHoverPlugin(): JSX.Element | null {
         onMouseLeave={handleControlsMouseLeave}
         canUndo={promptNodeInfo.canUndo}
         canRedo={promptNodeInfo.canRedo}
+        isDeletionDisabled={isDeletionDisabled}
+      />
+    );
+  }
+
+  if (aiGenerationNodeInfo) {
+    return (
+      <AIGenerationControls
+        element={hoveredElement}
+        onConvert={handleAIGenerationConvert}
+        onDelete={handleAIGenerationDelete}
+        onMouseEnter={handleControlsMouseEnter}
+        onMouseLeave={handleControlsMouseLeave}
         isDeletionDisabled={isDeletionDisabled}
       />
     );

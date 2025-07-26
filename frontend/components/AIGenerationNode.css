@@ -2,27 +2,36 @@
   font-family: "Fira Code", "Monaco", "Consolas", "Liberation Mono",
     "Courier New", monospace;
   position: relative;
-  color: #6b7280;
   font-weight: 500;
-  animation: ai-fade-in 0.3s ease-in, ai-underline-pulse 2s ease-in-out infinite;
-  border-bottom: 1px solid transparent;
+  background: linear-gradient(
+    90deg,
+    #8b5cf6 0%,
+    #3b82f6 25%,
+    #06b6d4 50%,
+    #10b981 75%,
+    #8b5cf6 100%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: ai-gentle-fade-in 0.6s ease-out,
+    ai-gentle-gradient 4s ease-in-out infinite;
 }
 
-/* Only show cursor on the last AI generation node in the document */
-.ai-generation-text:last-of-type::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: -2px;
-  width: 2px;
-  background: #374151;
-  animation: ai-cursor 1s ease-in-out infinite;
+/* Completed AI generation nodes - static and subtle */
+.ai-generation-completed {
+  background: linear-gradient(90deg, #9ca3af 0%, #6b7280 100%);
+  background-size: 100% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: ai-gentle-fade-in 0.6s ease-out; /* Only fade-in, no gradient animation */
 }
 
-@keyframes ai-fade-in {
+@keyframes ai-gentle-fade-in {
   from {
-    opacity: 0.3;
+    opacity: 0;
     transform: translateY(1px);
   }
   to {
@@ -31,23 +40,12 @@
   }
 }
 
-@keyframes ai-underline-pulse {
+@keyframes ai-gentle-gradient {
   0%,
   100% {
-    border-bottom-color: transparent;
+    background-position: 0% 50%;
   }
   50% {
-    border-bottom-color: rgba(107, 114, 128, 0.3);
-  }
-}
-
-@keyframes ai-cursor {
-  0%,
-  50% {
-    opacity: 1;
-  }
-  51%,
-  100% {
-    opacity: 0.2;
+    background-position: 100% 50%;
   }
 }

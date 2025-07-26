@@ -69,6 +69,7 @@ export function useAIGeneration() {
     promptId?: string
   ) => {
     let rewriteAINode: AIGenerationNode | null = null; // Track the AI node for rewrite mode
+    let generateAINode: AIGenerationNode | null = null; // Track the AI node for generate mode
     let generatedNodeKeys: string[] = []; // Track generated nodes for undo functionality
 
     const startCallback = () => {
@@ -105,28 +106,35 @@ export function useAIGeneration() {
               }
 
               if (elementNode && $isElementNode(elementNode)) {
-                const aiGenerationNode = $createAIGenerationNode(text);
+                if (!generateAINode) {
+                  // First token - create AI generation node
+                  generateAINode = $createAIGenerationNode(text);
 
-                // Check if there's already a paragraph after this element that we can append to
-                const nextSibling = elementNode.getNextSibling();
-                if (
-                  nextSibling &&
-                  $isElementNode(nextSibling) &&
-                  nextSibling.getType() === "paragraph"
-                ) {
-                  // Append to existing paragraph
-                  nextSibling.append(aiGenerationNode);
+                  // Check if there's already a paragraph after this element that we can append to
+                  const nextSibling = elementNode.getNextSibling();
+                  if (
+                    nextSibling &&
+                    $isElementNode(nextSibling) &&
+                    nextSibling.getType() === "paragraph"
+                  ) {
+                    // Append to existing paragraph
+                    nextSibling.append(generateAINode);
+                  } else {
+                    // Create a new paragraph to contain the AI generation node
+                    const newParagraph = $createParagraphNode();
+                    newParagraph.append(generateAINode);
+                    elementNode.insertAfter(newParagraph);
+                  }
+
+                  // Track this node for undo functionality
+                  const nodeKey = generateAINode.getKey();
+                  if (!generatedNodeKeys.includes(nodeKey)) {
+                    generatedNodeKeys.push(nodeKey);
+                  }
                 } else {
-                  // Create a new paragraph to contain the AI generation node
-                  const newParagraph = $createParagraphNode();
-                  newParagraph.append(aiGenerationNode);
-                  elementNode.insertAfter(newParagraph);
-                }
-
-                // Track this node for undo functionality
-                const nodeKey = aiGenerationNode.getKey();
-                if (!generatedNodeKeys.includes(nodeKey)) {
-                  generatedNodeKeys.push(nodeKey);
+                  // Subsequent tokens - append to existing AI generation node
+                  const currentText = generateAINode.getTextContent();
+                  generateAINode.setTextContent(currentText + text);
                 }
               }
             }
@@ -136,8 +144,13 @@ export function useAIGeneration() {
             const lastChild = root.getLastChild();
 
             if (lastChild && $isElementNode(lastChild)) {
-              const aiGenerationNode = $createAIGenerationNode(text);
-              lastChild.append(aiGenerationNode);
+              if (!generateAINode) {
+                generateAINode = $createAIGenerationNode(text);
+                lastChild.append(generateAINode);
+              } else {
+                const currentText = generateAINode.getTextContent();
+                generateAINode.setTextContent(currentText + text);
+              }
             }
           }
         } else if (action === "rewrite" && targetNodeKey) {
@@ -164,9 +177,9 @@ export function useAIGeneration() {
       updateContext(activeStoryId, context);
 
       editor.update(() => {
+        // For AIGenerationNodes, just remove the generation effects but keep them as AIGenerationNodes
+        // They will be converted manually when user clicks the convert button
         const root = $getRoot();
-
-        // Convert all AI generation nodes to regular text nodes
         const aiNodes: AIGenerationNode[] = [];
 
         // Recursively find all AI generation nodes
@@ -184,19 +197,10 @@ export function useAIGeneration() {
 
         findAINodes(root);
 
+        // Mark AI nodes as completed (this will remove generation effects via CSS)
         aiNodes.forEach((aiNode) => {
-          const textNode = aiNode.convertToTextNode();
-          aiNode.replace(textNode);
-
-          // Update generated node keys to track the text nodes
-          if (promptId) {
-            const nodeKey = textNode.getKey();
-            const aiNodeKey = aiNode.getKey();
-            const keyIndex = generatedNodeKeys.indexOf(aiNodeKey);
-            if (keyIndex !== -1) {
-              generatedNodeKeys[keyIndex] = nodeKey;
-            }
-          }
+          // Mark the AI node as completed to remove generation effects
+          aiNode.setCompleted(true);
         });
 
         // Update prompt node status to completed if this is a generation with promptId
@@ -209,10 +213,11 @@ export function useAIGeneration() {
             }
           }
 
-          // Update the generation tracking
+          // Update the generation tracking - store AI node keys instead of text node keys
+          const aiNodeKeys = aiNodes.map((node) => node.getKey());
           updatePromptGeneration(promptId, {
             status: "completed",
-            generatedNodeKeys: generatedNodeKeys,
+            generatedNodeKeys: aiNodeKeys,
             canUndo: true,
             canRedo: false,
           });
@@ -221,6 +226,7 @@ export function useAIGeneration() {
 
       // Reset the rewrite AI node reference
       rewriteAINode = null;
+      generateAINode = null;
       generatedNodeKeys = [];
     };
 

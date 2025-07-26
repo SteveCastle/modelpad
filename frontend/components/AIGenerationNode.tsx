@@ -15,26 +15,41 @@ import {
 export type SerializedAIGenerationNode = Spread<
   {
     type: "ai-generation";
+    completed: boolean;
   },
   SerializedTextNode
 >;
 
 export class AIGenerationNode extends TextNode {
+  __completed: boolean;
+
   static getType(): string {
     return "ai-generation";
   }
 
   static clone(node: AIGenerationNode): AIGenerationNode {
-    return new AIGenerationNode(node.__text, node.__key);
+    return new AIGenerationNode(node.__text, node.__completed, node.__key);
   }
 
-  constructor(text: string, key?: NodeKey) {
+  constructor(text: string, completed: boolean = false, key?: NodeKey) {
     super(text, key);
+    this.__completed = completed;
+  }
+
+  getCompleted(): boolean {
+    return this.__completed;
+  }
+
+  setCompleted(completed: boolean): void {
+    const writableNode = this.getWritable();
+    writableNode.__completed = completed;
   }
 
   createDOM(config: EditorConfig): HTMLElement {
     const element = super.createDOM(config);
-    element.className = "ai-generation-text";
+    element.className = this.__completed
+      ? "ai-generation-text ai-generation-completed"
+      : "ai-generation-text";
     return element;
   }
 
@@ -44,8 +59,11 @@ export class AIGenerationNode extends TextNode {
     config: EditorConfig
   ): boolean {
     const isUpdated = super.updateDOM(prevNode, dom, config);
-    if (dom.className !== "ai-generation-text") {
-      dom.className = "ai-generation-text";
+    const newClassName = this.__completed
+      ? "ai-generation-text ai-generation-completed"
+      : "ai-generation-text";
+    if (dom.className !== newClassName) {
+      dom.className = newClassName;
     }
     return isUpdated;
   }
@@ -53,7 +71,10 @@ export class AIGenerationNode extends TextNode {
   static importJSON(
     serializedNode: SerializedAIGenerationNode
   ): AIGenerationNode {
-    const node = $createAIGenerationNode(serializedNode.text);
+    const node = $createAIGenerationNode(
+      serializedNode.text,
+      serializedNode.completed
+    );
     node.setFormat(serializedNode.format);
     node.setDetail(serializedNode.detail);
     node.setMode(serializedNode.mode);
@@ -65,6 +86,7 @@ export class AIGenerationNode extends TextNode {
     return {
       ...super.exportJSON(),
       type: "ai-generation",
+      completed: this.__completed,
     };
   }
 
@@ -102,8 +124,11 @@ function $convertAIGenerationElement(
   return { node };
 }
 
-export function $createAIGenerationNode(text: string = ""): AIGenerationNode {
-  return $applyNodeReplacement(new AIGenerationNode(text));
+export function $createAIGenerationNode(
+  text: string = "",
+  completed: boolean = false
+): AIGenerationNode {
+  return $applyNodeReplacement(new AIGenerationNode(text, completed));
 }
 
 export function $isAIGenerationNode(
