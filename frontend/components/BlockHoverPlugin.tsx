@@ -3,76 +3,33 @@ import { useEffect, useState, useCallback } from "react";
 import {
   $getSelection,
   $isRangeSelection,
-  $createParagraphNode,
   SELECTION_CHANGE_COMMAND,
   $getNodeByKey,
-  $isElementNode,
-  ElementNode,
   $getRoot,
 } from "lexical";
-import {
-  $createHeadingNode,
-  $createQuoteNode,
-  $isHeadingNode,
-} from "@lexical/rich-text";
-import { $createCodeNode } from "@lexical/code";
-import {
-  INSERT_ORDERED_LIST_COMMAND,
-  INSERT_UNORDERED_LIST_COMMAND,
-  $isListNode,
-  ListNode,
-} from "@lexical/list";
-import { $getNearestNodeOfType, mergeRegister } from "@lexical/utils";
+import { mergeRegister } from "@lexical/utils";
+import { useAIGeneration } from "../hooks/useAIGeneration";
 import "./BlockHoverPlugin.css";
-
-const BLOCK_TYPES = [
-  { key: "paragraph", label: "Paragraph" },
-  { key: "h1", label: "Heading 1" },
-  { key: "h2", label: "Heading 2" },
-  { key: "h3", label: "Heading 3" },
-  { key: "h4", label: "Heading 4" },
-  { key: "h5", label: "Heading 5" },
-  { key: "h6", label: "Heading 6" },
-  { key: "quote", label: "Quote" },
-  { key: "code", label: "Code Block" },
-  { key: "ul", label: "Bullet List" },
-  { key: "ol", label: "Numbered List" },
-];
-
-const BLOCK_TYPE_TO_NAME = {
-  paragraph: "Paragraph",
-  h1: "Heading 1",
-  h2: "Heading 2",
-  h3: "Heading 3",
-  h4: "Heading 4",
-  h5: "Heading 5",
-  h6: "Heading 6",
-  quote: "Quote",
-  code: "Code Block",
-  ul: "Bullet List",
-  ol: "Numbered List",
-};
 
 interface BlockControlsProps {
   element: HTMLElement;
   onDelete: () => void;
-  onChangeType: (newType: string) => void;
-  currentType: string;
+  onAIGenerate: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   isDeletionDisabled: boolean;
+  isAIGenerating: boolean;
 }
 
 function BlockControls({
   element,
   onDelete,
-  onChangeType,
-  currentType,
+  onAIGenerate,
   onMouseEnter,
   onMouseLeave,
   isDeletionDisabled,
+  isAIGenerating,
 }: BlockControlsProps) {
-  const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
@@ -108,13 +65,16 @@ function BlockControls({
     >
       <div className="block-controls-buttons">
         <button
-          className="block-control-btn"
-          onClick={() => setShowTypeMenu(!showTypeMenu)}
-          title={`Change block type (currently: ${
-            BLOCK_TYPE_TO_NAME[currentType] || currentType
-          })`}
+          className="block-control-btn ai-btn"
+          onClick={onAIGenerate}
+          disabled={isAIGenerating}
+          title={
+            isAIGenerating
+              ? "AI is generating..."
+              : "Generate AI content from this block"
+          }
         >
-          ⚡
+          {isAIGenerating ? "⏳" : "⚡"}
         </button>
         <button
           className="block-control-btn delete-btn"
@@ -127,28 +87,6 @@ function BlockControls({
           🗑️
         </button>
       </div>
-
-      {showTypeMenu && (
-        <div className="block-type-menu">
-          <div className="current-type">
-            Current: {BLOCK_TYPE_TO_NAME[currentType] || currentType}
-          </div>
-          {BLOCK_TYPES.filter((type) => type.key !== currentType).map(
-            (type) => (
-              <button
-                key={type.key}
-                className="block-type-option"
-                onClick={() => {
-                  onChangeType(type.key);
-                  setShowTypeMenu(false);
-                }}
-              >
-                {type.label}
-              </button>
-            )
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -158,12 +96,12 @@ export function BlockHoverPlugin(): JSX.Element | null {
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(
     null
   );
-  const [currentBlockType, setCurrentBlockType] = useState<string>("");
   const [selectedElementKey, setSelectedElementKey] = useState<string | null>(
     null
   );
   const [isControlsHovered, setIsControlsHovered] = useState(false);
   const [isDeletionDisabled, setIsDeletionDisabled] = useState(false);
+  const { generate, isGenerating, canGenerate } = useAIGeneration();
 
   const updateBlockType = useCallback(() => {
     const selection = $getSelection();
@@ -177,16 +115,6 @@ export function BlockHoverPlugin(): JSX.Element | null {
       const elementDOM = editor.getElementByKey(elementKey);
       if (elementDOM !== null) {
         setSelectedElementKey(elementKey);
-        if ($isListNode(element)) {
-          const parentList = $getNearestNodeOfType(anchorNode, ListNode);
-          const type = parentList ? parentList.getTag() : element.getTag();
-          setCurrentBlockType(type);
-        } else {
-          const type = $isHeadingNode(element)
-            ? element.getTag()
-            : element.getType();
-          setCurrentBlockType(type);
-        }
       }
     }
 
@@ -235,21 +163,10 @@ export function BlockHoverPlugin(): JSX.Element | null {
         // Find the corresponding lexical node key and set it
         editor.getEditorState().read(() => {
           const root = editor.getEditorState()._nodeMap;
-          for (const [key, node] of root) {
+          for (const [key] of root) {
             const dom = editor.getElementByKey(key);
             if (dom === blockElement) {
               setSelectedElementKey(key);
-
-              // Set block type based on node
-              if ($isListNode(node)) {
-                const type = node.getTag();
-                setCurrentBlockType(type);
-              } else {
-                const type = $isHeadingNode(node)
-                  ? node.getTag()
-                  : node.getType();
-                setCurrentBlockType(type);
-              }
               break;
             }
           }
@@ -301,70 +218,15 @@ export function BlockHoverPlugin(): JSX.Element | null {
     setHoveredElement(null);
   };
 
-  const changeBlockType = (newType: string) => {
-    if (newType === currentBlockType || !selectedElementKey) return;
+  const handleAIGenerate = () => {
+    if (!canGenerate || !selectedElementKey) return;
 
-    editor.update(() => {
+    editor.getEditorState().read(() => {
       const node = $getNodeByKey(selectedElementKey);
-      if (!node) return;
-
-      let newNode;
-      switch (newType) {
-        case "paragraph": {
-          newNode = $createParagraphNode();
-          break;
-        }
-        case "h1":
-        case "h2":
-        case "h3":
-        case "h4":
-        case "h5":
-        case "h6": {
-          newNode = $createHeadingNode(newType);
-          break;
-        }
-        case "quote": {
-          newNode = $createQuoteNode();
-          break;
-        }
-        case "code": {
-          newNode = $createCodeNode();
-          break;
-        }
-        case "ul": {
-          // For lists, we use commands instead of direct node replacement
-          if (currentBlockType !== "ul") {
-            // Select the node and apply list command
-            node.selectEnd();
-            editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-          }
-          setHoveredElement(null);
-          return;
-        }
-        case "ol": {
-          // For lists, we use commands instead of direct node replacement
-          if (currentBlockType !== "ol") {
-            // Select the node and apply list command
-            node.selectEnd();
-            editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-          }
-          setHoveredElement(null);
-          return;
-        }
-      }
-
-      if (newNode && node.isAttached()) {
-        // Copy children from old node to new node if it's an element node
-        if ($isElementNode(node)) {
-          const elementNode = node as ElementNode;
-          const children = elementNode.getChildren();
-          children.forEach((child) => {
-            newNode.append(child);
-          });
-        }
-
-        // Replace the node
-        node.replace(newNode);
+      if (node) {
+        const nodeText = node.getTextContent();
+        // Use the node's content as the prompt for AI generation
+        generate("newScene", "", { customText: nodeText });
       }
     });
     setHoveredElement(null);
@@ -386,11 +248,11 @@ export function BlockHoverPlugin(): JSX.Element | null {
     <BlockControls
       element={hoveredElement}
       onDelete={deleteBlock}
-      onChangeType={changeBlockType}
-      currentType={currentBlockType}
+      onAIGenerate={handleAIGenerate}
       onMouseEnter={handleControlsMouseEnter}
       onMouseLeave={handleControlsMouseLeave}
       isDeletionDisabled={isDeletionDisabled}
+      isAIGenerating={isGenerating}
     />
   );
 }

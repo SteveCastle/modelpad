@@ -38,6 +38,11 @@
   color: #ff6b6b;
 }
 
+.block-control-btn.ai-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.2);
+  color: #3b82f6;
+}
+
 .block-control-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
