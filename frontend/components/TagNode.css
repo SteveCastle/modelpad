@@ -162,14 +162,19 @@
 .tag-typeahead-dropdown,
 .tag-info-dropdown,
 .tag-edit-dropdown {
-  position: absolute;
+  position: fixed; /* Changed from absolute to fixed for better positioning */
   background: var(--context-menu-bg-color);
   border: 1px solid var(--border-color);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   z-index: 1000;
   min-width: 280px;
+  max-width: 400px;
   animation: dropdownSlideIn 0.2s ease-out;
+
+  /* Ensure dropdowns don't go off-screen */
+  max-height: min(400px, calc(100vh - 100px));
+  overflow: hidden;
 }
 
 .tag-typeahead-dropdown {

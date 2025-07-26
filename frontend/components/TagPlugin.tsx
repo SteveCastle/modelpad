@@ -396,7 +396,9 @@ function TagEditDropdown({
 
 export function TagPlugin(): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
-  const { incrementTagUsage, addHierarchicalTag } = useStore((state) => state);
+  const { incrementTagUsage, decrementTagUsage, addHierarchicalTag } = useStore(
+    (state) => state
+  );
   const [isTagging, setIsTagging] = useState(false);
   const [tagQuery, setTagQuery] = useState("");
   const [typeaheadPosition, setTypeaheadPosition] = useState<{
@@ -425,9 +427,79 @@ export function TagPlugin(): JSX.Element | null {
 
     return {
       x: rect.left,
-      y: rect.bottom + window.scrollY + 4,
+      y: rect.bottom + 4, // No need for scrollY with fixed positioning
     };
   }, []);
+
+  // New function to calculate position from DOM element
+  const calculateElementPosition = useCallback((element: HTMLElement) => {
+    const rect = element.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    // Validate that we have a valid rect
+    if (rect.width === 0 && rect.height === 0) {
+      throw new Error("Invalid element rect");
+    }
+
+    // Calculate preferred position (below the element)
+    let x = rect.left;
+    let y = rect.bottom + 4; // Fixed positioning doesn't need scrollY
+
+    // Ensure menu doesn't go off-screen horizontally
+    const menuWidth = 400; // Approximate menu width
+    if (x + menuWidth > viewportWidth) {
+      x = Math.max(8, viewportWidth - menuWidth - 8);
+    }
+    if (x < 8) {
+      x = 8;
+    }
+
+    // Ensure menu doesn't go off-screen vertically
+    const menuHeight = 300; // Approximate menu height
+    if (y + menuHeight > viewportHeight) {
+      // Position above the element instead
+      y = rect.top - menuHeight - 4;
+
+      // If still off-screen, position at top of viewport
+      if (y < 8) {
+        y = 8;
+      }
+    }
+
+    return { x, y };
+  }, []);
+
+  // Improved position calculation with fallbacks
+  const calculatePositionWithFallback = useCallback(
+    (preferredElement?: HTMLElement) => {
+      // First try to use the provided element
+      if (preferredElement) {
+        try {
+          return calculateElementPosition(preferredElement);
+        } catch (error) {
+          console.warn("Failed to calculate element position:", error);
+        }
+      }
+
+      // Fallback to selection-based positioning
+      try {
+        const selectionPosition = calculateTypeaheadPosition();
+        if (selectionPosition) {
+          return selectionPosition;
+        }
+      } catch (error) {
+        console.warn("Failed to calculate selection position:", error);
+      }
+
+      // Final fallback to center of viewport
+      return {
+        x: Math.max(8, (window.innerWidth - 400) / 2),
+        y: 100, // Fixed positioning relative to viewport
+      };
+    },
+    [calculateElementPosition, calculateTypeaheadPosition]
+  );
 
   const clearTagging = useCallback(() => {
     setIsTagging(false);
@@ -446,6 +518,10 @@ export function TagPlugin(): JSX.Element | null {
   const handleTagReplace = useCallback(
     (newTag: Tag) => {
       if (selectedTagForEdit) {
+        // Decrement usage count for the old tag
+        const oldTagId = selectedTagForEdit.getTagId();
+        decrementTagUsage(oldTagId);
+
         editor.update(() => {
           // Create new tag node with same text but different tag properties
           const newTagNode = $createTagNode(
@@ -476,11 +552,21 @@ export function TagPlugin(): JSX.Element | null {
       }
       clearTagEdit();
     },
-    [editor, selectedTagForEdit, incrementTagUsage, clearTagEdit]
+    [
+      editor,
+      selectedTagForEdit,
+      incrementTagUsage,
+      decrementTagUsage,
+      clearTagEdit,
+    ]
   );
 
   const handleTagEditDelete = useCallback(() => {
     if (selectedTagForEdit) {
+      // Decrement usage count before removing the tag
+      const tagId = selectedTagForEdit.getTagId();
+      decrementTagUsage(tagId);
+
       editor.update(() => {
         // Position cursor properly before removing the tag
         const nextSibling = selectedTagForEdit.getNextSibling();
@@ -498,10 +584,14 @@ export function TagPlugin(): JSX.Element | null {
       });
     }
     clearTagEdit();
-  }, [editor, selectedTagForEdit, clearTagEdit]);
+  }, [editor, selectedTagForEdit, decrementTagUsage, clearTagEdit]);
 
   const handleTagDelete = useCallback(() => {
     if (selectedTagForEdit) {
+      // Decrement usage count before removing the tag
+      const tagId = selectedTagForEdit.getTagId();
+      decrementTagUsage(tagId);
+
       editor.update(() => {
         // Position cursor properly before removing the tag
         const nextSibling = selectedTagForEdit.getNextSibling();
@@ -518,7 +608,7 @@ export function TagPlugin(): JSX.Element | null {
         }
       });
     }
-  }, [editor, selectedTagForEdit]);
+  }, [editor, selectedTagForEdit, decrementTagUsage]);
 
   const handleTagSelect = useCallback(
     (selectedTag: Tag | null) => {
@@ -627,6 +717,9 @@ export function TagPlugin(): JSX.Element | null {
             const previousSibling = anchorNode.getPreviousSibling();
             if ($isTagNode(previousSibling)) {
               event.preventDefault();
+              // Decrement usage count before removing the tag
+              const tagId = previousSibling.getTagId();
+              decrementTagUsage(tagId);
               editor.update(() => {
                 previousSibling.remove();
               });
@@ -637,6 +730,9 @@ export function TagPlugin(): JSX.Element | null {
           // Check if we're in a tag node
           if ($isTagNode(anchorNode)) {
             event.preventDefault();
+            // Decrement usage count before removing the tag
+            const tagId = anchorNode.getTagId();
+            decrementTagUsage(tagId);
             editor.update(() => {
               anchorNode.remove();
             });
@@ -652,6 +748,7 @@ export function TagPlugin(): JSX.Element | null {
       selectedTagForEdit,
       editor,
       handleTagDelete,
+      decrementTagUsage,
       calculateTypeaheadPosition,
     ]
   );
@@ -697,8 +794,8 @@ export function TagPlugin(): JSX.Element | null {
           setTagStartOffset(atIndex);
           setTagTextNode(anchorNode);
 
-          // Calculate position for typeahead
-          const position = calculateTypeaheadPosition();
+          // Calculate position for typeahead with fallbacks
+          const position = calculatePositionWithFallback();
           setTypeaheadPosition(position);
         } else {
           clearTagging();
@@ -707,7 +804,7 @@ export function TagPlugin(): JSX.Element | null {
         clearTagging();
       }
     });
-  }, [editor, calculateTypeaheadPosition, clearTagging]);
+  }, [editor, calculatePositionWithFallback, clearTagging]);
 
   useEffect(() => {
     return editor.registerCommand(
@@ -750,6 +847,10 @@ export function TagPlugin(): JSX.Element | null {
     const handleTagDeleteEvent = (event: CustomEvent) => {
       const tagNode = event.detail?.tagNode;
       if (tagNode) {
+        // Decrement usage count before removing the tag
+        const tagId = tagNode.getTagId();
+        decrementTagUsage(tagId);
+
         editor.update(() => {
           // Position cursor properly before removing the tag
           const nextSibling = tagNode.getNextSibling();
@@ -770,7 +871,7 @@ export function TagPlugin(): JSX.Element | null {
 
     // Handle tag edit events from clicking on tags
     const handleTagEdit = (event: CustomEvent) => {
-      const tagNode = event.detail?.tagNode;
+      const { tagNode, targetElement } = event.detail || {};
       if (tagNode) {
         // Clear other states
         clearTagging();
@@ -778,7 +879,15 @@ export function TagPlugin(): JSX.Element | null {
         // Set up tag editing
         setSelectedTagForEdit(tagNode);
         setShowTagEdit(true);
-        const position = calculateTypeaheadPosition();
+
+        // Use the provided target element, or fall back to event.target
+        const tagElement =
+          targetElement ||
+          ((event.target as HTMLElement)?.closest?.(
+            ".editor-tag"
+          ) as HTMLElement) ||
+          (event.target as HTMLElement);
+        const position = calculatePositionWithFallback(tagElement);
         setTagEditPosition(position);
       }
     };
@@ -803,7 +912,8 @@ export function TagPlugin(): JSX.Element | null {
     typeaheadPosition,
     clearTagging,
     editor,
-    calculateTypeaheadPosition,
+    decrementTagUsage,
+    calculatePositionWithFallback,
     clearTagEdit,
     showTagEdit,
     tagEditPosition,

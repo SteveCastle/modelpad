@@ -191,6 +191,7 @@ type State = {
   getTagsByParentPath: (parentPath: string[]) => Tag[];
   getChildTags: (parentTag: Tag) => Tag[];
   incrementTagUsage: (tagId: string) => void;
+  decrementTagUsage: (tagId: string) => void;
   ensureParentCategories: (path: string[]) => void;
   migrateTags: () => void;
 };
@@ -713,6 +714,18 @@ export const useStore = create<State>()(
                   ...tag,
                   usageCount: tag.usageCount + 1,
                   lastUsedAt: new Date().toISOString(),
+                }
+              : tag
+          ),
+        }));
+      },
+      decrementTagUsage: (tagId: string) => {
+        set(() => ({
+          tags: get().tags.map((tag) =>
+            tag.id === tagId
+              ? {
+                  ...tag,
+                  usageCount: Math.max(0, tag.usageCount - 1),
                 }
               : tag
           ),

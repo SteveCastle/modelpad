@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "react-query";
-import { Note, useStore } from "../store";
+import { Note, Tag, useStore } from "../store";
 import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import {
@@ -44,6 +44,12 @@ type NoteReponse = {
 
 type TreeNote = Note & {
   children: TreeNote[];
+  level: number;
+  isExpanded?: boolean;
+};
+
+type TreeTag = Tag & {
+  children: TreeTag[];
   level: number;
   isExpanded?: boolean;
 };
@@ -103,6 +109,88 @@ function canDropNote(draggedNote: TreeNote, targetNote: TreeNote): boolean {
   }
 
   return !isDescendant(targetNote, draggedNote.id);
+}
+
+// Utility functions for tag tree structure
+function buildTagTree(tags: Tag[]): TreeTag[] {
+  const tagMap = new Map<string, TreeTag>();
+  const rootTags: TreeTag[] = [];
+
+  // First pass: create TreeTag objects for all existing tags
+  tags.forEach((tag) => {
+    tagMap.set(tag.name, {
+      ...tag,
+      children: [],
+      level: 0,
+      isExpanded: true,
+    });
+  });
+
+  // Second pass: build parent-child relationships
+  tags.forEach((tag) => {
+    const treeTag = tagMap.get(tag.name)!;
+
+    if (tag.path.length > 1) {
+      // Find parent by removing last segment from path
+      const parentPath = tag.path.slice(0, -1).join("/");
+      const parent = tagMap.get(parentPath);
+
+      if (parent) {
+        parent.children.push(treeTag);
+        treeTag.level = parent.level + 1;
+      } else {
+        // Create missing parent category
+        const missingParent: TreeTag = {
+          id: `category-${parentPath}`,
+          name: parentPath,
+          path: tag.path.slice(0, -1),
+          usageCount: 0,
+          createdAt: new Date().toISOString(),
+          isCategory: true,
+          children: [treeTag],
+          level: tag.path.length - 2,
+          isExpanded: true,
+        };
+        tagMap.set(parentPath, missingParent);
+        treeTag.level = missingParent.level + 1;
+
+        // Check if this missing parent should be a child of another parent
+        if (missingParent.path.length > 1) {
+          const grandParentPath = missingParent.path.slice(0, -1).join("/");
+          const grandParent = tagMap.get(grandParentPath);
+          if (grandParent) {
+            grandParent.children.push(missingParent);
+            missingParent.level = grandParent.level + 1;
+            treeTag.level = missingParent.level + 1;
+          } else {
+            rootTags.push(missingParent);
+          }
+        } else {
+          rootTags.push(missingParent);
+        }
+      }
+    } else {
+      rootTags.push(treeTag);
+    }
+  });
+
+  return rootTags;
+}
+
+function flattenTagTree(treeTags: TreeTag[]): TreeTag[] {
+  const result: TreeTag[] = [];
+
+  function traverse(nodes: TreeTag[]) {
+    nodes.forEach((node) => {
+      result.push(node);
+      if (node.isExpanded && node.children.length > 0) {
+        traverse(node.children);
+      }
+    });
+  }
+
+  traverse(treeTags);
+  return result;
 }
 
 async function getStories({ queryKey }): Promise<NoteReponse> {
@@ -358,27 +446,92 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
     );
   };
 
-  const VocabularyContent = () => (
-    <div className="vocabulary-content">
-      <div className="coming-soon-content">
-        <div className="coming-soon-icon">📚</div>
-        <h4>Vocabulary Feature Coming Soon!</h4>
-        <p>
-          The Vocabulary feature will help you build and manage your writing
-          vocabulary:
-        </p>
-        <ul className="feature-list">
-          <li>Save and organize important words and phrases</li>
-          <li>Quick access to definitions and synonyms</li>
-          <li>Context-aware suggestions while writing</li>
-          <li>Personal vocabulary building and tracking</li>
-        </ul>
-        <div className="preview-note">
-          This feature is in development and will be available soon!
+  const VocabularyContent = () => {
+    const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
+    const [initializedTagExpansion, setInitializedTagExpansion] =
+      useState(false);
+    const { tags } = useStore((state) => ({ tags: state.tags }));
+
+    const toggleTagExpanded = (tagId: string) => {
+      const newExpanded = new Set(expandedTags);
+      if (newExpanded.has(tagId)) {
+        newExpanded.delete(tagId);
+      } else {
+        newExpanded.add(tagId);
+      }
+      setExpandedTags(newExpanded);
+    };
+
+    // Build tree structure and flatten for display
+    const displayTags = (() => {
+      const treeTags = buildTagTree(tags);
+
+      // Initialize expanded state for all parent tags on first load
+      if (!initializedTagExpansion && treeTags.length > 0) {
+        const allParentIds = new Set<string>();
+        const collectParentIds = (nodes: TreeTag[]) => {
+          nodes.forEach((node) => {
+            if (node.children.length > 0) {
+              allParentIds.add(node.id);
+              collectParentIds(node.children);
+            }
+          });
+        };
+        collectParentIds(treeTags);
+        setExpandedTags(allParentIds);
+        setInitializedTagExpansion(true);
+      }
+
+      // Update expanded state for tree tags
+      const updateExpandedState = (tags: TreeTag[]): TreeTag[] => {
+        return tags.map((tag) => ({
+          ...tag,
+          isExpanded: expandedTags.has(tag.id),
+          children: updateExpandedState(tag.children),
+        }));
+      };
+
+      const expandedTreeTags = updateExpandedState(treeTags);
+      return flattenTagTree(expandedTreeTags);
+    })();
+
+    if (tags.length === 0) {
+      return (
+        <div className="vocabulary-content">
+          <div className="empty-state">
+            <div className="empty-state-content">
+              <div className="empty-state-icon">🏷️</div>
+              <h3 className="empty-state-title">No tags yet</h3>
+              <p className="empty-state-description">
+                Start using tags in your notes to organize your concepts and
+                vocabulary.
+              </p>
+            </div>
+          </div>
         </div>
+      );
+    }
+
+    return (
+      <div className="vocabulary-content">
+        <div className="vocabulary-header">
+          <h3>Concepts & Tags</h3>
+          <p className="vocabulary-subtitle">
+            Your organized concepts and vocabulary from notes
+          </p>
+        </div>
+        <ul className="tag-list">
+          {displayTags.map((tag) => (
+            <TreeTagItem
+              key={tag.id}
+              tag={tag}
+              onToggleExpanded={toggleTagExpanded}
+            />
+          ))}
+        </ul>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderNotesContent = () => (
     <>
@@ -753,6 +906,65 @@ const TreeNoteItem = ({
               </button>
             </div>
           )}
+        </div>
+      </div>
+    </li>
+  );
+};
+
+const TreeTagItem = ({
+  tag,
+  onToggleExpanded,
+}: {
+  tag: TreeTag;
+  onToggleExpanded: (id: string) => void;
+}) => {
+  const handleTagClick = () => {
+    console.log("Tag clicked:", tag.name, tag);
+  };
+
+  return (
+    <li
+      className="tag-item"
+      style={{
+        paddingLeft: `${tag.level * 20 + 10}px`,
+      }}
+    >
+      <div className="tag-item-wrapper">
+        <div className="tag-item-content" onClick={handleTagClick}>
+          <div className="tag-title-container">
+            {tag.children.length > 0 && (
+              <button
+                className="expand-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpanded(tag.id);
+                }}
+              >
+                {tag.isExpanded ? (
+                  <ChevronDownIcon className="expand-icon" />
+                ) : (
+                  <ChevronRightIcon className="expand-icon" />
+                )}
+              </button>
+            )}
+            <div className="tag-title">
+              {tag.isCategory ? (
+                <span className="tag-category">
+                  📁 {tag.path[tag.path.length - 1]}
+                </span>
+              ) : (
+                <span className="tag-name">
+                  🏷️ {tag.path[tag.path.length - 1]}
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="tag-info">
+            <span className="tag-usage-count">
+              {tag.usageCount > 0 && `${tag.usageCount} uses`}
+            </span>
+          </div>
         </div>
       </div>
     </li>

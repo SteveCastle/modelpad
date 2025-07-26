@@ -133,7 +133,10 @@ export class TagNode extends TextNode {
 
       // Dispatch custom event to show tag edit menu
       const editEvent = new CustomEvent("tag-edit", {
-        detail: { tagNode: this },
+        detail: {
+          tagNode: this,
+          targetElement: element, // Include the tag element for positioning
+        },
         bubbles: true,
       });
       element.dispatchEvent(editEvent);
@@ -227,7 +230,10 @@ export class TagNode extends TextNode {
 
         // Dispatch custom event to show tag edit menu
         const editEvent = new CustomEvent("tag-edit", {
-          detail: { tagNode: this },
+          detail: {
+            tagNode: this,
+            targetElement: dom, // Include the tag element for positioning
+          },
           bubbles: true,
         });
         dom.dispatchEvent(editEvent);

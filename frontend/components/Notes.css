@@ -708,3 +708,142 @@
     padding: 10px 16px;
   }
 }
+
+/* Vocabulary Content Styles */
+.vocabulary-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.vocabulary-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: var(--side-bar-bg-color);
+  flex-shrink: 0;
+}
+
+.vocabulary-header h3 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.vocabulary-subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--low-contrast-text-color);
+  opacity: 0.8;
+}
+
+/* Tag List Styles */
+.tag-list {
+  list-style: none;
+  padding: 8px 0;
+  margin: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.tag-item {
+  margin-bottom: 1px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.tag-item:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+.tag-item-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.tag-item-wrapper:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.tag-item-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.tag-title-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.expand-button {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: none;
+  color: var(--low-contrast-text-color);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.expand-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--text-color);
+}
+
+.expand-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.tag-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.tag-category {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-color);
+  opacity: 0.9;
+}
+
+.tag-name {
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--text-color);
+  opacity: 0.8;
+}
+
+.tag-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tag-usage-count {
+  font-size: 12px;
+  color: var(--low-contrast-text-color);
+  opacity: 0.7;
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-weight: 500;
+}
