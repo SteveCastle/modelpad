@@ -161,6 +161,7 @@ function App() {
     cancelGeneration,
     viewSettings,
     generationState,
+    migrateTags,
   } = useStore((state) => state);
   const session = useSessionContext();
   const { providerKey, host } = useStore(
@@ -194,6 +195,11 @@ function App() {
     setLeftPanelCollapsed(false);
     setRightPanelCollapsed(false);
   }, [isMobile]);
+
+  // Migrate existing tags to new hierarchical format on app startup
+  useEffect(() => {
+    migrateTags();
+  }, [migrateTags]);
 
   useQuery({
     queryKey: ["models", host],

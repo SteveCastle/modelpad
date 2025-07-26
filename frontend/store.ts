@@ -102,6 +102,17 @@ export type PromptGeneration = {
   canRedo: boolean;
 };
 
+export type Tag = {
+  id: string;
+  name: string; // The full display name (e.g., "project/frontend/components")
+  path: string[]; // The hierarchical path (e.g., ["project", "frontend", "components"])
+  color?: string;
+  usageCount: number;
+  createdAt: string;
+  lastUsedAt?: string;
+  isCategory?: boolean; // True if this is a category container (has children)
+};
+
 type LoadingStates =
   | "ready"
   | "loading"
@@ -128,6 +139,7 @@ type State = {
   useRag: boolean;
   newTitle: string;
   promptGenerations: PromptGeneration[];
+  tags: Tag[];
   setNewTitle: (title: string) => void;
   setUseRag: (useRag: boolean) => void;
   setSideBarOpen: (open: boolean) => void;
@@ -168,6 +180,19 @@ type State = {
   ) => void;
   removePromptGeneration: (promptId: string) => void;
   getPromptGeneration: (promptId: string) => PromptGeneration | undefined;
+  // Tag management actions
+  addTag: (tag: Omit<Tag, "id" | "createdAt" | "usageCount">) => Tag;
+  addHierarchicalTag: (pathString: string) => Tag;
+  updateTag: (tagId: string, updates: Partial<Tag>) => void;
+  deleteTag: (tagId: string) => void;
+  getTag: (tagId: string) => Tag | undefined;
+  searchTags: (query: string) => Tag[];
+  searchTagsByPath: (pathQuery: string) => Tag[];
+  getTagsByParentPath: (parentPath: string[]) => Tag[];
+  getChildTags: (parentTag: Tag) => Tag[];
+  incrementTagUsage: (tagId: string) => void;
+  ensureParentCategories: (path: string[]) => void;
+  migrateTags: () => void;
 };
 
 const ollamaSettings: ModelSettings = {
@@ -257,6 +282,72 @@ export const useStore = create<State>()(
       useRag: false,
       newTitle: "",
       promptGenerations: [],
+      tags: [
+        {
+          id: "sample-1",
+          name: "project/research/ai",
+          path: ["project", "research", "ai"],
+          usageCount: 12,
+          createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+          lastUsedAt: new Date().toISOString(),
+        },
+        {
+          id: "sample-2",
+          name: "project/frontend/components",
+          path: ["project", "frontend", "components"],
+          usageCount: 8,
+          createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
+          lastUsedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+        },
+        {
+          id: "sample-3",
+          name: "project/backend/api",
+          path: ["project", "backend", "api"],
+          usageCount: 5,
+          createdAt: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
+          lastUsedAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+        },
+        {
+          id: "sample-4",
+          name: "people/team/developers",
+          path: ["people", "team", "developers"],
+          usageCount: 6,
+          createdAt: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
+          lastUsedAt: new Date(Date.now() - 1800000).toISOString(), // 30 minutes ago
+        },
+        {
+          id: "sample-5",
+          name: "people/clients/john-doe",
+          path: ["people", "clients", "john-doe"],
+          usageCount: 3,
+          createdAt: new Date(Date.now() - 432000000).toISOString(), // 5 days ago
+          lastUsedAt: new Date(Date.now() - 21600000).toISOString(), // 6 hours ago
+        },
+        {
+          id: "sample-6",
+          name: "locations/office/meeting-rooms",
+          path: ["locations", "office", "meeting-rooms"],
+          usageCount: 4,
+          createdAt: new Date(Date.now() - 518400000).toISOString(), // 6 days ago
+          lastUsedAt: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
+        },
+        {
+          id: "sample-7",
+          name: "tools/design/figma",
+          path: ["tools", "design", "figma"],
+          usageCount: 7,
+          createdAt: new Date(Date.now() - 604800000).toISOString(), // 1 week ago
+          lastUsedAt: new Date(Date.now() - 43200000).toISOString(), // 12 hours ago
+        },
+        {
+          id: "sample-8",
+          name: "meetings/weekly/standup",
+          path: ["meetings", "weekly", "standup"],
+          usageCount: 15,
+          createdAt: new Date(Date.now() - 691200000).toISOString(), // 8 days ago
+          lastUsedAt: new Date(Date.now() - 900000).toISOString(), // 15 minutes ago
+        },
+      ],
       setNewTitle: (title: string) => {
         set(() => ({
           newTitle: title,
@@ -563,6 +654,181 @@ export const useStore = create<State>()(
           useRag,
         }));
       },
+      // Tag management actions
+      addTag: (tag: Omit<Tag, "id" | "createdAt" | "usageCount">) => {
+        const newTag: Tag = {
+          ...tag,
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          usageCount: 0,
+        };
+        set(() => ({
+          tags: [...get().tags, newTag],
+        }));
+        return newTag;
+      },
+      updateTag: (tagId: string, updates: Partial<Tag>) => {
+        set(() => ({
+          tags: get().tags.map((tag) =>
+            tag.id === tagId ? { ...tag, ...updates } : tag
+          ),
+        }));
+      },
+      deleteTag: (tagId: string) => {
+        set(() => ({
+          tags: get().tags.filter((tag) => tag.id !== tagId),
+        }));
+      },
+      getTag: (tagId: string) => {
+        return get().tags.find((tag) => tag.id === tagId);
+      },
+      searchTags: (query: string) => {
+        // Use the new hierarchical search
+        return get().searchTagsByPath(query);
+      },
+      migrateTags: () => {
+        const tags = get().tags;
+        const migratedTags = tags.map((tag) => {
+          if (!tag.path || !Array.isArray(tag.path)) {
+            // Convert old format tags to new hierarchical format
+            const path = tag.name.split("/").filter((p) => p.trim());
+            return {
+              ...tag,
+              path: path.length > 0 ? path : [tag.name],
+            };
+          }
+          return tag;
+        });
+
+        // Update if we had to migrate any tags
+        if (migratedTags.some((tag, index) => !tags[index].path)) {
+          set(() => ({ tags: migratedTags }));
+        }
+      },
+      incrementTagUsage: (tagId: string) => {
+        set(() => ({
+          tags: get().tags.map((tag) =>
+            tag.id === tagId
+              ? {
+                  ...tag,
+                  usageCount: tag.usageCount + 1,
+                  lastUsedAt: new Date().toISOString(),
+                }
+              : tag
+          ),
+        }));
+      },
+      addHierarchicalTag: (pathString: string) => {
+        const path = pathString.split("/").filter((p) => p.trim());
+        const fullPath = path.join("/");
+
+        // Check if tag already exists
+        const existingTag = get().tags.find((tag) => tag.name === fullPath);
+        if (existingTag) {
+          return existingTag;
+        }
+
+        // Ensure parent categories exist
+        get().ensureParentCategories(path);
+
+        // Create the new tag
+        const newTag: Tag = {
+          id: crypto.randomUUID(),
+          name: fullPath,
+          path: path,
+          createdAt: new Date().toISOString(),
+          usageCount: 0,
+        };
+
+        set(() => ({
+          tags: [...get().tags, newTag],
+        }));
+
+        return newTag;
+      },
+      ensureParentCategories: (path: string[]) => {
+        const currentTags = get().tags;
+        const newCategories: Tag[] = [];
+
+        // Create parent categories if they don't exist
+        for (let i = 1; i < path.length; i++) {
+          const parentPath = path.slice(0, i);
+          const parentName = parentPath.join("/");
+
+          const existingParent = currentTags.find(
+            (tag) => tag.name === parentName
+          );
+          if (
+            !existingParent &&
+            !newCategories.find((tag) => tag.name === parentName)
+          ) {
+            newCategories.push({
+              id: crypto.randomUUID(),
+              name: parentName,
+              path: parentPath,
+              createdAt: new Date().toISOString(),
+              usageCount: 0,
+              isCategory: true,
+            });
+          }
+        }
+
+        if (newCategories.length > 0) {
+          set(() => ({
+            tags: [...get().tags, ...newCategories],
+          }));
+        }
+      },
+      searchTagsByPath: (pathQuery: string) => {
+        const normalizedQuery = pathQuery.toLowerCase().trim();
+        if (!normalizedQuery) return get().tags;
+
+        return get()
+          .tags.filter((tag) => {
+            // Match against full path or any path segment
+            return (
+              tag.name.toLowerCase().includes(normalizedQuery) ||
+              tag.path.some((segment) =>
+                segment.toLowerCase().includes(normalizedQuery)
+              )
+            );
+          })
+          .sort((a, b) => {
+            // Priority: exact match > starts with > contains
+            const aExact = a.name.toLowerCase() === normalizedQuery;
+            const bExact = b.name.toLowerCase() === normalizedQuery;
+            if (aExact && !bExact) return -1;
+            if (bExact && !aExact) return 1;
+
+            const aStartsWith = a.name
+              .toLowerCase()
+              .startsWith(normalizedQuery);
+            const bStartsWith = b.name
+              .toLowerCase()
+              .startsWith(normalizedQuery);
+            if (aStartsWith && !bStartsWith) return -1;
+            if (bStartsWith && !aStartsWith) return 1;
+
+            // Then by usage count
+            if (b.usageCount !== a.usageCount) {
+              return b.usageCount - a.usageCount;
+            }
+
+            return a.name.localeCompare(b.name);
+          });
+      },
+      getTagsByParentPath: (parentPath: string[]) => {
+        const parentPathStr = parentPath.join("/");
+        return get().tags.filter((tag) => {
+          if (tag.path.length === parentPath.length + 1) {
+            return tag.path.slice(0, -1).join("/") === parentPathStr;
+          }
+          return false;
+        });
+      },
+      getChildTags: (parentTag: Tag) => {
+        return get().getTagsByParentPath(parentTag.path);
+      },
     }),
     {
       name: "editor",
@@ -579,6 +845,7 @@ export const useStore = create<State>()(
         promptTemplates: state.promptTemplates,
         systemPromptTemplates: state.systemPromptTemplates,
         ragPromptTemplates: state.ragPromptTemplates,
+        tags: state.tags,
       }),
     }
   )

@@ -13,8 +13,10 @@ import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { AIGenerationNode } from "./AIGenerationNode";
 import { PromptNode } from "./PromptNode";
+import { TagNode } from "./TagNode";
 import "./AIGenerationNode.css";
 import "./PromptNode.css";
+import "./TagNode.css";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "./LexicalMarkdownShortcutPlugin";
@@ -23,6 +25,7 @@ import { useDebouncedCallback } from "use-debounce";
 import CodeHighlightPlugin from "./CodeHighlightPlugin";
 import { BlockHoverPlugin } from "./BlockHoverPlugin";
 import { KeyboardShortcutsPlugin } from "./KeyboardShortcutsPlugin";
+import { TagPlugin } from "./TagPlugin";
 import { Toolbar } from "./Toolbar";
 import { useStore, Story } from "../store";
 import "./TableOfContents.css";
@@ -62,6 +65,7 @@ const theme = {
     underlineStrikethrough: "editor-text-underlineStrikethrough",
     code: "editor-text-code",
   },
+  tag: "editor-tag",
   code: "codeHighlight",
   codeHighlight: {
     atrule: "editor-tokenAttr",
@@ -349,6 +353,7 @@ export function StoryEditor({
         LinkNode,
         AIGenerationNode,
         PromptNode,
+        TagNode,
       ],
       editorState: initialContent,
     }),
@@ -434,6 +439,7 @@ export function StoryEditor({
         </div>
         <BlockHoverPlugin />
         <KeyboardShortcutsPlugin />
+        <TagPlugin />
         <HistoryPlugin />
         <OnChangePlugin
           onChange={debouncedOnChange}
