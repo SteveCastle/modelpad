@@ -749,7 +749,6 @@
 
 .tag-item {
   margin-bottom: 1px;
-  border-radius: 4px;
   transition: all 0.2s ease;
 }
 
@@ -763,7 +762,6 @@
   gap: 8px;
   padding: 8px 12px;
   cursor: pointer;
-  border-radius: 4px;
   transition: all 0.2s ease;
 }
 
@@ -849,28 +847,32 @@
 }
 
 /* Category colors for vocabulary tags */
-.tag-item-content[data-category="characters"] .tag-name {
+.tag-item-content[data-category="people"] .tag-name {
   color: #a855f7;
 }
 
-.tag-item-content[data-category="settings"] .tag-name {
+.tag-item-content[data-category="places"] .tag-name {
   color: #22c55e;
 }
 
-.tag-item-content[data-category="genres"] .tag-name {
-  color: #3b82f6;
-}
-
-.tag-item-content[data-category="style"] .tag-name {
-  color: #ec4899;
-}
-
-.tag-item-content[data-category="plot"] .tag-name {
+.tag-item-content[data-category="things"] .tag-name {
   color: #f97316;
 }
 
-.tag-item-content[data-category="emotion"] .tag-name {
+.tag-item-content[data-category="actions"] .tag-name {
+  color: #3b82f6;
+}
+
+.tag-item-content[data-category="writing-styles"] .tag-name {
+  color: #ec4899;
+}
+
+.tag-item-content[data-category="emotions"] .tag-name {
   color: #eab308;
+}
+
+.tag-item-content[data-category="relationships"] .tag-name {
+  color: #ef4444;
 }
 
 .tag-item-content[data-category="other"] .tag-name {
@@ -878,30 +880,70 @@
 }
 
 /* Add subtle border accent for categories */
-.tag-item-wrapper[data-category="characters"] {
+.tag-item-wrapper[data-category="people"] {
   border-left: 3px solid #a855f7;
 }
 
-.tag-item-wrapper[data-category="settings"] {
+.tag-item-wrapper[data-category="places"] {
   border-left: 3px solid #22c55e;
 }
 
-.tag-item-wrapper[data-category="genres"] {
-  border-left: 3px solid #3b82f6;
-}
-
-.tag-item-wrapper[data-category="style"] {
-  border-left: 3px solid #ec4899;
-}
-
-.tag-item-wrapper[data-category="plot"] {
+.tag-item-wrapper[data-category="things"] {
   border-left: 3px solid #f97316;
 }
 
-.tag-item-wrapper[data-category="emotion"] {
+.tag-item-wrapper[data-category="actions"] {
+  border-left: 3px solid #3b82f6;
+}
+
+.tag-item-wrapper[data-category="writing-styles"] {
+  border-left: 3px solid #ec4899;
+}
+
+.tag-item-wrapper[data-category="emotions"] {
   border-left: 3px solid #eab308;
+}
+
+.tag-item-wrapper[data-category="relationships"] {
+  border-left: 3px solid #ef4444;
 }
 
 .tag-item-wrapper[data-category="other"] {
   border-left: 3px solid #6b7280;
+}
+
+/* Tag actions */
+.tag-actions-container {
+  display: flex;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.tag-item:hover .tag-actions-container {
+  opacity: 1;
+}
+
+.tag-delete-btn {
+  background-color: transparent;
+  border: none;
+  color: var(--low-contrast-text-color);
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.tag-delete-btn:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.tag-delete-btn svg {
+  width: 14px;
+  height: 14px;
 }

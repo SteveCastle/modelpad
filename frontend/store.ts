@@ -167,6 +167,8 @@ type LoadingStates =
   | "error"
   | "no-connection";
 
+type NotesTabType = "notes" | "vocabulary";
+
 type State = {
   serverKey: string;
   viewSettings: ViewSettings;
@@ -187,6 +189,15 @@ type State = {
   newTitle: string;
   promptGenerations: PromptGeneration[];
   tags: Tag[];
+  // Persistent UI state
+  activeNotesTab: NotesTabType;
+  collapsedNoteIds: Set<string>;
+  collapsedTagIds: Set<string>;
+  setActiveNotesTab: (tab: NotesTabType) => void;
+  setCollapsedNoteIds: (noteIds: Set<string>) => void;
+  setCollapsedTagIds: (tagIds: Set<string>) => void;
+  toggleNoteCollapsed: (noteId: string) => void;
+  toggleTagCollapsed: (tagId: string) => void;
   setNewTitle: (title: string) => void;
   setUseRag: (useRag: boolean) => void;
   setSideBarOpen: (open: boolean) => void;
@@ -332,97 +343,220 @@ export const useStore = create<State>()(
       newTitle: "",
       promptGenerations: [],
       tags: [
+        // People
         {
           id: "sample-1",
-          name: "characters/protagonist/hero",
-          path: ["characters", "protagonist", "hero"],
+          name: "people/protagonist",
+          path: ["people", "protagonist"],
           createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
         },
         {
           id: "sample-2",
-          name: "settings/fantasy/medieval-castle",
-          path: ["settings", "fantasy", "medieval-castle"],
+          name: "people/antagonist",
+          path: ["people", "antagonist"],
           createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
         },
         {
           id: "sample-3",
-          name: "genres/mystery/detective",
-          path: ["genres", "mystery", "detective"],
+          name: "people/mentor",
+          path: ["people", "mentor"],
           createdAt: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
         },
         {
           id: "sample-4",
-          name: "style/perspective/first-person",
-          path: ["style", "perspective", "first-person"],
+          name: "people/sidekick",
+          path: ["people", "sidekick"],
           createdAt: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
         },
+        // Places
         {
           id: "sample-5",
-          name: "characters/antagonist/dark-lord",
-          path: ["characters", "antagonist", "dark-lord"],
+          name: "places/home",
+          path: ["places", "home"],
           createdAt: new Date(Date.now() - 432000000).toISOString(), // 5 days ago
         },
         {
           id: "sample-6",
-          name: "settings/modern/urban-city",
-          path: ["settings", "modern", "urban-city"],
+          name: "places/workplace",
+          path: ["places", "workplace"],
           createdAt: new Date(Date.now() - 518400000).toISOString(), // 6 days ago
         },
         {
           id: "sample-7",
-          name: "style/tone/dark-atmospheric",
-          path: ["style", "tone", "dark-atmospheric"],
+          name: "places/forest",
+          path: ["places", "forest"],
           createdAt: new Date(Date.now() - 604800000).toISOString(), // 1 week ago
         },
         {
           id: "sample-8",
-          name: "plot/conflict/internal-struggle",
-          path: ["plot", "conflict", "internal-struggle"],
+          name: "places/city",
+          path: ["places", "city"],
           createdAt: new Date(Date.now() - 691200000).toISOString(), // 8 days ago
         },
+        // Things
         {
           id: "sample-9",
-          name: "characters/archetype/mentor",
-          path: ["characters", "archetype", "mentor"],
+          name: "things/weapon",
+          path: ["things", "weapon"],
           createdAt: new Date(Date.now() - 777600000).toISOString(), // 9 days ago
         },
         {
           id: "sample-10",
-          name: "genres/sci-fi/dystopian",
-          path: ["genres", "sci-fi", "dystopian"],
+          name: "things/artifact",
+          path: ["things", "artifact"],
           createdAt: new Date(Date.now() - 864000000).toISOString(), // 10 days ago
         },
         {
           id: "sample-11",
-          name: "settings/historical/victorian-london",
-          path: ["settings", "historical", "victorian-london"],
+          name: "things/vehicle",
+          path: ["things", "vehicle"],
           createdAt: new Date(Date.now() - 950400000).toISOString(), // 11 days ago
         },
+        // Actions
         {
           id: "sample-12",
-          name: "style/device/flashback",
-          path: ["style", "device", "flashback"],
+          name: "actions/journey",
+          path: ["actions", "journey"],
           createdAt: new Date(Date.now() - 1036800000).toISOString(), // 12 days ago
         },
         {
           id: "sample-13",
-          name: "emotion/atmosphere/suspenseful",
-          path: ["emotion", "atmosphere", "suspenseful"],
+          name: "actions/conflict",
+          path: ["actions", "conflict"],
           createdAt: new Date(Date.now() - 1123200000).toISOString(), // 13 days ago
         },
         {
           id: "sample-14",
-          name: "plot/theme/redemption",
-          path: ["plot", "theme", "redemption"],
+          name: "actions/discovery",
+          path: ["actions", "discovery"],
           createdAt: new Date(Date.now() - 1209600000).toISOString(), // 14 days ago
         },
         {
           id: "sample-15",
-          name: "genres/romance/contemporary",
-          path: ["genres", "romance", "contemporary"],
+          name: "actions/transformation",
+          path: ["actions", "transformation"],
           createdAt: new Date(Date.now() - 1296000000).toISOString(), // 15 days ago
         },
+        // Writing Styles
+        {
+          id: "sample-16",
+          name: "writing-styles/first-person",
+          path: ["writing-styles", "first-person"],
+          createdAt: new Date(Date.now() - 1382400000).toISOString(), // 16 days ago
+        },
+        {
+          id: "sample-17",
+          name: "writing-styles/descriptive",
+          path: ["writing-styles", "descriptive"],
+          createdAt: new Date(Date.now() - 1468800000).toISOString(), // 17 days ago
+        },
+        {
+          id: "sample-18",
+          name: "writing-styles/dialogue-heavy",
+          path: ["writing-styles", "dialogue-heavy"],
+          createdAt: new Date(Date.now() - 1555200000).toISOString(), // 18 days ago
+        },
+        {
+          id: "sample-19",
+          name: "writing-styles/stream-of-consciousness",
+          path: ["writing-styles", "stream-of-consciousness"],
+          createdAt: new Date(Date.now() - 1641600000).toISOString(), // 19 days ago
+        },
+        // Emotions
+        {
+          id: "sample-20",
+          name: "emotions/joy",
+          path: ["emotions", "joy"],
+          createdAt: new Date(Date.now() - 1728000000).toISOString(), // 20 days ago
+        },
+        {
+          id: "sample-21",
+          name: "emotions/fear",
+          path: ["emotions", "fear"],
+          createdAt: new Date(Date.now() - 1814400000).toISOString(), // 21 days ago
+        },
+        {
+          id: "sample-22",
+          name: "emotions/melancholy",
+          path: ["emotions", "melancholy"],
+          createdAt: new Date(Date.now() - 1900800000).toISOString(), // 22 days ago
+        },
+        {
+          id: "sample-23",
+          name: "emotions/excitement",
+          path: ["emotions", "excitement"],
+          createdAt: new Date(Date.now() - 1987200000).toISOString(), // 23 days ago
+        },
+        // Relationships
+        {
+          id: "sample-24",
+          name: "relationships/mentor-student",
+          path: ["relationships", "mentor-student"],
+          createdAt: new Date(Date.now() - 2073600000).toISOString(), // 24 days ago
+        },
+        {
+          id: "sample-25",
+          name: "relationships/rivals",
+          path: ["relationships", "rivals"],
+          createdAt: new Date(Date.now() - 2160000000).toISOString(), // 25 days ago
+        },
+        {
+          id: "sample-26",
+          name: "relationships/allies",
+          path: ["relationships", "allies"],
+          createdAt: new Date(Date.now() - 2246400000).toISOString(), // 26 days ago
+        },
+        {
+          id: "sample-27",
+          name: "relationships/parent-child",
+          path: ["relationships", "parent-child"],
+          createdAt: new Date(Date.now() - 2332800000).toISOString(), // 27 days ago
+        },
       ],
+      activeNotesTab: "notes",
+      collapsedNoteIds: new Set(),
+      collapsedTagIds: new Set(),
+      setActiveNotesTab: (tab: NotesTabType) => {
+        set(() => ({
+          activeNotesTab: tab,
+        }));
+      },
+      setCollapsedNoteIds: (noteIds: Set<string>) => {
+        set(() => ({
+          collapsedNoteIds: noteIds,
+        }));
+      },
+      setCollapsedTagIds: (tagIds: Set<string>) => {
+        set(() => ({
+          collapsedTagIds: tagIds,
+        }));
+      },
+      toggleNoteCollapsed: (noteId: string) => {
+        set((state) => {
+          const newCollapsedIds = new Set(state.collapsedNoteIds);
+          if (newCollapsedIds.has(noteId)) {
+            newCollapsedIds.delete(noteId);
+          } else {
+            newCollapsedIds.add(noteId);
+          }
+          return {
+            collapsedNoteIds: newCollapsedIds,
+          };
+        });
+      },
+      toggleTagCollapsed: (tagId: string) => {
+        set((state) => {
+          const newCollapsedIds = new Set(state.collapsedTagIds);
+          if (newCollapsedIds.has(tagId)) {
+            newCollapsedIds.delete(tagId);
+          } else {
+            newCollapsedIds.add(tagId);
+          }
+          return {
+            collapsedTagIds: newCollapsedIds,
+          };
+        });
+      },
       setNewTitle: (title: string) => {
         set(() => ({
           newTitle: title,
@@ -832,14 +966,42 @@ export const useStore = create<State>()(
       getTagUsageCounts: () => {
         // Get all tags from all current stories
         const allStoryTags = get().stories.flatMap((story) => story.tags || []);
+        const allTags = get().tags;
 
-        // Count occurrences of each tag ID
-        const counts: { [tagId: string]: number } = {};
+        // Count direct occurrences of each tag ID
+        const directCounts: { [tagId: string]: number } = {};
         allStoryTags.forEach((storyTag) => {
-          counts[storyTag.id] = (counts[storyTag.id] || 0) + 1;
+          directCounts[storyTag.id] = (directCounts[storyTag.id] || 0) + 1;
         });
 
-        return counts;
+        // Calculate total counts including children for categories
+        const totalCounts: { [tagId: string]: number } = { ...directCounts };
+
+        // For each tag, if it's a parent category, sum up all descendant counts
+        allTags.forEach((tag) => {
+          const descendants = allTags.filter((otherTag) => {
+            // Check if otherTag is a descendant of tag
+            return (
+              otherTag.id !== tag.id && // Not the same tag
+              otherTag.path.length > tag.path.length && // Descendant must be deeper
+              tag.path.every(
+                (segment, index) => otherTag.path[index] === segment
+              ) // Path must start with parent path
+            );
+          });
+
+          // Sum up direct counts of all descendants
+          const descendantSum = descendants.reduce((sum, descendant) => {
+            return sum + (directCounts[descendant.id] || 0);
+          }, 0);
+
+          // Add descendant counts to the category's total count
+          if (descendantSum > 0) {
+            totalCounts[tag.id] = (totalCounts[tag.id] || 0) + descendantSum;
+          }
+        });
+
+        return totalCounts;
       },
       addHierarchicalTag: (pathString: string) => {
         const path = pathString.split("/").filter((p) => p.trim());
@@ -971,7 +1133,21 @@ export const useStore = create<State>()(
         systemPromptTemplates: state.systemPromptTemplates,
         ragPromptTemplates: state.ragPromptTemplates,
         tags: state.tags,
+        activeNotesTab: state.activeNotesTab,
+        collapsedNoteIds: Array.from(state.collapsedNoteIds),
+        collapsedTagIds: Array.from(state.collapsedTagIds),
       }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // Convert arrays back to Sets after rehydration
+          state.collapsedNoteIds = new Set(
+            state.collapsedNoteIds as unknown as string[]
+          );
+          state.collapsedTagIds = new Set(
+            state.collapsedTagIds as unknown as string[]
+          );
+        }
+      },
     }
   )
 );

@@ -43,8 +43,6 @@ function useIsMobile() {
 // Props interfaces for navigation components
 interface LeftNavBarProps {
   leftPanelRef: React.RefObject<ImperativePanelHandle>;
-  setActiveNotesTab: (tab: "notes" | "vocabulary") => void;
-  activeNotesTab: "notes" | "vocabulary";
   leftPanelCollapsed: boolean;
 }
 
@@ -56,45 +54,47 @@ interface RightNavBarProps {
 }
 
 // Vertical Navigation Components (defined outside App to prevent re-creation)
-const LeftNavBar = ({
-  leftPanelRef,
-  setActiveNotesTab,
-  activeNotesTab,
-  leftPanelCollapsed,
-}: LeftNavBarProps) => (
-  <div className="vertical-nav-bar left multiple-buttons">
-    <button
-      className="nav-button"
-      onClick={() => {
-        if (!leftPanelCollapsed && activeNotesTab === "notes") {
-          leftPanelRef.current?.collapse();
-        } else {
-          setActiveNotesTab("notes");
-          leftPanelRef.current?.expand();
-        }
-      }}
-      title="Notes"
-    >
-      <span className="nav-icon">📝</span>
-      <span className="nav-label">Notes</span>
-    </button>
-    <button
-      className="nav-button"
-      onClick={() => {
-        if (!leftPanelCollapsed && activeNotesTab === "vocabulary") {
-          leftPanelRef.current?.collapse();
-        } else {
-          setActiveNotesTab("vocabulary");
-          leftPanelRef.current?.expand();
-        }
-      }}
-      title="Vocabulary"
-    >
-      <span className="nav-icon">📚</span>
-      <span className="nav-label">Vocabulary</span>
-    </button>
-  </div>
-);
+const LeftNavBar = ({ leftPanelRef, leftPanelCollapsed }: LeftNavBarProps) => {
+  const { activeNotesTab, setActiveNotesTab } = useStore((state) => ({
+    activeNotesTab: state.activeNotesTab,
+    setActiveNotesTab: state.setActiveNotesTab,
+  }));
+
+  return (
+    <div className="vertical-nav-bar left multiple-buttons">
+      <button
+        className="nav-button"
+        onClick={() => {
+          if (!leftPanelCollapsed && activeNotesTab === "notes") {
+            leftPanelRef.current?.collapse();
+          } else {
+            setActiveNotesTab("notes");
+            leftPanelRef.current?.expand();
+          }
+        }}
+        title="Notes"
+      >
+        <span className="nav-icon">📝</span>
+        <span className="nav-label">Notes</span>
+      </button>
+      <button
+        className="nav-button"
+        onClick={() => {
+          if (!leftPanelCollapsed && activeNotesTab === "vocabulary") {
+            leftPanelRef.current?.collapse();
+          } else {
+            setActiveNotesTab("vocabulary");
+            leftPanelRef.current?.expand();
+          }
+        }}
+        title="Vocabulary"
+      >
+        <span className="nav-icon">📚</span>
+        <span className="nav-label">Vocabulary</span>
+      </button>
+    </div>
+  );
+};
 
 const RightNavBar = ({
   rightPanelRef,
@@ -179,9 +179,25 @@ function App() {
   const [activeAITab, setActiveAITab] = useState<
     "model-settings" | "context-control" | "agent"
   >("model-settings");
-  const [activeNotesTab, setActiveNotesTab] = useState<"notes" | "vocabulary">(
-    "notes"
-  );
+
+  // Check initial panel state from persistence
+  useEffect(() => {
+    const checkPanelStates = () => {
+      const leftPanel = leftPanelRef.current;
+      const rightPanel = rightPanelRef.current;
+
+      if (leftPanel) {
+        setLeftPanelCollapsed(leftPanel.isCollapsed());
+      }
+      if (rightPanel) {
+        setRightPanelCollapsed(rightPanel.isCollapsed());
+      }
+    };
+
+    // Check states after a short delay to ensure panels are mounted
+    const timer = setTimeout(checkPanelStates, 100);
+    return () => clearTimeout(timer);
+  }, [isMobile]);
 
   // If activeStory changes cancel generation
   useEffect(() => {
@@ -190,11 +206,7 @@ function App() {
     }
   }, [activeStoryId]);
 
-  // Reset panel states when switching between mobile and desktop
-  useEffect(() => {
-    setLeftPanelCollapsed(false);
-    setRightPanelCollapsed(false);
-  }, [isMobile]);
+  // Note: Panel states are now persisted by react-resizable-panels
 
   // Migrate existing tags to new hierarchical format on app startup
   useEffect(() => {
@@ -223,13 +235,17 @@ function App() {
     <div className="App">
       <PanelGroup
         direction="horizontal"
-        key={`panel-group-${isMobile ? "mobile" : "desktop"}`}
+        autoSaveId={`modelpad-layout-${
+          session.loading === false && session.userId
+            ? session.userId
+            : "anonymous"
+        }`}
       >
         {/* Left Sidebar Panel */}
         {session.loading === false && session.userId && !isMobile ? (
           <>
             <Panel
-              id="left-panel"
+              id="left-sidebar"
               ref={leftPanelRef}
               defaultSize={20}
               minSize={16}
@@ -244,14 +260,11 @@ function App() {
               {leftPanelCollapsed ? (
                 <LeftNavBar
                   leftPanelRef={leftPanelRef}
-                  setActiveNotesTab={setActiveNotesTab}
-                  activeNotesTab={activeNotesTab}
                   leftPanelCollapsed={leftPanelCollapsed}
                 />
               ) : (
                 <div className="side-bar-content">
                   <Notes
-                    defaultTab={activeNotesTab}
                     onTabClick={() => {
                       leftPanelRef.current?.collapse();
                     }}
@@ -265,7 +278,7 @@ function App() {
 
         {/* Main Content Panel */}
         <Panel
-          id="main-panel"
+          id="main-content"
           defaultSize={
             session.loading === false && session.userId && !isMobile ? 60 : 100
           }
@@ -314,7 +327,7 @@ function App() {
           <>
             <PanelResizeHandle className="resize-handle" />
             <Panel
-              id="right-panel"
+              id="right-sidebar"
               ref={rightPanelRef}
               defaultSize={20}
               minSize={20}

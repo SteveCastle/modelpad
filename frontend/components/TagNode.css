@@ -13,13 +13,14 @@
   --tag-text: #ffffff;
   --tag-border: #6b7280;
 
-  /* Category colors - storytelling palette */
-  --tag-characters: #a855f7; /* Purple for characters */
-  --tag-settings: #22c55e; /* Green for settings/locations */
-  --tag-genres: #3b82f6; /* Blue for genres */
-  --tag-style: #ec4899; /* Pink for writing style */
-  --tag-plot: #f97316; /* Orange for plot elements */
-  --tag-emotion: #eab308; /* Yellow for emotions/atmosphere */
+  /* Category colors - generic taxonomy palette */
+  --tag-people: #a855f7; /* Purple for people/personas */
+  --tag-places: #22c55e; /* Green for places/locations */
+  --tag-things: #f97316; /* Orange for objects/items */
+  --tag-actions: #3b82f6; /* Blue for actions/processes */
+  --tag-writing-styles: #ec4899; /* Pink for writing styles */
+  --tag-emotions: #eab308; /* Yellow for emotions/feelings */
+  --tag-relationships: #ef4444; /* Red for relationships/connections */
   --tag-other: #6b7280; /* Gray for uncategorized */
 
   /* Interactive states */
@@ -101,46 +102,53 @@
 }
 
 /* Category colors - applied to all tag variants */
-.editor-tag[data-category="characters"],
-.tag-preview.category-characters,
-.tag-info-preview.category-characters {
-  border-color: var(--tag-characters);
-  background: color-mix(in srgb, var(--tag-characters) 15%, var(--tag-bg));
+.editor-tag[data-category="people"],
+.tag-preview.category-people,
+.tag-info-preview.category-people {
+  border-color: var(--tag-people);
+  background: color-mix(in srgb, var(--tag-people) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="settings"],
-.tag-preview.category-settings,
-.tag-info-preview.category-settings {
-  border-color: var(--tag-settings);
-  background: color-mix(in srgb, var(--tag-settings) 15%, var(--tag-bg));
+.editor-tag[data-category="places"],
+.tag-preview.category-places,
+.tag-info-preview.category-places {
+  border-color: var(--tag-places);
+  background: color-mix(in srgb, var(--tag-places) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="genres"],
-.tag-preview.category-genres,
-.tag-info-preview.category-genres {
-  border-color: var(--tag-genres);
-  background: color-mix(in srgb, var(--tag-genres) 15%, var(--tag-bg));
+.editor-tag[data-category="things"],
+.tag-preview.category-things,
+.tag-info-preview.category-things {
+  border-color: var(--tag-things);
+  background: color-mix(in srgb, var(--tag-things) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="style"],
-.tag-preview.category-style,
-.tag-info-preview.category-style {
-  border-color: var(--tag-style);
-  background: color-mix(in srgb, var(--tag-style) 15%, var(--tag-bg));
+.editor-tag[data-category="actions"],
+.tag-preview.category-actions,
+.tag-info-preview.category-actions {
+  border-color: var(--tag-actions);
+  background: color-mix(in srgb, var(--tag-actions) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="plot"],
-.tag-preview.category-plot,
-.tag-info-preview.category-plot {
-  border-color: var(--tag-plot);
-  background: color-mix(in srgb, var(--tag-plot) 15%, var(--tag-bg));
+.editor-tag[data-category="writing-styles"],
+.tag-preview.category-writing-styles,
+.tag-info-preview.category-writing-styles {
+  border-color: var(--tag-writing-styles);
+  background: color-mix(in srgb, var(--tag-writing-styles) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="emotion"],
-.tag-preview.category-emotion,
-.tag-info-preview.category-emotion {
-  border-color: var(--tag-emotion);
-  background: color-mix(in srgb, var(--tag-emotion) 15%, var(--tag-bg));
+.editor-tag[data-category="emotions"],
+.tag-preview.category-emotions,
+.tag-info-preview.category-emotions {
+  border-color: var(--tag-emotions);
+  background: color-mix(in srgb, var(--tag-emotions) 15%, var(--tag-bg));
+}
+
+.editor-tag[data-category="relationships"],
+.tag-preview.category-relationships,
+.tag-info-preview.category-relationships {
+  border-color: var(--tag-relationships);
+  background: color-mix(in srgb, var(--tag-relationships) 15%, var(--tag-bg));
 }
 
 .editor-tag[data-category="other"],

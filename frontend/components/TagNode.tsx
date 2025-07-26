@@ -150,14 +150,15 @@ export class TagNode extends TextNode {
     // Use the first part of the path as the category
     if (this.__tagPath.length > 0) {
       const category = this.__tagPath[0].toLowerCase();
-      // Valid storytelling categories
+      // Valid generic categories
       const validCategories = [
-        "characters",
-        "settings",
-        "genres",
-        "style",
-        "plot",
-        "emotion",
+        "people",
+        "places",
+        "things",
+        "actions",
+        "writing-styles",
+        "emotions",
+        "relationships",
       ];
       return validCategories.includes(category) ? category : "other";
     }

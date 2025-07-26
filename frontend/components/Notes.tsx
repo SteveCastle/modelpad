@@ -34,7 +34,7 @@ import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
 
 import "./Notes.css";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { LoadingSpinner } from "./LoadingSpinner";
 
@@ -181,7 +181,21 @@ function buildTagTree(tags: Tag[]): TreeTag[] {
     }
   });
 
-  return finalRootTags;
+  // Sort all children arrays alphabetically
+  const sortTagChildren = (tags: TreeTag[]): TreeTag[] => {
+    return tags
+      .sort((a, b) => {
+        const aName = a.path[a.path.length - 1].toLowerCase();
+        const bName = b.path[b.path.length - 1].toLowerCase();
+        return aName.localeCompare(bName);
+      })
+      .map((tag) => ({
+        ...tag,
+        children: sortTagChildren(tag.children),
+      }));
+  };
+
+  return sortTagChildren(finalRootTags);
 }
 
 function flattenTagTree(treeTags: TreeTag[]): TreeTag[] {
@@ -259,26 +273,29 @@ async function updateNoteParent(id: string, parentId: string | null) {
   return response.json();
 }
 
-type NotesTabType = "notes" | "vocabulary";
-
 interface NotesProps {
-  defaultTab?: NotesTabType;
   onTabClick?: () => void;
 }
 
-const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
-  const [activeTab, setActiveTab] = useState<NotesTabType>(defaultTab);
+const Notes = ({ onTabClick }: NotesProps) => {
   const [searchText, setSearchText] = useState("");
-  const [expandedNotes, setExpandedNotes] = useState<Set<string>>(new Set());
   const [initializedExpansion, setInitializedExpansion] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  // Update active tab when defaultTab prop changes
-  useEffect(() => {
-    setActiveTab(defaultTab);
-  }, [defaultTab]);
+  // Get persistent state from store
+  const {
+    activeNotesTab,
+    setActiveNotesTab,
+    collapsedNoteIds,
+    toggleNoteCollapsed,
+  } = useStore((state) => ({
+    activeNotesTab: state.activeNotesTab,
+    setActiveNotesTab: state.setActiveNotesTab,
+    collapsedNoteIds: state.collapsedNoteIds,
+    toggleNoteCollapsed: state.toggleNoteCollapsed,
+  }));
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedCallback(() => {
@@ -310,13 +327,7 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
   );
 
   const toggleExpanded = (noteId: string) => {
-    const newExpanded = new Set(expandedNotes);
-    if (newExpanded.has(noteId)) {
-      newExpanded.delete(noteId);
-    } else {
-      newExpanded.add(noteId);
-    }
-    setExpandedNotes(newExpanded);
+    toggleNoteCollapsed(noteId);
   };
 
   function handleDragStart(event: DragStartEvent) {
@@ -325,10 +336,12 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
 
     // Automatically expand the dragged item if it has children
     const draggedNote = displayNotes.find((note) => note.id === draggedId);
-    if (draggedNote && draggedNote.children.length > 0) {
-      const newExpanded = new Set(expandedNotes);
-      newExpanded.add(draggedId);
-      setExpandedNotes(newExpanded);
+    if (
+      draggedNote &&
+      draggedNote.children.length > 0 &&
+      collapsedNoteIds.has(draggedId)
+    ) {
+      toggleNoteCollapsed(draggedId);
     }
   }
 
@@ -342,11 +355,9 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
       if (
         hoveredNote &&
         hoveredNote.children.length > 0 &&
-        !hoveredNote.isExpanded
+        collapsedNoteIds.has(overId)
       ) {
-        const newExpanded = new Set(expandedNotes);
-        newExpanded.add(overId);
-        setExpandedNotes(newExpanded);
+        toggleNoteCollapsed(overId);
       }
     }
   }
@@ -390,17 +401,7 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
 
         // Initialize expanded state for all parent notes on first load
         if (!initializedExpansion && treeNotes.length > 0) {
-          const allParentIds = new Set<string>();
-          const collectParentIds = (nodes: TreeNote[]) => {
-            nodes.forEach((node) => {
-              if (node.children.length > 0) {
-                allParentIds.add(node.id);
-                collectParentIds(node.children);
-              }
-            });
-          };
-          collectParentIds(treeNotes);
-          setExpandedNotes(allParentIds);
+          // All notes start expanded by default (not in collapsed set)
           setInitializedExpansion(true);
         }
 
@@ -408,7 +409,7 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
         const updateExpandedState = (notes: TreeNote[]): TreeNote[] => {
           return notes.map((note) => ({
             ...note,
-            isExpanded: expandedNotes.has(note.id),
+            isExpanded: !collapsedNoteIds.has(note.id),
             children: updateExpandedState(note.children),
           }));
         };
@@ -454,21 +455,16 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
   };
 
   const VocabularyContent = () => {
-    const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
     const [initializedTagExpansion, setInitializedTagExpansion] =
       useState(false);
-    const { tags } = useStore((state) => ({
+    const { tags, collapsedTagIds, toggleTagCollapsed } = useStore((state) => ({
       tags: state.tags,
+      collapsedTagIds: state.collapsedTagIds,
+      toggleTagCollapsed: state.toggleTagCollapsed,
     }));
 
     const toggleTagExpanded = (tagId: string) => {
-      const newExpanded = new Set(expandedTags);
-      if (newExpanded.has(tagId)) {
-        newExpanded.delete(tagId);
-      } else {
-        newExpanded.add(tagId);
-      }
-      setExpandedTags(newExpanded);
+      toggleTagCollapsed(tagId);
     };
 
     // Build tree structure and flatten for display
@@ -477,17 +473,7 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
 
       // Initialize expanded state for all parent tags on first load
       if (!initializedTagExpansion && treeTags.length > 0) {
-        const allParentIds = new Set<string>();
-        const collectParentIds = (nodes: TreeTag[]) => {
-          nodes.forEach((node) => {
-            if (node.children.length > 0) {
-              allParentIds.add(node.id);
-              collectParentIds(node.children);
-            }
-          });
-        };
-        collectParentIds(treeTags);
-        setExpandedTags(allParentIds);
+        // All tags start expanded by default (not in collapsed set)
         setInitializedTagExpansion(true);
       }
 
@@ -495,7 +481,7 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
       const updateExpandedState = (tags: TreeTag[]): TreeTag[] => {
         return tags.map((tag) => ({
           ...tag,
-          isExpanded: expandedTags.has(tag.id),
+          isExpanded: !collapsedTagIds.has(tag.id),
           children: updateExpandedState(tag.children),
         }));
       };
@@ -614,24 +600,26 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
     <div className="Notes">
       <div className="tab-navigation">
         <button
-          className={`tab-button ${activeTab === "notes" ? "active" : ""}`}
+          className={`tab-button ${activeNotesTab === "notes" ? "active" : ""}`}
           onClick={() => {
-            if (activeTab === "notes" && onTabClick) {
+            if (activeNotesTab === "notes" && onTabClick) {
               onTabClick();
             } else {
-              setActiveTab("notes");
+              setActiveNotesTab("notes");
             }
           }}
         >
           Notes
         </button>
         <button
-          className={`tab-button ${activeTab === "vocabulary" ? "active" : ""}`}
+          className={`tab-button ${
+            activeNotesTab === "vocabulary" ? "active" : ""
+          }`}
           onClick={() => {
-            if (activeTab === "vocabulary" && onTabClick) {
+            if (activeNotesTab === "vocabulary" && onTabClick) {
               onTabClick();
             } else {
-              setActiveTab("vocabulary");
+              setActiveNotesTab("vocabulary");
             }
           }}
         >
@@ -640,8 +628,8 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
       </div>
 
       <div className="tab-content">
-        {activeTab === "notes" && renderNotesContent()}
-        {activeTab === "vocabulary" && <VocabularyContent />}
+        {activeNotesTab === "notes" && renderNotesContent()}
+        {activeNotesTab === "vocabulary" && <VocabularyContent />}
       </div>
     </div>
   );
@@ -928,13 +916,22 @@ const TreeTagItem = ({
   tag: TreeTag;
   onToggleExpanded: (id: string) => void;
 }) => {
-  const { getTagUsageCounts } = useStore((state) => ({
+  const { getTagUsageCounts, deleteTag } = useStore((state) => ({
     getTagUsageCounts: state.getTagUsageCounts,
+    deleteTag: state.deleteTag,
   }));
   const tagUsageCounts = getTagUsageCounts();
+  const usageCount = tagUsageCounts[tag.id] || 0;
 
   const handleTagClick = () => {
     console.log("Tag clicked:", tag.name, tag);
+  };
+
+  const handleDeleteTag = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Are you sure you want to delete the tag "${tag.name}"?`)) {
+      deleteTag(tag.id);
+    }
   };
 
   // Get category for styling
@@ -942,12 +939,13 @@ const TreeTagItem = ({
     if (tagPath.length > 0) {
       const category = tagPath[0].toLowerCase();
       const validCategories = [
-        "characters",
-        "settings",
-        "genres",
-        "style",
-        "plot",
-        "emotion",
+        "people",
+        "places",
+        "things",
+        "actions",
+        "writing-styles",
+        "emotions",
+        "relationships",
       ];
       return validCategories.includes(category) ? category : "other";
     }
@@ -955,6 +953,15 @@ const TreeTagItem = ({
   };
 
   const category = getTagCategory(tag.path);
+
+  // Helper function to format tag display name
+  const formatTagName = (name: string): string => {
+    return name
+      .replace(/-/g, " ") // Replace hyphens with spaces
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
+  };
 
   return (
     <li
@@ -988,21 +995,32 @@ const TreeTagItem = ({
             <div className="tag-title">
               {tag.isCategory ? (
                 <span className="tag-category">
-                  📁 {tag.path[tag.path.length - 1]}
+                  📁 {formatTagName(tag.path[tag.path.length - 1])}
                 </span>
               ) : (
                 <span className={`tag-name category-${category}`}>
-                  🏷️ {tag.path[tag.path.length - 1]}
+                  🏷️ {formatTagName(tag.path[tag.path.length - 1])}
                 </span>
               )}
             </div>
           </div>
           <div className="tag-info">
             <span className="tag-usage-count">
-              {tagUsageCounts[tag.id] > 0 && `${tagUsageCounts[tag.id]} uses`}
+              {usageCount > 0 && `${usageCount} uses`}
             </span>
           </div>
         </div>
+        {usageCount === 0 && (
+          <div className="tag-actions-container">
+            <button
+              className="tag-delete-btn"
+              onClick={handleDeleteTag}
+              title="Delete unused tag"
+            >
+              <TrashIcon />
+            </button>
+          </div>
+        )}
       </div>
     </li>
   );
