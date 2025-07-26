@@ -343,7 +343,57 @@ export const useStore = create<State>()(
       newTitle: "",
       promptGenerations: [],
       tags: [
-        // People
+        // Top-level categories (these are the parent categories that will aggregate counts)
+        {
+          id: "category-people",
+          name: "people",
+          path: ["people"],
+          createdAt: new Date(Date.now() - 2419200000).toISOString(), // 28 days ago
+          isCategory: true,
+        },
+        {
+          id: "category-places",
+          name: "places",
+          path: ["places"],
+          createdAt: new Date(Date.now() - 2505600000).toISOString(), // 29 days ago
+          isCategory: true,
+        },
+        {
+          id: "category-things",
+          name: "things",
+          path: ["things"],
+          createdAt: new Date(Date.now() - 2592000000).toISOString(), // 30 days ago
+          isCategory: true,
+        },
+        {
+          id: "category-actions",
+          name: "actions",
+          path: ["actions"],
+          createdAt: new Date(Date.now() - 2678400000).toISOString(), // 31 days ago
+          isCategory: true,
+        },
+        {
+          id: "category-writing-styles",
+          name: "writing-styles",
+          path: ["writing-styles"],
+          createdAt: new Date(Date.now() - 2764800000).toISOString(), // 32 days ago
+          isCategory: true,
+        },
+        {
+          id: "category-emotions",
+          name: "emotions",
+          path: ["emotions"],
+          createdAt: new Date(Date.now() - 2851200000).toISOString(), // 33 days ago
+          isCategory: true,
+        },
+        {
+          id: "category-relationships",
+          name: "relationships",
+          path: ["relationships"],
+          createdAt: new Date(Date.now() - 2937600000).toISOString(), // 34 days ago
+          isCategory: true,
+        },
+        // People tags
         {
           id: "sample-1",
           name: "people/protagonist",
@@ -368,7 +418,7 @@ export const useStore = create<State>()(
           path: ["people", "sidekick"],
           createdAt: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
         },
-        // Places
+        // Places tags
         {
           id: "sample-5",
           name: "places/home",
@@ -393,7 +443,7 @@ export const useStore = create<State>()(
           path: ["places", "city"],
           createdAt: new Date(Date.now() - 691200000).toISOString(), // 8 days ago
         },
-        // Things
+        // Things tags
         {
           id: "sample-9",
           name: "things/weapon",
@@ -412,7 +462,7 @@ export const useStore = create<State>()(
           path: ["things", "vehicle"],
           createdAt: new Date(Date.now() - 950400000).toISOString(), // 11 days ago
         },
-        // Actions
+        // Actions tags
         {
           id: "sample-12",
           name: "actions/journey",
@@ -437,7 +487,7 @@ export const useStore = create<State>()(
           path: ["actions", "transformation"],
           createdAt: new Date(Date.now() - 1296000000).toISOString(), // 15 days ago
         },
-        // Writing Styles
+        // Writing Styles tags
         {
           id: "sample-16",
           name: "writing-styles/first-person",
@@ -462,7 +512,7 @@ export const useStore = create<State>()(
           path: ["writing-styles", "stream-of-consciousness"],
           createdAt: new Date(Date.now() - 1641600000).toISOString(), // 19 days ago
         },
-        // Emotions
+        // Emotions tags
         {
           id: "sample-20",
           name: "emotions/joy",
@@ -487,7 +537,7 @@ export const useStore = create<State>()(
           path: ["emotions", "excitement"],
           createdAt: new Date(Date.now() - 1987200000).toISOString(), // 23 days ago
         },
-        // Relationships
+        // Relationships tags
         {
           id: "sample-24",
           name: "relationships/mentor-student",
@@ -1013,28 +1063,53 @@ export const useStore = create<State>()(
           return existingTag;
         }
 
-        // Ensure parent categories exist
-        get().ensureParentCategories(path);
+        const currentTags = get().tags;
+        const newTags: Tag[] = [];
 
-        // Create the new tag
-        const newTag: Tag = {
-          id: crypto.randomUUID(),
-          name: fullPath,
-          path: path,
-          createdAt: new Date().toISOString(),
-        };
+        // Create entries for ALL levels of the path, not just parent categories
+        for (let i = 1; i <= path.length; i++) {
+          const currentPath = path.slice(0, i);
+          const currentName = currentPath.join("/");
 
-        set(() => ({
-          tags: [...get().tags, newTag],
-        }));
+          // Check if this level already exists
+          const existingLevel = currentTags.find(
+            (tag) => tag.name === currentName
+          );
+          const alreadyInNewTags = newTags.find(
+            (tag) => tag.name === currentName
+          );
 
-        return newTag;
+          if (!existingLevel && !alreadyInNewTags) {
+            const newTag: Tag = {
+              id: crypto.randomUUID(),
+              name: currentName,
+              path: currentPath,
+              createdAt: new Date().toISOString(),
+              // Mark as category if it's not the final level
+              isCategory: i < path.length,
+            };
+            newTags.push(newTag);
+          }
+        }
+
+        // Add all new tags to the store
+        if (newTags.length > 0) {
+          set(() => ({
+            tags: [...get().tags, ...newTags],
+          }));
+        }
+
+        // Return the final (most specific) tag
+        const finalTag =
+          newTags.find((tag) => tag.name === fullPath) ||
+          get().tags.find((tag) => tag.name === fullPath);
+        return finalTag!;
       },
       ensureParentCategories: (path: string[]) => {
         const currentTags = get().tags;
         const newCategories: Tag[] = [];
 
-        // Create parent categories if they don't exist
+        // Create parent categories for all levels except the final one
         for (let i = 1; i < path.length; i++) {
           const parentPath = path.slice(0, i);
           const parentName = parentPath.join("/");
