@@ -3,13 +3,17 @@ import { useEffect, useState, useCallback } from "react";
 import {
   $getSelection,
   $isRangeSelection,
+  $isElementNode,
   SELECTION_CHANGE_COMMAND,
   $getNodeByKey,
   $getRoot,
 } from "lexical";
 import { mergeRegister } from "@lexical/utils";
 import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
+import { $isPromptNode } from "./PromptNode";
+import { useStore } from "../store";
 import "./BlockHoverPlugin.css";
+import "./PromptNode.css";
 
 interface BlockControlsProps {
   element: HTMLElement;
@@ -20,6 +24,107 @@ interface BlockControlsProps {
   onMouseLeave: () => void;
   isDeletionDisabled: boolean;
   isAIGenerating: boolean;
+}
+
+interface PromptControlsProps {
+  element: HTMLElement;
+  promptId: string;
+  status: "pending" | "generating" | "completed" | "cancelled";
+  onCancel: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  onHide: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+}
+
+function PromptControls({
+  element,
+  status,
+  onCancel,
+  onUndo,
+  onRedo,
+  onHide,
+  onMouseEnter,
+  onMouseLeave,
+  canUndo,
+  canRedo,
+}: Omit<PromptControlsProps, "promptId">) {
+  const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    const updatePosition = () => {
+      const rect = element.getBoundingClientRect();
+      setPosition({
+        top: rect.top + window.scrollY,
+        left: rect.right + 10,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition);
+    window.addEventListener("resize", updatePosition);
+
+    return () => {
+      window.removeEventListener("scroll", updatePosition);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [element]);
+
+  return (
+    <div
+      className="prompt-controls"
+      style={{
+        position: "absolute",
+        top: position.top,
+        left: position.left,
+        zIndex: 1000,
+      }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      {status === "generating" && (
+        <button
+          className="prompt-control-btn prompt-control-cancel"
+          onClick={onCancel}
+          title="Cancel generation"
+        >
+          Cancel
+        </button>
+      )}
+
+      {status === "completed" && (
+        <>
+          <button
+            className="prompt-control-btn prompt-control-undo"
+            onClick={onUndo}
+            disabled={!canUndo}
+            title="Undo generation"
+          >
+            Undo
+          </button>
+          <button
+            className="prompt-control-btn prompt-control-redo"
+            onClick={onRedo}
+            disabled={!canRedo}
+            title="Redo generation"
+          >
+            Redo
+          </button>
+        </>
+      )}
+
+      <button
+        className="prompt-control-btn prompt-control-hide"
+        onClick={onHide}
+        title="Hide controls"
+      >
+        Hide
+      </button>
+    </div>
+  );
 }
 
 function BlockControls({
@@ -152,7 +257,22 @@ export function BlockHoverPlugin(): JSX.Element | null {
   );
   const [isControlsHovered, setIsControlsHovered] = useState(false);
   const [isDeletionDisabled, setIsDeletionDisabled] = useState(false);
-  const { generate, isGenerating, canGenerate } = useAIGeneration();
+  const [promptNodeInfo, setPromptNodeInfo] = useState<{
+    promptId: string;
+    status: "pending" | "generating" | "completed" | "cancelled";
+    canUndo: boolean;
+    canRedo: boolean;
+  } | null>(null);
+
+  const {
+    generate,
+    cancelGeneration,
+    undoGeneration,
+    redoGeneration,
+    isGenerating,
+    canGenerate,
+  } = useAIGeneration();
+  const { getPromptGeneration } = useStore((state) => state);
 
   const updateBlockType = useCallback(() => {
     const selection = $getSelection();
@@ -166,6 +286,39 @@ export function BlockHoverPlugin(): JSX.Element | null {
       const elementDOM = editor.getElementByKey(elementKey);
       if (elementDOM !== null) {
         setSelectedElementKey(elementKey);
+
+        // Check if this element contains a PromptNode
+        let foundPromptNode = null;
+        if ($isElementNode(element)) {
+          const children = element.getChildren();
+          for (const child of children) {
+            if ($isPromptNode(child)) {
+              foundPromptNode = child;
+              break;
+            }
+          }
+        }
+
+        if (foundPromptNode) {
+          const generation = getPromptGeneration(foundPromptNode.getPromptId());
+          if (generation) {
+            setPromptNodeInfo({
+              promptId: foundPromptNode.getPromptId(),
+              status: generation.status,
+              canUndo: generation.canUndo,
+              canRedo: generation.canRedo,
+            });
+          } else {
+            setPromptNodeInfo({
+              promptId: foundPromptNode.getPromptId(),
+              status: foundPromptNode.getStatus(),
+              canUndo: false,
+              canRedo: false,
+            });
+          }
+        } else {
+          setPromptNodeInfo(null);
+        }
       }
     }
 
@@ -173,7 +326,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
     const root = $getRoot();
     const topLevelNodeCount = root.getChildrenSize();
     setIsDeletionDisabled(topLevelNodeCount <= 1);
-  }, [editor]);
+  }, [editor, getPromptGeneration]);
 
   useEffect(() => {
     const editorElement = editor.getRootElement();
@@ -193,6 +346,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
       hideTimeout = setTimeout(() => {
         if (!isControlsHovered) {
           setHoveredElement(null);
+          setPromptNodeInfo(null);
         }
       }, 100); // Small delay to allow mouse movement to controls
     };
@@ -203,9 +357,9 @@ export function BlockHoverPlugin(): JSX.Element | null {
       // Clear any pending hide timeout
       clearHideTimeout();
 
-      // Find the closest block element
+      // Find the closest block element (including prompt nodes)
       const blockElement = target.closest(
-        ".editor-paragraph, .editor-heading-h1, .editor-heading-h2, .editor-heading-h3, .editor-heading-h4, .editor-heading-h5, .editor-heading-h6, .editor-blockquote, .editor-list-ol, .editor-list-ul, .codeHighlight"
+        ".editor-paragraph, .editor-heading-h1, .editor-heading-h2, .editor-heading-h3, .editor-heading-h4, .editor-heading-h5, .editor-heading-h6, .editor-blockquote, .editor-list-ol, .editor-list-ul, .codeHighlight, .prompt-text"
       ) as HTMLElement;
 
       if (blockElement && blockElement !== hoveredElement) {
@@ -218,6 +372,43 @@ export function BlockHoverPlugin(): JSX.Element | null {
             const dom = editor.getElementByKey(key);
             if (dom === blockElement) {
               setSelectedElementKey(key);
+
+              // Get the node and check if it contains a PromptNode
+              const node = editor.getEditorState()._nodeMap.get(key);
+              let foundPromptNode = null;
+
+              if (node && $isElementNode(node)) {
+                const children = node.getChildren();
+                for (const child of children) {
+                  if ($isPromptNode(child)) {
+                    foundPromptNode = child;
+                    break;
+                  }
+                }
+              }
+
+              if (foundPromptNode) {
+                const generation = getPromptGeneration(
+                  foundPromptNode.getPromptId()
+                );
+                if (generation) {
+                  setPromptNodeInfo({
+                    promptId: foundPromptNode.getPromptId(),
+                    status: generation.status,
+                    canUndo: generation.canUndo,
+                    canRedo: generation.canRedo,
+                  });
+                } else {
+                  setPromptNodeInfo({
+                    promptId: foundPromptNode.getPromptId(),
+                    status: foundPromptNode.getStatus(),
+                    canUndo: false,
+                    canRedo: false,
+                  });
+                }
+              } else {
+                setPromptNodeInfo(null);
+              }
               break;
             }
           }
@@ -237,7 +428,13 @@ export function BlockHoverPlugin(): JSX.Element | null {
       editorElement.removeEventListener("mouseleave", handleMouseLeave);
       clearHideTimeout();
     };
-  }, [editor, hoveredElement, isControlsHovered, updateBlockType]);
+  }, [
+    editor,
+    hoveredElement,
+    isControlsHovered,
+    updateBlockType,
+    getPromptGeneration,
+  ]);
 
   useEffect(() => {
     return mergeRegister(
@@ -267,6 +464,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
       }
     });
     setHoveredElement(null);
+    setPromptNodeInfo(null);
   };
 
   const handleAIGenerate = () => {
@@ -280,6 +478,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
         generate("newScene", "", {
           customText: nodeText,
           action: "generate" as AIActionType,
+          targetNodeKey: selectedElementKey,
         });
       }
     });
@@ -304,6 +503,29 @@ export function BlockHoverPlugin(): JSX.Element | null {
     setHoveredElement(null);
   };
 
+  const handlePromptCancel = () => {
+    if (promptNodeInfo) {
+      cancelGeneration(promptNodeInfo.promptId);
+    }
+  };
+
+  const handlePromptUndo = () => {
+    if (promptNodeInfo) {
+      undoGeneration(promptNodeInfo.promptId);
+    }
+  };
+
+  const handlePromptRedo = () => {
+    if (promptNodeInfo) {
+      redoGeneration(promptNodeInfo.promptId);
+    }
+  };
+
+  const handlePromptHide = () => {
+    setHoveredElement(null);
+    setPromptNodeInfo(null);
+  };
+
   const handleControlsMouseEnter = () => {
     setIsControlsHovered(true);
   };
@@ -314,6 +536,24 @@ export function BlockHoverPlugin(): JSX.Element | null {
 
   if (!hoveredElement) {
     return null;
+  }
+
+  // Show PromptControls for PromptNodes, BlockControls for regular blocks
+  if (promptNodeInfo) {
+    return (
+      <PromptControls
+        element={hoveredElement}
+        status={promptNodeInfo.status}
+        onCancel={handlePromptCancel}
+        onUndo={handlePromptUndo}
+        onRedo={handlePromptRedo}
+        onHide={handlePromptHide}
+        onMouseEnter={handleControlsMouseEnter}
+        onMouseLeave={handleControlsMouseLeave}
+        canUndo={promptNodeInfo.canUndo}
+        canRedo={promptNodeInfo.canRedo}
+      />
+    );
   }
 
   return (

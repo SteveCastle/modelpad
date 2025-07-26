@@ -24,16 +24,11 @@ const createEmptyContent = (): Content => ({
   },
 });
 
-// Helper function to ensure content is never empty
-const ensureContentNotEmpty = (
+// Helper function to ensure content has valid structure
+const ensureValidContentStructure = (
   content: Content | undefined | null
 ): Content => {
-  if (
-    !content ||
-    !content.root ||
-    !content.root.children ||
-    content.root.children.length === 0
-  ) {
+  if (!content || !content.root || !content.root.children) {
     return createEmptyContent();
   }
   return content;
@@ -96,6 +91,17 @@ export type Note = {
   is_shared?: boolean;
 };
 
+export type PromptGeneration = {
+  promptId: string;
+  storyId: string;
+  promptNodeKey: string;
+  generatedNodeKeys: string[];
+  originalContent: string;
+  status: "pending" | "generating" | "completed" | "cancelled";
+  canUndo: boolean;
+  canRedo: boolean;
+};
+
 type LoadingStates =
   | "ready"
   | "loading"
@@ -121,6 +127,7 @@ type State = {
   sideBarOpen: boolean;
   useRag: boolean;
   newTitle: string;
+  promptGenerations: PromptGeneration[];
   setNewTitle: (title: string) => void;
   setUseRag: (useRag: boolean) => void;
   setSideBarOpen: (open: boolean) => void;
@@ -152,7 +159,15 @@ type State = {
   closeOtherStories: (id: string) => void;
   closeToTheRight: (id: string) => void;
   createStory: (title: string) => void;
-  mergeNotes: (notes: Note[], updateActiveStory: boolean) => void; // Updates stories if ID exists, otherwise creates a new story
+  mergeNotes: (notes: Note[], updateActiveStory: boolean) => void;
+  // Prompt generation actions
+  addPromptGeneration: (generation: PromptGeneration) => void;
+  updatePromptGeneration: (
+    promptId: string,
+    updates: Partial<PromptGeneration>
+  ) => void;
+  removePromptGeneration: (promptId: string) => void;
+  getPromptGeneration: (promptId: string) => PromptGeneration | undefined;
 };
 
 const ollamaSettings: ModelSettings = {
@@ -241,6 +256,7 @@ export const useStore = create<State>()(
       sideBarOpen: false,
       useRag: false,
       newTitle: "",
+      promptGenerations: [],
       setNewTitle: (title: string) => {
         set(() => ({
           newTitle: title,
@@ -255,7 +271,7 @@ export const useStore = create<State>()(
               return {
                 ...s,
                 title: note.title,
-                content: ensureContentNotEmpty(JSON.parse(note.body)),
+                content: ensureValidContentStructure(JSON.parse(note.body)),
               };
             }
             return s;
@@ -266,7 +282,7 @@ export const useStore = create<State>()(
             .map((n) => ({
               id: n.id,
               title: n.title,
-              content: ensureContentNotEmpty(JSON.parse(n.body)),
+              content: ensureValidContentStructure(JSON.parse(n.body)),
               open: true,
               synced: true,
               includeInContext: n.includeInContext || false,
@@ -393,7 +409,7 @@ export const useStore = create<State>()(
       updateStory: (id: string, content: Content) => {
         set(() => ({
           stories: get().stories.map((s) =>
-            s.id === id ? { ...s, content: ensureContentNotEmpty(content) } : s
+            s.id === id ? { ...s, content } : s
           ),
         }));
       },
@@ -488,6 +504,32 @@ export const useStore = create<State>()(
           ],
           activeStoryId: newId,
         }));
+      },
+      // Prompt generation actions
+      addPromptGeneration: (generation: PromptGeneration) => {
+        set(() => ({
+          promptGenerations: [...get().promptGenerations, generation],
+        }));
+      },
+      updatePromptGeneration: (
+        promptId: string,
+        updates: Partial<PromptGeneration>
+      ) => {
+        set(() => ({
+          promptGenerations: get().promptGenerations.map((g) =>
+            g.promptId === promptId ? { ...g, ...updates } : g
+          ),
+        }));
+      },
+      removePromptGeneration: (promptId: string) => {
+        set(() => ({
+          promptGenerations: get().promptGenerations.filter(
+            (g) => g.promptId !== promptId
+          ),
+        }));
+      },
+      getPromptGeneration: (promptId: string) => {
+        return get().promptGenerations.find((g) => g.promptId === promptId);
       },
       setServerName: (title: string) => {
         set(() => ({

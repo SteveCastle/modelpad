@@ -1,0 +1,113 @@
+.prompt-text {
+  position: relative;
+  font-weight: 500;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: all 0.3s ease;
+}
+
+.prompt-pending {
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.prompt-generating {
+  background-color: rgba(251, 191, 36, 0.1);
+  color: #f59e0b;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  animation: prompt-pulse 1.5s ease-in-out infinite;
+}
+
+.prompt-generating::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -2px;
+  width: 2px;
+  background: #f59e0b;
+  animation: prompt-cursor 1s ease-in-out infinite;
+}
+
+.prompt-completed {
+  background-color: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.prompt-cancelled {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  text-decoration: line-through;
+}
+
+@keyframes prompt-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes prompt-cursor {
+  0%,
+  50% {
+    opacity: 1;
+  }
+  51%,
+  100% {
+    opacity: 0.2;
+  }
+}
+
+/* Prompt controls */
+.prompt-controls {
+  position: absolute;
+  display: flex;
+  gap: 4px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.prompt-control-btn {
+  background: none;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.prompt-control-btn:hover:not(:disabled) {
+  background-color: #f3f4f6;
+}
+
+.prompt-control-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.prompt-control-cancel {
+  color: #ef4444;
+}
+
+.prompt-control-undo {
+  color: #6b7280;
+}
+
+.prompt-control-redo {
+  color: #6b7280;
+}
+
+.prompt-control-hide {
+  color: #6b7280;
+}

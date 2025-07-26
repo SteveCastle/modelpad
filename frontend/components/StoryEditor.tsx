@@ -12,7 +12,9 @@ import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { AIGenerationNode } from "./AIGenerationNode";
+import { PromptNode } from "./PromptNode";
 import "./AIGenerationNode.css";
+import "./PromptNode.css";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { MarkdownShortcutPlugin } from "./LexicalMarkdownShortcutPlugin";
@@ -346,6 +348,7 @@ export function StoryEditor({
         AutoLinkNode,
         LinkNode,
         AIGenerationNode,
+        PromptNode,
       ],
       editorState: initialContent,
     }),
