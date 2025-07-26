@@ -146,10 +146,20 @@ export class TagNode extends TextNode {
     return element;
   }
 
-  getCategory(): string | undefined {
+  getCategory(): string {
     // Use the first part of the path as the category
     if (this.__tagPath.length > 0) {
-      return this.__tagPath[0];
+      const category = this.__tagPath[0].toLowerCase();
+      // Valid storytelling categories
+      const validCategories = [
+        "characters",
+        "settings",
+        "genres",
+        "style",
+        "plot",
+        "emotion",
+      ];
+      return validCategories.includes(category) ? category : "other";
     }
     return "other";
   }

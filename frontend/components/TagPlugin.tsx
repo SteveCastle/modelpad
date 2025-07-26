@@ -396,9 +396,13 @@ function TagEditDropdown({
 
 export function TagPlugin(): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
-  const { incrementTagUsage, decrementTagUsage, addHierarchicalTag } = useStore(
-    (state) => state
-  );
+  const {
+    incrementTagUsage,
+    decrementTagUsage,
+    addHierarchicalTag,
+    updateStory,
+    activeStoryId,
+  } = useStore((state) => state);
   const [isTagging, setIsTagging] = useState(false);
   const [tagQuery, setTagQuery] = useState("");
   const [typeaheadPosition, setTypeaheadPosition] = useState<{
@@ -515,6 +519,17 @@ export function TagPlugin(): JSX.Element | null {
     setSelectedTagForEdit(null);
   }, []);
 
+  // Helper function to sync story tags after tag changes
+  const syncStoryTags = useCallback(() => {
+    if (activeStoryId) {
+      console.log("🔄 [TagPlugin] Syncing story tags for:", activeStoryId);
+      // Get the current editor state and update the story
+      const editorState = editor.getEditorState();
+      const content = editorState.toJSON() as Parameters<typeof updateStory>[1]; // Type assertion for compatibility
+      updateStory(activeStoryId, content);
+    }
+  }, [editor, activeStoryId, updateStory]);
+
   const handleTagReplace = useCallback(
     (newTag: Tag) => {
       if (selectedTagForEdit) {
@@ -550,6 +565,9 @@ export function TagPlugin(): JSX.Element | null {
           }
         });
       }
+
+      // Sync story tags after replacing tag
+      syncStoryTags();
       clearTagEdit();
     },
     [
@@ -558,6 +576,7 @@ export function TagPlugin(): JSX.Element | null {
       incrementTagUsage,
       decrementTagUsage,
       clearTagEdit,
+      syncStoryTags,
     ]
   );
 
@@ -583,8 +602,17 @@ export function TagPlugin(): JSX.Element | null {
         }
       });
     }
+
+    // Sync story tags after deleting tag
+    syncStoryTags();
     clearTagEdit();
-  }, [editor, selectedTagForEdit, decrementTagUsage, clearTagEdit]);
+  }, [
+    editor,
+    selectedTagForEdit,
+    decrementTagUsage,
+    clearTagEdit,
+    syncStoryTags,
+  ]);
 
   const handleTagDelete = useCallback(() => {
     if (selectedTagForEdit) {
@@ -608,7 +636,10 @@ export function TagPlugin(): JSX.Element | null {
         }
       });
     }
-  }, [editor, selectedTagForEdit, decrementTagUsage]);
+
+    // Sync story tags after deleting tag
+    syncStoryTags();
+  }, [editor, selectedTagForEdit, decrementTagUsage, syncStoryTags]);
 
   const handleTagSelect = useCallback(
     (selectedTag: Tag | null) => {
@@ -679,6 +710,8 @@ export function TagPlugin(): JSX.Element | null {
         }
       });
 
+      // Sync story tags after adding tag
+      syncStoryTags();
       clearTagging();
     },
     [
@@ -689,6 +722,7 @@ export function TagPlugin(): JSX.Element | null {
       addHierarchicalTag,
       incrementTagUsage,
       clearTagging,
+      syncStoryTags,
     ]
   );
 
@@ -723,6 +757,8 @@ export function TagPlugin(): JSX.Element | null {
               editor.update(() => {
                 previousSibling.remove();
               });
+              // Sync story tags after deleting tag
+              syncStoryTags();
               return;
             }
           }
@@ -736,6 +772,8 @@ export function TagPlugin(): JSX.Element | null {
             editor.update(() => {
               anchorNode.remove();
             });
+            // Sync story tags after deleting tag
+            syncStoryTags();
             return;
           }
         });
@@ -750,6 +788,7 @@ export function TagPlugin(): JSX.Element | null {
       handleTagDelete,
       decrementTagUsage,
       calculateTypeaheadPosition,
+      syncStoryTags,
     ]
   );
 
@@ -866,6 +905,9 @@ export function TagPlugin(): JSX.Element | null {
             prevSibling.selectEnd();
           }
         });
+
+        // Sync story tags after deleting tag
+        syncStoryTags();
       }
     };
 
@@ -917,6 +959,7 @@ export function TagPlugin(): JSX.Element | null {
     clearTagEdit,
     showTagEdit,
     tagEditPosition,
+    syncStoryTags,
   ]);
 
   return (

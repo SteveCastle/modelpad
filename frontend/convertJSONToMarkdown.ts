@@ -6,6 +6,9 @@ interface Node {
   listType?: string;
   value?: number;
   language?: string;
+  tagId?: string;
+  tagName?: string;
+  tagPath?: string[];
 }
 
 interface Root {
@@ -76,6 +79,16 @@ function processNode(
       break;
     case "code-highlight":
       write(node.text);
+      break;
+    case "tag":
+      // Convert tag nodes to @mention format
+      if (node.tagName) {
+        write(`@${node.tagName}`);
+      } else if (node.tagPath && node.tagPath.length > 0) {
+        write(`@${node.tagPath.join("/")}`);
+      } else {
+        write("@tag");
+      }
       break;
     default:
       // Handle unknown node types or log a warning

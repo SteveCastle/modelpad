@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -239,10 +240,19 @@ func ViewDocument(c *gin.Context) {
 	// Get the note from database - only if it's shared
 	db := c.MustGet("db").(*pgxpool.Pool)
 	var note notes.Note
-	err = db.QueryRow(context.Background(), "SELECT id, title, body, user_id, parent, created_at, updated_at FROM notes WHERE id = $1 AND is_shared = true", noteUUID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt)
+	var tagsJSON []byte
+	err = db.QueryRow(context.Background(), "SELECT id, title, body, user_id, parent, created_at, updated_at, COALESCE(tags, '[]'::jsonb) as tags FROM notes WHERE id = $1 AND is_shared = true", noteUUID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &tagsJSON)
 	if err != nil {
 		c.HTML(http.StatusNotFound, "", gin.H{
 			"error": "Document not found",
+		})
+		return
+	}
+
+	// Unmarshal tags from JSON
+	if err := json.Unmarshal(tagsJSON, &note.Tags); err != nil {
+		c.HTML(http.StatusInternalServerError, "", gin.H{
+			"error": "Failed to unmarshal tags",
 		})
 		return
 	}

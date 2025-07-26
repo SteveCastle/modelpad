@@ -116,65 +116,73 @@ function buildTagTree(tags: Tag[]): TreeTag[] {
   const tagMap = new Map<string, TreeTag>();
   const rootTags: TreeTag[] = [];
 
+  // Helper function to ensure all parent categories exist
+  const ensureParentCategories = (path: string[]): void => {
+    for (let i = 1; i <= path.length; i++) {
+      const currentPath = path.slice(0, i);
+      const currentName = currentPath.join("/");
+
+      if (!tagMap.has(currentName)) {
+        // Create missing category
+        const missingParent: TreeTag = {
+          id: `category-${currentName}`,
+          name: currentName,
+          path: currentPath,
+          usageCount: 0,
+          createdAt: new Date().toISOString(),
+          isCategory: true,
+          children: [],
+          level: currentPath.length - 1,
+          isExpanded: true,
+        };
+        tagMap.set(currentName, missingParent);
+      }
+    }
+  };
+
   // First pass: create TreeTag objects for all existing tags
   tags.forEach((tag) => {
     tagMap.set(tag.name, {
       ...tag,
       children: [],
-      level: 0,
+      level: tag.path.length - 1,
       isExpanded: true,
     });
   });
 
-  // Second pass: build parent-child relationships
+  // Second pass: ensure all parent categories exist
   tags.forEach((tag) => {
-    const treeTag = tagMap.get(tag.name)!;
-
     if (tag.path.length > 1) {
+      ensureParentCategories(tag.path.slice(0, -1));
+    }
+  });
+
+  // Third pass: build parent-child relationships
+  tagMap.forEach((treeTag) => {
+    if (treeTag.path.length > 1) {
       // Find parent by removing last segment from path
-      const parentPath = tag.path.slice(0, -1).join("/");
+      const parentPath = treeTag.path.slice(0, -1).join("/");
       const parent = tagMap.get(parentPath);
 
       if (parent) {
         parent.children.push(treeTag);
         treeTag.level = parent.level + 1;
-      } else {
-        // Create missing parent category
-        const missingParent: TreeTag = {
-          id: `category-${parentPath}`,
-          name: parentPath,
-          path: tag.path.slice(0, -1),
-          usageCount: 0,
-          createdAt: new Date().toISOString(),
-          isCategory: true,
-          children: [treeTag],
-          level: tag.path.length - 2,
-          isExpanded: true,
-        };
-        tagMap.set(parentPath, missingParent);
-        treeTag.level = missingParent.level + 1;
-
-        // Check if this missing parent should be a child of another parent
-        if (missingParent.path.length > 1) {
-          const grandParentPath = missingParent.path.slice(0, -1).join("/");
-          const grandParent = tagMap.get(grandParentPath);
-          if (grandParent) {
-            grandParent.children.push(missingParent);
-            missingParent.level = grandParent.level + 1;
-            treeTag.level = missingParent.level + 1;
-          } else {
-            rootTags.push(missingParent);
-          }
-        } else {
-          rootTags.push(missingParent);
-        }
       }
     } else {
+      // This is a root level tag
       rootTags.push(treeTag);
     }
   });
 
-  return rootTags;
+  // Collect all root tags (those without parents)
+  const finalRootTags: TreeTag[] = [];
+  tagMap.forEach((treeTag) => {
+    if (treeTag.path.length === 1) {
+      finalRootTags.push(treeTag);
+    }
+  });
+
+  return finalRootTags;
 }
 
 function flattenTagTree(treeTags: TreeTag[]): TreeTag[] {
@@ -923,6 +931,25 @@ const TreeTagItem = ({
     console.log("Tag clicked:", tag.name, tag);
   };
 
+  // Get category for styling
+  const getTagCategory = (tagPath: string[]): string => {
+    if (tagPath.length > 0) {
+      const category = tagPath[0].toLowerCase();
+      const validCategories = [
+        "characters",
+        "settings",
+        "genres",
+        "style",
+        "plot",
+        "emotion",
+      ];
+      return validCategories.includes(category) ? category : "other";
+    }
+    return "other";
+  };
+
+  const category = getTagCategory(tag.path);
+
   return (
     <li
       className="tag-item"
@@ -930,8 +957,12 @@ const TreeTagItem = ({
         paddingLeft: `${tag.level * 20 + 10}px`,
       }}
     >
-      <div className="tag-item-wrapper">
-        <div className="tag-item-content" onClick={handleTagClick}>
+      <div className="tag-item-wrapper" data-category={category}>
+        <div
+          className="tag-item-content"
+          onClick={handleTagClick}
+          data-category={category}
+        >
           <div className="tag-title-container">
             {tag.children.length > 0 && (
               <button
@@ -954,7 +985,7 @@ const TreeTagItem = ({
                   📁 {tag.path[tag.path.length - 1]}
                 </span>
               ) : (
-                <span className="tag-name">
+                <span className={`tag-name category-${category}`}>
                   🏷️ {tag.path[tag.path.length - 1]}
                 </span>
               )}

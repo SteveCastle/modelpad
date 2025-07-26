@@ -78,6 +78,7 @@ export type Story = {
   open?: boolean;
   synced?: boolean;
   includeInContext?: boolean;
+  tags?: { id: string; path: string[] }[];
 };
 
 export type Note = {
@@ -89,6 +90,43 @@ export type Note = {
   parent?: string | null;
   includeInContext?: boolean;
   is_shared?: boolean;
+  tags?: { id: string; path: string[] }[];
+};
+
+// Helper function to extract tags from lexical state JSON
+export const extractTagsFromLexicalState = (
+  bodyJson: string
+): { id: string; path: string[] }[] => {
+  try {
+    const lexicalState = JSON.parse(bodyJson);
+    const tags: { id: string; path: string[] }[] = [];
+
+    const extractTagsRecursively = (node: unknown) => {
+      if (node && typeof node === "object" && node !== null) {
+        const nodeObj = node as Record<string, unknown>;
+        if (nodeObj.type === "tag" && nodeObj.tagId && nodeObj.tagPath) {
+          tags.push({
+            id: nodeObj.tagId as string,
+            path: Array.isArray(nodeObj.tagPath)
+              ? nodeObj.tagPath
+              : [nodeObj.tagPath as string],
+          });
+        }
+
+        // Recursively check children
+        if (nodeObj.children && Array.isArray(nodeObj.children)) {
+          nodeObj.children.forEach(extractTagsRecursively);
+        }
+      }
+    };
+
+    extractTagsRecursively(lexicalState);
+    console.log("🏷️ [extractTagsFromLexicalState] Extracted tags:", tags);
+    return tags;
+  } catch (error) {
+    console.warn("Failed to extract tags from lexical state:", error);
+    return [];
+  }
 };
 
 export type PromptGeneration = {
@@ -194,6 +232,8 @@ type State = {
   decrementTagUsage: (tagId: string) => void;
   ensureParentCategories: (path: string[]) => void;
   migrateTags: () => void;
+  updateTagUsageFromExtractedTags: () => void;
+  updateTagUsageFromAllStories: () => void;
 };
 
 const ollamaSettings: ModelSettings = {
@@ -215,6 +255,7 @@ const initialStories: Story[] = [
     content: welcomeContent,
     context: undefined,
     open: true,
+    tags: [],
   },
 ];
 
@@ -225,6 +266,7 @@ const defaultStories: Story[] = [
     content: createEmptyContent(),
     context: undefined,
     open: true,
+    tags: [],
   },
 ];
 
@@ -286,67 +328,108 @@ export const useStore = create<State>()(
       tags: [
         {
           id: "sample-1",
-          name: "project/research/ai",
-          path: ["project", "research", "ai"],
-          usageCount: 12,
+          name: "characters/protagonist/hero",
+          path: ["characters", "protagonist", "hero"],
+          usageCount: 0,
           createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-          lastUsedAt: new Date().toISOString(),
         },
         {
           id: "sample-2",
-          name: "project/frontend/components",
-          path: ["project", "frontend", "components"],
-          usageCount: 8,
+          name: "settings/fantasy/medieval-castle",
+          path: ["settings", "fantasy", "medieval-castle"],
+          usageCount: 0,
           createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-          lastUsedAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
         },
         {
           id: "sample-3",
-          name: "project/backend/api",
-          path: ["project", "backend", "api"],
-          usageCount: 5,
+          name: "genres/mystery/detective",
+          path: ["genres", "mystery", "detective"],
+          usageCount: 0,
           createdAt: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
-          lastUsedAt: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
         },
         {
           id: "sample-4",
-          name: "people/team/developers",
-          path: ["people", "team", "developers"],
-          usageCount: 6,
+          name: "style/perspective/first-person",
+          path: ["style", "perspective", "first-person"],
+          usageCount: 0,
           createdAt: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
-          lastUsedAt: new Date(Date.now() - 1800000).toISOString(), // 30 minutes ago
         },
         {
           id: "sample-5",
-          name: "people/clients/john-doe",
-          path: ["people", "clients", "john-doe"],
-          usageCount: 3,
+          name: "characters/antagonist/dark-lord",
+          path: ["characters", "antagonist", "dark-lord"],
+          usageCount: 0,
           createdAt: new Date(Date.now() - 432000000).toISOString(), // 5 days ago
-          lastUsedAt: new Date(Date.now() - 21600000).toISOString(), // 6 hours ago
         },
         {
           id: "sample-6",
-          name: "locations/office/meeting-rooms",
-          path: ["locations", "office", "meeting-rooms"],
-          usageCount: 4,
+          name: "settings/modern/urban-city",
+          path: ["settings", "modern", "urban-city"],
+          usageCount: 0,
           createdAt: new Date(Date.now() - 518400000).toISOString(), // 6 days ago
-          lastUsedAt: new Date(Date.now() - 10800000).toISOString(), // 3 hours ago
         },
         {
           id: "sample-7",
-          name: "tools/design/figma",
-          path: ["tools", "design", "figma"],
-          usageCount: 7,
+          name: "style/tone/dark-atmospheric",
+          path: ["style", "tone", "dark-atmospheric"],
+          usageCount: 0,
           createdAt: new Date(Date.now() - 604800000).toISOString(), // 1 week ago
-          lastUsedAt: new Date(Date.now() - 43200000).toISOString(), // 12 hours ago
         },
         {
           id: "sample-8",
-          name: "meetings/weekly/standup",
-          path: ["meetings", "weekly", "standup"],
-          usageCount: 15,
+          name: "plot/conflict/internal-struggle",
+          path: ["plot", "conflict", "internal-struggle"],
+          usageCount: 0,
           createdAt: new Date(Date.now() - 691200000).toISOString(), // 8 days ago
-          lastUsedAt: new Date(Date.now() - 900000).toISOString(), // 15 minutes ago
+        },
+        {
+          id: "sample-9",
+          name: "characters/archetype/mentor",
+          path: ["characters", "archetype", "mentor"],
+          usageCount: 0,
+          createdAt: new Date(Date.now() - 777600000).toISOString(), // 9 days ago
+        },
+        {
+          id: "sample-10",
+          name: "genres/sci-fi/dystopian",
+          path: ["genres", "sci-fi", "dystopian"],
+          usageCount: 0,
+          createdAt: new Date(Date.now() - 864000000).toISOString(), // 10 days ago
+        },
+        {
+          id: "sample-11",
+          name: "settings/historical/victorian-london",
+          path: ["settings", "historical", "victorian-london"],
+          usageCount: 0,
+          createdAt: new Date(Date.now() - 950400000).toISOString(), // 11 days ago
+        },
+        {
+          id: "sample-12",
+          name: "style/device/flashback",
+          path: ["style", "device", "flashback"],
+          usageCount: 0,
+          createdAt: new Date(Date.now() - 1036800000).toISOString(), // 12 days ago
+        },
+        {
+          id: "sample-13",
+          name: "emotion/atmosphere/suspenseful",
+          path: ["emotion", "atmosphere", "suspenseful"],
+          usageCount: 0,
+          createdAt: new Date(Date.now() - 1123200000).toISOString(), // 13 days ago
+        },
+        {
+          id: "sample-14",
+          name: "plot/theme/redemption",
+          path: ["plot", "theme", "redemption"],
+          usageCount: 0,
+          createdAt: new Date(Date.now() - 1209600000).toISOString(), // 14 days ago
+        },
+        {
+          id: "sample-15",
+          name: "genres/romance/contemporary",
+          path: ["genres", "romance", "contemporary"],
+          usageCount: 0,
+          createdAt: new Date(Date.now() - 1296000000).toISOString(), // 15 days ago
         },
       ],
       setNewTitle: (title: string) => {
@@ -355,21 +438,40 @@ export const useStore = create<State>()(
         }));
       },
       mergeNotes: (notes: Note[], updateActiveStory: boolean) => {
+        console.log(
+          "📋 [mergeNotes] Called with notes:",
+          notes.length,
+          "updateActiveStory:",
+          updateActiveStory
+        );
+
         set(() => {
+          // Extract tags from each note's body and update the note
+          const notesWithTags = notes.map((note) => ({
+            ...note,
+            tags: extractTagsFromLexicalState(note.body),
+          }));
+
+          console.log(
+            "📋 [mergeNotes] Notes with tags:",
+            notesWithTags.map((n) => ({ id: n.id, tags: n.tags }))
+          );
+
           // Iterate over the existing stories and if the note ID exists, update the story
           const openTabs = get().stories.map((s) => {
-            const note = notes.find((n) => n.id === s.id);
+            const note = notesWithTags.find((n) => n.id === s.id);
             if (note) {
               return {
                 ...s,
                 title: note.title,
                 content: ensureValidContentStructure(JSON.parse(note.body)),
+                tags: note.tags,
               };
             }
             return s;
           });
           // Iterate over the notes and if the ID does not exist, create a new story
-          const newStories = notes
+          const newStories = notesWithTags
             .filter((n) => !get().stories.find((s) => s.id === n.id))
             .map((n) => ({
               id: n.id,
@@ -378,6 +480,7 @@ export const useStore = create<State>()(
               open: true,
               synced: true,
               includeInContext: n.includeInContext || false,
+              tags: n.tags,
             }));
           return {
             stories: [...openTabs, ...newStories],
@@ -386,6 +489,13 @@ export const useStore = create<State>()(
               : get().activeStoryId,
           };
         });
+
+        // Update tag usage counts after stories are updated
+        console.log(
+          "📋 [mergeNotes] About to call updateTagUsageFromAllStories"
+        );
+        get().updateTagUsageFromAllStories();
+        console.log("📋 [mergeNotes] Finished updateTagUsageFromAllStories");
       },
       toggleReadingMode: () => {
         set((state) => ({
@@ -499,11 +609,41 @@ export const useStore = create<State>()(
         }));
       },
       updateStory: (id: string, content: Content) => {
-        set(() => ({
-          stories: get().stories.map((s) =>
-            s.id === id ? { ...s, content } : s
-          ),
-        }));
+        console.log("📝 [updateStory] Called for story:", id);
+
+        set(() => {
+          const contentJson = JSON.stringify(content);
+          const extractedTags = extractTagsFromLexicalState(contentJson);
+
+          console.log(
+            "📝 [updateStory] Extracted tags for story:",
+            extractedTags
+          );
+          console.log(
+            "📝 [updateStory] Before update - current stories count:",
+            get().stories.length
+          );
+
+          const updatedStories = get().stories.map((s) =>
+            s.id === id ? { ...s, content, tags: extractedTags } : s
+          );
+
+          console.log(
+            "📝 [updateStory] After update - story tags:",
+            updatedStories.find((s) => s.id === id)?.tags
+          );
+
+          return {
+            stories: updatedStories,
+          };
+        });
+
+        console.log(
+          "📝 [updateStory] About to call updateTagUsageFromAllStories"
+        );
+        // Update tag usage counts AFTER stories are updated
+        get().updateTagUsageFromAllStories();
+        console.log("📝 [updateStory] Finished updateTagUsageFromAllStories");
       },
       updateTitle: (id: string, title: string) => {
         set(() => ({
@@ -592,6 +732,7 @@ export const useStore = create<State>()(
               content: createEmptyContent(),
               modelSettings: ollamaSettings,
               open: true,
+              tags: [],
             },
           ],
           activeStoryId: newId,
@@ -841,6 +982,117 @@ export const useStore = create<State>()(
       },
       getChildTags: (parentTag: Tag) => {
         return get().getTagsByParentPath(parentTag.path);
+      },
+      updateTagUsageFromExtractedTags: () => {
+        console.log(
+          "⚠️ [updateTagUsageFromExtractedTags] Called - delegating to updateTagUsageFromAllStories"
+        );
+        // This function now delegates to updateTagUsageFromAllStories
+        get().updateTagUsageFromAllStories();
+      },
+      updateTagUsageFromAllStories: () => {
+        console.log(
+          "🔄 [updateTagUsageFromAllStories] Starting tag usage update"
+        );
+
+        // Get all tags from all current stories OUTSIDE the set() call
+        const allStoryTags = get().stories.flatMap((story) => story.tags || []);
+
+        console.log(
+          "🔄 [updateTagUsageFromAllStories] All story tags:",
+          allStoryTags
+        );
+        console.log(
+          "🔄 [updateTagUsageFromAllStories] Stories count:",
+          get().stories.length
+        );
+        console.log(
+          "🔄 [updateTagUsageFromAllStories] Stories with tags:",
+          get().stories.map((s) => ({
+            id: s.id,
+            tagsCount: s.tags?.length || 0,
+            tags: s.tags,
+          }))
+        );
+
+        set(() => {
+          console.log(
+            "🔄 [updateTagUsageFromAllStories] Current tags before update:",
+            get().tags.map((t) => ({
+              id: t.id,
+              name: t.name,
+              usageCount: t.usageCount,
+            }))
+          );
+
+          const updatedTags = get().tags.map((tag) => {
+            // Count how many times this tag appears across all stories
+            const usageCount = allStoryTags.filter(
+              (storyTag) => storyTag.id === tag.id
+            ).length;
+
+            console.log(
+              `🔄 [updateTagUsageFromAllStories] Tag ${tag.name} (${tag.id}): found ${usageCount} usages`
+            );
+
+            if (usageCount > 0) {
+              return {
+                ...tag,
+                usageCount: usageCount,
+                lastUsedAt: new Date().toISOString(),
+              };
+            }
+            return {
+              ...tag,
+              usageCount: 0,
+            };
+          });
+
+          // Create new tags for any story tags that don't exist yet
+          const existingTagIds = new Set(get().tags.map((tag) => tag.id));
+          const newTags: Tag[] = [];
+
+          allStoryTags.forEach((storyTag) => {
+            if (!existingTagIds.has(storyTag.id)) {
+              const pathString = storyTag.path.join("/");
+              const usageCount = allStoryTags.filter(
+                (t) => t.id === storyTag.id
+              ).length;
+
+              console.log(
+                `🔄 [updateTagUsageFromAllStories] Creating new tag: ${pathString} with ${usageCount} usages`
+              );
+
+              newTags.push({
+                id: storyTag.id,
+                name: pathString,
+                path: storyTag.path,
+                usageCount: usageCount,
+                createdAt: new Date().toISOString(),
+                lastUsedAt: new Date().toISOString(),
+              });
+              existingTagIds.add(storyTag.id);
+            }
+          });
+
+          const finalTags = [...updatedTags, ...newTags];
+          console.log(
+            "🔄 [updateTagUsageFromAllStories] Final tags after update:",
+            finalTags.map((t) => ({
+              id: t.id,
+              name: t.name,
+              usageCount: t.usageCount,
+            }))
+          );
+
+          return {
+            tags: finalTags,
+          };
+        });
+
+        console.log(
+          "🔄 [updateTagUsageFromAllStories] Finished tag usage update"
+        );
       },
     }),
     {

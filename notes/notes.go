@@ -2,6 +2,7 @@ package notes
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -36,6 +37,11 @@ import (
 //     updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
 // );
 
+type NoteTag struct {
+	ID   string   `json:"id"`
+	Path []string `json:"path"`
+}
+
 type Note struct {
 	ID        uuid.UUID       `json:"id"`
 	Title     string          `json:"title"`
@@ -47,6 +53,7 @@ type Note struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 	Distance  float64         `json:"distance"`
 	IsShared  bool            `json:"is_shared"`
+	Tags      []NoteTag       `json:"tags,omitempty"`
 }
 
 func RagSearch(text string, userID string, distance float64, c *gin.Context) []Note {
@@ -64,9 +71,9 @@ func RagSearch(text string, userID string, distance float64, c *gin.Context) []N
 	var rows pgx.Rows
 	var err error
 	if text != "" {
-		rows, err = db.Query(context.Background(), "SELECT id,title, body, parent, created_at,updated_at, embedding <-> $2 as distance, COALESCE(is_shared, false) as is_shared FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3 ORDER BY embedding <-> $2", userID, vector, distance)
+		rows, err = db.Query(context.Background(), "SELECT id,title, body, parent, created_at,updated_at, embedding <-> $2 as distance, COALESCE(is_shared, false) as is_shared, COALESCE(tags, '[]'::jsonb) as tags FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3 ORDER BY embedding <-> $2", userID, vector, distance)
 	} else {
-		rows, err = db.Query(context.Background(), "SELECT id,title, body, parent, created_at,updated_at, 0 as distance, COALESCE(is_shared, false) as is_shared FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
+		rows, err = db.Query(context.Background(), "SELECT id,title, body, parent, created_at,updated_at, 0 as distance, COALESCE(is_shared, false) as is_shared, COALESCE(tags, '[]'::jsonb) as tags FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
 	}
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
@@ -75,11 +82,19 @@ func RagSearch(text string, userID string, distance float64, c *gin.Context) []N
 
 	for rows.Next() {
 		var note Note
-		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared)
+		var tagsJSON []byte
+		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared, &tagsJSON)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return nil
 		}
+
+		// Unmarshal tags from JSON
+		if err := json.Unmarshal(tagsJSON, &note.Tags); err != nil {
+			c.JSON(500, gin.H{"error": "Failed to unmarshal tags: " + err.Error()})
+			return nil
+		}
+
 		notes = append(notes, note)
 	}
 	return notes
@@ -102,11 +117,19 @@ func GetNote(c *gin.Context) {
 	note := Note{}
 
 	db := c.MustGet("db").(*pgxpool.Pool)
-	err := db.QueryRow(context.Background(), "SELECT id, title, body, user_id, parent, created_at, updated_at, COALESCE(is_shared, false) as is_shared FROM notes WHERE id = $1 AND user_id = $2", noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.IsShared)
+	var tagsJSON []byte
+	err := db.QueryRow(context.Background(), "SELECT id, title, body, user_id, parent, created_at, updated_at, COALESCE(is_shared, false) as is_shared, COALESCE(tags, '[]'::jsonb) as tags FROM notes WHERE id = $1 AND user_id = $2", noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.IsShared, &tagsJSON)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Unmarshal tags from JSON
+	if err := json.Unmarshal(tagsJSON, &note.Tags); err != nil {
+		c.JSON(500, gin.H{"error": "Failed to unmarshal tags: " + err.Error()})
+		return
+	}
+
 	c.JSON(200, gin.H{"note": note})
 }
 
@@ -137,6 +160,14 @@ func UpsertNote(c *gin.Context) {
 		vector := pgvector.NewVector(embedding.Embedding)
 		newVector = &vector
 	}
+
+	// Marshal tags to JSON
+	tagsJSON, err := json.Marshal(note.Tags)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to marshal tags: " + err.Error()})
+		return
+	}
+
 	db := c.MustGet("db").(*pgxpool.Pool)
 
 	tx, err := db.Begin(context.Background())
@@ -145,7 +176,7 @@ func UpsertNote(c *gin.Context) {
 		return
 	}
 
-	_, err = tx.Exec(context.Background(), "INSERT INTO notes (id, title, body, user_id, parent, embedding) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (id) DO UPDATE SET id = $1, title = $2, body = $3, parent = $5, embedding = $6, updated_at = now()", note.ID, note.Title, note.Body, userID, note.Parent, newVector)
+	_, err = tx.Exec(context.Background(), "INSERT INTO notes (id, title, body, user_id, parent, embedding, tags) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (id) DO UPDATE SET id = $1, title = $2, body = $3, parent = $5, embedding = $6, tags = $7, updated_at = now()", note.ID, note.Title, note.Body, userID, note.Parent, newVector, tagsJSON)
 	if err != nil {
 		tx.Rollback(context.Background())
 		c.JSON(500, gin.H{"error": err.Error()})

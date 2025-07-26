@@ -13,15 +13,14 @@
   --tag-text: #ffffff;
   --tag-border: #6b7280;
 
-  /* Category colors - simplified palette */
-  --tag-project: #3b82f6;
-  --tag-people: #a855f7;
-  --tag-locations: #22c55e;
-  --tag-tools: #ec4899;
-  --tag-meetings: #f97316;
-  --tag-notes: #0ea5e9;
-  --tag-tasks: #eab308;
-  --tag-ideas: #9333ea;
+  /* Category colors - storytelling palette */
+  --tag-characters: #a855f7; /* Purple for characters */
+  --tag-settings: #22c55e; /* Green for settings/locations */
+  --tag-genres: #3b82f6; /* Blue for genres */
+  --tag-style: #ec4899; /* Pink for writing style */
+  --tag-plot: #f97316; /* Orange for plot elements */
+  --tag-emotion: #eab308; /* Yellow for emotions/atmosphere */
+  --tag-other: #6b7280; /* Gray for uncategorized */
 
   /* Interactive states */
   --tag-hover-scale: 1.02;
@@ -102,60 +101,53 @@
 }
 
 /* Category colors - applied to all tag variants */
-.editor-tag[data-category="project"],
-.tag-preview.category-project,
-.tag-info-preview.category-project {
-  border-color: var(--tag-project);
-  background: color-mix(in srgb, var(--tag-project) 15%, var(--tag-bg));
+.editor-tag[data-category="characters"],
+.tag-preview.category-characters,
+.tag-info-preview.category-characters {
+  border-color: var(--tag-characters);
+  background: color-mix(in srgb, var(--tag-characters) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="people"],
-.tag-preview.category-people,
-.tag-info-preview.category-people {
-  border-color: var(--tag-people);
-  background: color-mix(in srgb, var(--tag-people) 15%, var(--tag-bg));
+.editor-tag[data-category="settings"],
+.tag-preview.category-settings,
+.tag-info-preview.category-settings {
+  border-color: var(--tag-settings);
+  background: color-mix(in srgb, var(--tag-settings) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="locations"],
-.tag-preview.category-locations,
-.tag-info-preview.category-locations {
-  border-color: var(--tag-locations);
-  background: color-mix(in srgb, var(--tag-locations) 15%, var(--tag-bg));
+.editor-tag[data-category="genres"],
+.tag-preview.category-genres,
+.tag-info-preview.category-genres {
+  border-color: var(--tag-genres);
+  background: color-mix(in srgb, var(--tag-genres) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="tools"],
-.tag-preview.category-tools,
-.tag-info-preview.category-tools {
-  border-color: var(--tag-tools);
-  background: color-mix(in srgb, var(--tag-tools) 15%, var(--tag-bg));
+.editor-tag[data-category="style"],
+.tag-preview.category-style,
+.tag-info-preview.category-style {
+  border-color: var(--tag-style);
+  background: color-mix(in srgb, var(--tag-style) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="meetings"],
-.tag-preview.category-meetings,
-.tag-info-preview.category-meetings {
-  border-color: var(--tag-meetings);
-  background: color-mix(in srgb, var(--tag-meetings) 15%, var(--tag-bg));
+.editor-tag[data-category="plot"],
+.tag-preview.category-plot,
+.tag-info-preview.category-plot {
+  border-color: var(--tag-plot);
+  background: color-mix(in srgb, var(--tag-plot) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="notes"],
-.tag-preview.category-notes,
-.tag-info-preview.category-notes {
-  border-color: var(--tag-notes);
-  background: color-mix(in srgb, var(--tag-notes) 15%, var(--tag-bg));
+.editor-tag[data-category="emotion"],
+.tag-preview.category-emotion,
+.tag-info-preview.category-emotion {
+  border-color: var(--tag-emotion);
+  background: color-mix(in srgb, var(--tag-emotion) 15%, var(--tag-bg));
 }
 
-.editor-tag[data-category="tasks"],
-.tag-preview.category-tasks,
-.tag-info-preview.category-tasks {
-  border-color: var(--tag-tasks);
-  background: color-mix(in srgb, var(--tag-tasks) 15%, var(--tag-bg));
-}
-
-.editor-tag[data-category="ideas"],
-.tag-preview.category-ideas,
-.tag-info-preview.category-ideas {
-  border-color: var(--tag-ideas);
-  background: color-mix(in srgb, var(--tag-ideas) 15%, var(--tag-bg));
+.editor-tag[data-category="other"],
+.tag-preview.category-other,
+.tag-info-preview.category-other {
+  border-color: var(--tag-other);
+  background: color-mix(in srgb, var(--tag-other) 15%, var(--tag-bg));
 }
 
 /* Dropdown styling */

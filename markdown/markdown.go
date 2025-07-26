@@ -7,13 +7,16 @@ import (
 )
 
 type Node struct {
-	Type     string `json:"type"`
-	Tag      string `json:"tag,omitempty"`
-	Children []Node `json:"children,omitempty"`
-	Text     string `json:"text,omitempty"`
-	ListType string `json:"listType,omitempty"`
-	Value    int    `json:"value,omitempty"`
-	Language string `json:"language,omitempty"`
+	Type     string   `json:"type"`
+	Tag      string   `json:"tag,omitempty"`
+	Children []Node   `json:"children,omitempty"`
+	Text     string   `json:"text,omitempty"`
+	ListType string   `json:"listType,omitempty"`
+	Value    int      `json:"value,omitempty"`
+	Language string   `json:"language,omitempty"`
+	TagId    string   `json:"tagId,omitempty"`
+	TagName  string   `json:"tagName,omitempty"`
+	TagPath  []string `json:"tagPath,omitempty"`
 }
 
 type Root struct {
@@ -68,6 +71,15 @@ func processNode(sb *strings.Builder, node Node, depth int) {
 		sb.WriteString("\t")
 	case "code-highlight":
 		sb.WriteString(node.Text)
+	case "tag":
+		// Convert tag nodes to @mention format
+		if node.TagName != "" {
+			sb.WriteString("@" + node.TagName)
+		} else if len(node.TagPath) > 0 {
+			sb.WriteString("@" + strings.Join(node.TagPath, "/"))
+		} else {
+			sb.WriteString("@tag")
+		}
 	default:
 		// Handle unknown node types or log a warning
 		fmt.Printf("Unknown node type: %s\n", node.Type)

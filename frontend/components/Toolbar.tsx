@@ -10,7 +10,7 @@ import {
 import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
-import { useStore } from "../store";
+import { useStore, extractTagsFromLexicalState } from "../store";
 import "./Toolbar.css";
 import ModelSettings from "./ModelSettings";
 import ServerSelect from "./ServerSelect";
@@ -115,6 +115,9 @@ export function Toolbar() {
 
   const saveDocument = () => {
     async function save() {
+      const bodyJson = JSON.stringify(activeStory.content);
+      const tags = extractTagsFromLexicalState(bodyJson);
+
       await fetch(
         `${
           import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
@@ -126,8 +129,9 @@ export function Toolbar() {
           },
           body: JSON.stringify({
             id: activeStoryId,
-            body: JSON.stringify(activeStory.content),
+            body: bodyJson,
             title: newTitle ? newTitle : activeStory.title,
+            tags: tags,
           }),
         }
       );
