@@ -34,11 +34,14 @@ function TagTypeahead({
   onSelect,
   onClose,
 }: TagTypeaheadProps) {
-  const { searchTagsByPath, addHierarchicalTag } = useStore((state) => state);
+  const { searchTagsByPath, addHierarchicalTag, getTagUsageCounts } = useStore(
+    (state) => state
+  );
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [filteredTags, setFilteredTags] = useState<Tag[]>([]);
   const [showCreateNew, setShowCreateNew] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const tagUsageCounts = getTagUsageCounts();
 
   useEffect(() => {
     const filtered = searchTagsByPath(query);
@@ -144,9 +147,10 @@ function TagTypeahead({
               )}
             </span>
           </span>
-          {tag.usageCount > 0 && (
+          {tagUsageCounts[tag.id] > 0 && (
             <span className="tag-usage-count">
-              {tag.usageCount} use{tag.usageCount !== 1 ? "s" : ""}
+              {tagUsageCounts[tag.id]} use
+              {tagUsageCounts[tag.id] !== 1 ? "s" : ""}
             </span>
           )}
         </div>
@@ -173,13 +177,16 @@ function TagEditDropdown({
   onDelete,
   onClose,
 }: TagEditDropdownProps) {
-  const { searchTagsByPath, addHierarchicalTag } = useStore((state) => state);
+  const { searchTagsByPath, addHierarchicalTag, getTagUsageCounts } = useStore(
+    (state) => state
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [filteredTags, setFilteredTags] = useState<Tag[]>([]);
   const [showCreateNew, setShowCreateNew] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const tagUsageCounts = getTagUsageCounts();
 
   useEffect(() => {
     // Focus the input when dropdown opens
@@ -351,9 +358,10 @@ function TagEditDropdown({
                   )}
                 </span>
               </span>
-              {tag.usageCount > 0 && (
+              {tagUsageCounts[tag.id] > 0 && (
                 <span className="tag-usage-count">
-                  {tag.usageCount} use{tag.usageCount !== 1 ? "s" : ""}
+                  {tagUsageCounts[tag.id]} use
+                  {tagUsageCounts[tag.id] !== 1 ? "s" : ""}
                 </span>
               )}
             </div>
@@ -396,13 +404,9 @@ function TagEditDropdown({
 
 export function TagPlugin(): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
-  const {
-    incrementTagUsage,
-    decrementTagUsage,
-    addHierarchicalTag,
-    updateStory,
-    activeStoryId,
-  } = useStore((state) => state);
+  const { addHierarchicalTag, updateStory, activeStoryId } = useStore(
+    (state) => state
+  );
   const [isTagging, setIsTagging] = useState(false);
   const [tagQuery, setTagQuery] = useState("");
   const [typeaheadPosition, setTypeaheadPosition] = useState<{
@@ -533,10 +537,6 @@ export function TagPlugin(): JSX.Element | null {
   const handleTagReplace = useCallback(
     (newTag: Tag) => {
       if (selectedTagForEdit) {
-        // Decrement usage count for the old tag
-        const oldTagId = selectedTagForEdit.getTagId();
-        decrementTagUsage(oldTagId);
-
         editor.update(() => {
           // Create new tag node with same text but different tag properties
           const newTagNode = $createTagNode(
@@ -550,9 +550,6 @@ export function TagPlugin(): JSX.Element | null {
           // Replace the old tag node
           selectedTagForEdit.insertAfter(newTagNode);
           selectedTagForEdit.remove();
-
-          // Increment usage count for the new tag
-          incrementTagUsage(newTag.id);
 
           // Position cursor after the new tag
           const nextSibling = newTagNode.getNextSibling();
@@ -570,22 +567,11 @@ export function TagPlugin(): JSX.Element | null {
       syncStoryTags();
       clearTagEdit();
     },
-    [
-      editor,
-      selectedTagForEdit,
-      incrementTagUsage,
-      decrementTagUsage,
-      clearTagEdit,
-      syncStoryTags,
-    ]
+    [editor, selectedTagForEdit, clearTagEdit, syncStoryTags]
   );
 
   const handleTagEditDelete = useCallback(() => {
     if (selectedTagForEdit) {
-      // Decrement usage count before removing the tag
-      const tagId = selectedTagForEdit.getTagId();
-      decrementTagUsage(tagId);
-
       editor.update(() => {
         // Position cursor properly before removing the tag
         const nextSibling = selectedTagForEdit.getNextSibling();
@@ -606,20 +592,10 @@ export function TagPlugin(): JSX.Element | null {
     // Sync story tags after deleting tag
     syncStoryTags();
     clearTagEdit();
-  }, [
-    editor,
-    selectedTagForEdit,
-    decrementTagUsage,
-    clearTagEdit,
-    syncStoryTags,
-  ]);
+  }, [editor, selectedTagForEdit, clearTagEdit, syncStoryTags]);
 
   const handleTagDelete = useCallback(() => {
     if (selectedTagForEdit) {
-      // Decrement usage count before removing the tag
-      const tagId = selectedTagForEdit.getTagId();
-      decrementTagUsage(tagId);
-
       editor.update(() => {
         // Position cursor properly before removing the tag
         const nextSibling = selectedTagForEdit.getNextSibling();
@@ -639,7 +615,7 @@ export function TagPlugin(): JSX.Element | null {
 
     // Sync story tags after deleting tag
     syncStoryTags();
-  }, [editor, selectedTagForEdit, decrementTagUsage, syncStoryTags]);
+  }, [editor, selectedTagForEdit, syncStoryTags]);
 
   const handleTagSelect = useCallback(
     (selectedTag: Tag | null) => {
@@ -691,11 +667,6 @@ export function TagPlugin(): JSX.Element | null {
           tagNode.insertAfter(emptyAfterNode);
         }
 
-        // Increment usage count for existing tags
-        if (selectedTag) {
-          incrementTagUsage(selectedTag.id);
-        }
-
         // Move cursor to the text node after the tag
         const afterTagNode = tagNode.getNextSibling();
         if (afterTagNode && afterTagNode instanceof TextNode) {
@@ -720,7 +691,6 @@ export function TagPlugin(): JSX.Element | null {
       tagStartOffset,
       tagQuery,
       addHierarchicalTag,
-      incrementTagUsage,
       clearTagging,
       syncStoryTags,
     ]
@@ -751,9 +721,6 @@ export function TagPlugin(): JSX.Element | null {
             const previousSibling = anchorNode.getPreviousSibling();
             if ($isTagNode(previousSibling)) {
               event.preventDefault();
-              // Decrement usage count before removing the tag
-              const tagId = previousSibling.getTagId();
-              decrementTagUsage(tagId);
               editor.update(() => {
                 previousSibling.remove();
               });
@@ -766,9 +733,6 @@ export function TagPlugin(): JSX.Element | null {
           // Check if we're in a tag node
           if ($isTagNode(anchorNode)) {
             event.preventDefault();
-            // Decrement usage count before removing the tag
-            const tagId = anchorNode.getTagId();
-            decrementTagUsage(tagId);
             editor.update(() => {
               anchorNode.remove();
             });
@@ -786,7 +750,6 @@ export function TagPlugin(): JSX.Element | null {
       selectedTagForEdit,
       editor,
       handleTagDelete,
-      decrementTagUsage,
       calculateTypeaheadPosition,
       syncStoryTags,
     ]
@@ -886,10 +849,6 @@ export function TagPlugin(): JSX.Element | null {
     const handleTagDeleteEvent = (event: CustomEvent) => {
       const tagNode = event.detail?.tagNode;
       if (tagNode) {
-        // Decrement usage count before removing the tag
-        const tagId = tagNode.getTagId();
-        decrementTagUsage(tagId);
-
         editor.update(() => {
           // Position cursor properly before removing the tag
           const nextSibling = tagNode.getNextSibling();
@@ -954,7 +913,6 @@ export function TagPlugin(): JSX.Element | null {
     typeaheadPosition,
     clearTagging,
     editor,
-    decrementTagUsage,
     calculatePositionWithFallback,
     clearTagEdit,
     showTagEdit,

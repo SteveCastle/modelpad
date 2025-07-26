@@ -99,6 +99,10 @@ export const extractTagsFromLexicalState = (
 ): { id: string; path: string[] }[] => {
   try {
     const lexicalState = JSON.parse(bodyJson);
+    console.log(
+      "🏷️ [extractTagsFromLexicalState] Lexical state:",
+      lexicalState
+    );
     const tags: { id: string; path: string[] }[] = [];
 
     const extractTagsRecursively = (node: unknown) => {
@@ -120,7 +124,13 @@ export const extractTagsFromLexicalState = (
       }
     };
 
-    extractTagsRecursively(lexicalState);
+    // Start recursion from the root node, not the top-level lexical state
+    if (lexicalState.root) {
+      extractTagsRecursively(lexicalState.root);
+    } else {
+      // Fallback for different lexical state structures
+      extractTagsRecursively(lexicalState);
+    }
     console.log("🏷️ [extractTagsFromLexicalState] Extracted tags:", tags);
     return tags;
   } catch (error) {
@@ -145,7 +155,6 @@ export type Tag = {
   name: string; // The full display name (e.g., "project/frontend/components")
   path: string[]; // The hierarchical path (e.g., ["project", "frontend", "components"])
   color?: string;
-  usageCount: number;
   createdAt: string;
   lastUsedAt?: string;
   isCategory?: boolean; // True if this is a category container (has children)
@@ -228,12 +237,9 @@ type State = {
   searchTagsByPath: (pathQuery: string) => Tag[];
   getTagsByParentPath: (parentPath: string[]) => Tag[];
   getChildTags: (parentTag: Tag) => Tag[];
-  incrementTagUsage: (tagId: string) => void;
-  decrementTagUsage: (tagId: string) => void;
   ensureParentCategories: (path: string[]) => void;
   migrateTags: () => void;
-  updateTagUsageFromExtractedTags: () => void;
-  updateTagUsageFromAllStories: () => void;
+  getTagUsageCounts: () => { [tagId: string]: number };
 };
 
 const ollamaSettings: ModelSettings = {
@@ -330,105 +336,90 @@ export const useStore = create<State>()(
           id: "sample-1",
           name: "characters/protagonist/hero",
           path: ["characters", "protagonist", "hero"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
         },
         {
           id: "sample-2",
           name: "settings/fantasy/medieval-castle",
           path: ["settings", "fantasy", "medieval-castle"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
         },
         {
           id: "sample-3",
           name: "genres/mystery/detective",
           path: ["genres", "mystery", "detective"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 259200000).toISOString(), // 3 days ago
         },
         {
           id: "sample-4",
           name: "style/perspective/first-person",
           path: ["style", "perspective", "first-person"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 345600000).toISOString(), // 4 days ago
         },
         {
           id: "sample-5",
           name: "characters/antagonist/dark-lord",
           path: ["characters", "antagonist", "dark-lord"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 432000000).toISOString(), // 5 days ago
         },
         {
           id: "sample-6",
           name: "settings/modern/urban-city",
           path: ["settings", "modern", "urban-city"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 518400000).toISOString(), // 6 days ago
         },
         {
           id: "sample-7",
           name: "style/tone/dark-atmospheric",
           path: ["style", "tone", "dark-atmospheric"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 604800000).toISOString(), // 1 week ago
         },
         {
           id: "sample-8",
           name: "plot/conflict/internal-struggle",
           path: ["plot", "conflict", "internal-struggle"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 691200000).toISOString(), // 8 days ago
         },
         {
           id: "sample-9",
           name: "characters/archetype/mentor",
           path: ["characters", "archetype", "mentor"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 777600000).toISOString(), // 9 days ago
         },
         {
           id: "sample-10",
           name: "genres/sci-fi/dystopian",
           path: ["genres", "sci-fi", "dystopian"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 864000000).toISOString(), // 10 days ago
         },
         {
           id: "sample-11",
           name: "settings/historical/victorian-london",
           path: ["settings", "historical", "victorian-london"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 950400000).toISOString(), // 11 days ago
         },
         {
           id: "sample-12",
           name: "style/device/flashback",
           path: ["style", "device", "flashback"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 1036800000).toISOString(), // 12 days ago
         },
         {
           id: "sample-13",
           name: "emotion/atmosphere/suspenseful",
           path: ["emotion", "atmosphere", "suspenseful"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 1123200000).toISOString(), // 13 days ago
         },
         {
           id: "sample-14",
           name: "plot/theme/redemption",
           path: ["plot", "theme", "redemption"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 1209600000).toISOString(), // 14 days ago
         },
         {
           id: "sample-15",
           name: "genres/romance/contemporary",
           path: ["genres", "romance", "contemporary"],
-          usageCount: 0,
           createdAt: new Date(Date.now() - 1296000000).toISOString(), // 15 days ago
         },
       ],
@@ -490,12 +481,8 @@ export const useStore = create<State>()(
           };
         });
 
-        // Update tag usage counts after stories are updated
-        console.log(
-          "📋 [mergeNotes] About to call updateTagUsageFromAllStories"
-        );
-        get().updateTagUsageFromAllStories();
-        console.log("📋 [mergeNotes] Finished updateTagUsageFromAllStories");
+        // Tag usage counts are now calculated dynamically via getTagUsageCounts()
+        console.log("📋 [mergeNotes] Stories updated with tags");
       },
       toggleReadingMode: () => {
         set((state) => ({
@@ -638,12 +625,8 @@ export const useStore = create<State>()(
           };
         });
 
-        console.log(
-          "📝 [updateStory] About to call updateTagUsageFromAllStories"
-        );
-        // Update tag usage counts AFTER stories are updated
-        get().updateTagUsageFromAllStories();
-        console.log("📝 [updateStory] Finished updateTagUsageFromAllStories");
+        // Tag usage counts are now calculated dynamically via getTagUsageCounts()
+        console.log("📝 [updateStory] Story updated with tags");
       },
       updateTitle: (id: string, title: string) => {
         set(() => ({
@@ -797,12 +780,11 @@ export const useStore = create<State>()(
         }));
       },
       // Tag management actions
-      addTag: (tag: Omit<Tag, "id" | "createdAt" | "usageCount">) => {
+      addTag: (tag: Omit<Tag, "id" | "createdAt">) => {
         const newTag: Tag = {
           ...tag,
           id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
-          usageCount: 0,
         };
         set(() => ({
           tags: [...get().tags, newTag],
@@ -847,30 +829,17 @@ export const useStore = create<State>()(
           set(() => ({ tags: migratedTags }));
         }
       },
-      incrementTagUsage: (tagId: string) => {
-        set(() => ({
-          tags: get().tags.map((tag) =>
-            tag.id === tagId
-              ? {
-                  ...tag,
-                  usageCount: tag.usageCount + 1,
-                  lastUsedAt: new Date().toISOString(),
-                }
-              : tag
-          ),
-        }));
-      },
-      decrementTagUsage: (tagId: string) => {
-        set(() => ({
-          tags: get().tags.map((tag) =>
-            tag.id === tagId
-              ? {
-                  ...tag,
-                  usageCount: Math.max(0, tag.usageCount - 1),
-                }
-              : tag
-          ),
-        }));
+      getTagUsageCounts: () => {
+        // Get all tags from all current stories
+        const allStoryTags = get().stories.flatMap((story) => story.tags || []);
+
+        // Count occurrences of each tag ID
+        const counts: { [tagId: string]: number } = {};
+        allStoryTags.forEach((storyTag) => {
+          counts[storyTag.id] = (counts[storyTag.id] || 0) + 1;
+        });
+
+        return counts;
       },
       addHierarchicalTag: (pathString: string) => {
         const path = pathString.split("/").filter((p) => p.trim());
@@ -891,7 +860,6 @@ export const useStore = create<State>()(
           name: fullPath,
           path: path,
           createdAt: new Date().toISOString(),
-          usageCount: 0,
         };
 
         set(() => ({
@@ -921,7 +889,6 @@ export const useStore = create<State>()(
               name: parentName,
               path: parentPath,
               createdAt: new Date().toISOString(),
-              usageCount: 0,
               isCategory: true,
             });
           }
@@ -936,6 +903,8 @@ export const useStore = create<State>()(
       searchTagsByPath: (pathQuery: string) => {
         const normalizedQuery = pathQuery.toLowerCase().trim();
         if (!normalizedQuery) return get().tags;
+
+        const tagUsageCounts = get().getTagUsageCounts();
 
         return get()
           .tags.filter((tag) => {
@@ -963,9 +932,11 @@ export const useStore = create<State>()(
             if (aStartsWith && !bStartsWith) return -1;
             if (bStartsWith && !aStartsWith) return 1;
 
-            // Then by usage count
-            if (b.usageCount !== a.usageCount) {
-              return b.usageCount - a.usageCount;
+            // Then by usage count (dynamic)
+            const aUsageCount = tagUsageCounts[a.id] || 0;
+            const bUsageCount = tagUsageCounts[b.id] || 0;
+            if (bUsageCount !== aUsageCount) {
+              return bUsageCount - aUsageCount;
             }
 
             return a.name.localeCompare(b.name);
@@ -982,117 +953,6 @@ export const useStore = create<State>()(
       },
       getChildTags: (parentTag: Tag) => {
         return get().getTagsByParentPath(parentTag.path);
-      },
-      updateTagUsageFromExtractedTags: () => {
-        console.log(
-          "⚠️ [updateTagUsageFromExtractedTags] Called - delegating to updateTagUsageFromAllStories"
-        );
-        // This function now delegates to updateTagUsageFromAllStories
-        get().updateTagUsageFromAllStories();
-      },
-      updateTagUsageFromAllStories: () => {
-        console.log(
-          "🔄 [updateTagUsageFromAllStories] Starting tag usage update"
-        );
-
-        // Get all tags from all current stories OUTSIDE the set() call
-        const allStoryTags = get().stories.flatMap((story) => story.tags || []);
-
-        console.log(
-          "🔄 [updateTagUsageFromAllStories] All story tags:",
-          allStoryTags
-        );
-        console.log(
-          "🔄 [updateTagUsageFromAllStories] Stories count:",
-          get().stories.length
-        );
-        console.log(
-          "🔄 [updateTagUsageFromAllStories] Stories with tags:",
-          get().stories.map((s) => ({
-            id: s.id,
-            tagsCount: s.tags?.length || 0,
-            tags: s.tags,
-          }))
-        );
-
-        set(() => {
-          console.log(
-            "🔄 [updateTagUsageFromAllStories] Current tags before update:",
-            get().tags.map((t) => ({
-              id: t.id,
-              name: t.name,
-              usageCount: t.usageCount,
-            }))
-          );
-
-          const updatedTags = get().tags.map((tag) => {
-            // Count how many times this tag appears across all stories
-            const usageCount = allStoryTags.filter(
-              (storyTag) => storyTag.id === tag.id
-            ).length;
-
-            console.log(
-              `🔄 [updateTagUsageFromAllStories] Tag ${tag.name} (${tag.id}): found ${usageCount} usages`
-            );
-
-            if (usageCount > 0) {
-              return {
-                ...tag,
-                usageCount: usageCount,
-                lastUsedAt: new Date().toISOString(),
-              };
-            }
-            return {
-              ...tag,
-              usageCount: 0,
-            };
-          });
-
-          // Create new tags for any story tags that don't exist yet
-          const existingTagIds = new Set(get().tags.map((tag) => tag.id));
-          const newTags: Tag[] = [];
-
-          allStoryTags.forEach((storyTag) => {
-            if (!existingTagIds.has(storyTag.id)) {
-              const pathString = storyTag.path.join("/");
-              const usageCount = allStoryTags.filter(
-                (t) => t.id === storyTag.id
-              ).length;
-
-              console.log(
-                `🔄 [updateTagUsageFromAllStories] Creating new tag: ${pathString} with ${usageCount} usages`
-              );
-
-              newTags.push({
-                id: storyTag.id,
-                name: pathString,
-                path: storyTag.path,
-                usageCount: usageCount,
-                createdAt: new Date().toISOString(),
-                lastUsedAt: new Date().toISOString(),
-              });
-              existingTagIds.add(storyTag.id);
-            }
-          });
-
-          const finalTags = [...updatedTags, ...newTags];
-          console.log(
-            "🔄 [updateTagUsageFromAllStories] Final tags after update:",
-            finalTags.map((t) => ({
-              id: t.id,
-              name: t.name,
-              usageCount: t.usageCount,
-            }))
-          );
-
-          return {
-            tags: finalTags,
-          };
-        });
-
-        console.log(
-          "🔄 [updateTagUsageFromAllStories] Finished tag usage update"
-        );
       },
     }),
     {

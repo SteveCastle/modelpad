@@ -128,7 +128,6 @@ function buildTagTree(tags: Tag[]): TreeTag[] {
           id: `category-${currentName}`,
           name: currentName,
           path: currentPath,
-          usageCount: 0,
           createdAt: new Date().toISOString(),
           isCategory: true,
           children: [],
@@ -458,7 +457,9 @@ const Notes = ({ defaultTab = "notes", onTabClick }: NotesProps) => {
     const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
     const [initializedTagExpansion, setInitializedTagExpansion] =
       useState(false);
-    const { tags } = useStore((state) => ({ tags: state.tags }));
+    const { tags } = useStore((state) => ({
+      tags: state.tags,
+    }));
 
     const toggleTagExpanded = (tagId: string) => {
       const newExpanded = new Set(expandedTags);
@@ -927,6 +928,11 @@ const TreeTagItem = ({
   tag: TreeTag;
   onToggleExpanded: (id: string) => void;
 }) => {
+  const { getTagUsageCounts } = useStore((state) => ({
+    getTagUsageCounts: state.getTagUsageCounts,
+  }));
+  const tagUsageCounts = getTagUsageCounts();
+
   const handleTagClick = () => {
     console.log("Tag clicked:", tag.name, tag);
   };
@@ -993,7 +999,7 @@ const TreeTagItem = ({
           </div>
           <div className="tag-info">
             <span className="tag-usage-count">
-              {tag.usageCount > 0 && `${tag.usageCount} uses`}
+              {tagUsageCounts[tag.id] > 0 && `${tagUsageCounts[tag.id]} uses`}
             </span>
           </div>
         </div>
