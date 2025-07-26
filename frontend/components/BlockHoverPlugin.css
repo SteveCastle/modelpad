@@ -33,9 +33,15 @@
   background: var(--hovered-button-bg-color);
 }
 
-.block-control-btn.delete-btn:hover {
+.block-control-btn.delete-btn:hover:not(:disabled) {
   background: rgba(220, 53, 69, 0.2);
   color: #ff6b6b;
+}
+
+.block-control-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 .block-type-menu {

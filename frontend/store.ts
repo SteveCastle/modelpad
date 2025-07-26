@@ -3,6 +3,42 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { Content, welcomeContent } from "./welcomeContent";
 
+// Helper function to create empty content with a default paragraph
+const createEmptyContent = (): Content => ({
+  root: {
+    children: [
+      {
+        children: [],
+        direction: "ltr",
+        format: "",
+        indent: 0,
+        type: "paragraph",
+        version: 1,
+      },
+    ],
+    direction: "ltr",
+    format: "",
+    indent: 0,
+    type: "root",
+    version: 1,
+  },
+});
+
+// Helper function to ensure content is never empty
+const ensureContentNotEmpty = (
+  content: Content | undefined | null
+): Content => {
+  if (
+    !content ||
+    !content.root ||
+    !content.root.children ||
+    content.root.children.length === 0
+  ) {
+    return createEmptyContent();
+  }
+  return content;
+};
+
 export type PromptTypeKeys = "newScene" | "rewrite" | "summarize";
 
 type PromptTemplates = { [key in PromptTypeKeys]: string };
@@ -145,7 +181,7 @@ const defaultStories: Story[] = [
   {
     id: v4(),
     title: "Untitled",
-    content: undefined,
+    content: createEmptyContent(),
     context: undefined,
     open: true,
   },
@@ -219,7 +255,7 @@ export const useStore = create<State>()(
               return {
                 ...s,
                 title: note.title,
-                content: JSON.parse(note.body),
+                content: ensureContentNotEmpty(JSON.parse(note.body)),
               };
             }
             return s;
@@ -230,7 +266,7 @@ export const useStore = create<State>()(
             .map((n) => ({
               id: n.id,
               title: n.title,
-              content: JSON.parse(n.body),
+              content: ensureContentNotEmpty(JSON.parse(n.body)),
               open: true,
               synced: true,
               includeInContext: n.includeInContext || false,
@@ -357,7 +393,7 @@ export const useStore = create<State>()(
       updateStory: (id: string, content: Content) => {
         set(() => ({
           stories: get().stories.map((s) =>
-            s.id === id ? { ...s, content } : s
+            s.id === id ? { ...s, content: ensureContentNotEmpty(content) } : s
           ),
         }));
       },
@@ -445,7 +481,7 @@ export const useStore = create<State>()(
             {
               title: title ? title : "Untitled",
               id: newId,
-              content: null,
+              content: createEmptyContent(),
               modelSettings: ollamaSettings,
               open: true,
             },

@@ -303,9 +303,29 @@ export function StoryEditor({
 }: StoryEditorProps) {
   const { updateStory, updateSyncState } = useStore((state) => state);
 
-  const initialContent = story.content
-    ? JSON.stringify(story.content)
-    : undefined;
+  // Ensure we always have valid content - if story.content is undefined/null,
+  // the store should have already provided a default, but double-check here
+  const safeContent = story.content || {
+    root: {
+      children: [
+        {
+          children: [],
+          direction: "ltr",
+          format: "",
+          indent: 0,
+          type: "paragraph",
+          version: 1,
+        },
+      ],
+      direction: "ltr",
+      format: "",
+      indent: 0,
+      type: "root",
+      version: 1,
+    },
+  };
+
+  const initialContent = JSON.stringify(safeContent);
 
   const editorConfig = useMemo(
     () => ({
@@ -337,6 +357,7 @@ export function StoryEditor({
     (editorState) => {
       const content = JSON.stringify(editorState);
       if (content !== initialContent) {
+        // The store's updateStory function will ensure content is not empty
         updateStory(story.id, editorState);
         updateSyncState(story.id, false);
       }

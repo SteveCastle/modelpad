@@ -8,6 +8,7 @@ import {
   $getNodeByKey,
   $isElementNode,
   ElementNode,
+  $getRoot,
 } from "lexical";
 import {
   $createHeadingNode,
@@ -59,6 +60,7 @@ interface BlockControlsProps {
   currentType: string;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
+  isDeletionDisabled: boolean;
 }
 
 function BlockControls({
@@ -68,6 +70,7 @@ function BlockControls({
   currentType,
   onMouseEnter,
   onMouseLeave,
+  isDeletionDisabled,
 }: BlockControlsProps) {
   const [showTypeMenu, setShowTypeMenu] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -116,7 +119,10 @@ function BlockControls({
         <button
           className="block-control-btn delete-btn"
           onClick={onDelete}
-          title="Delete block"
+          disabled={isDeletionDisabled}
+          title={
+            isDeletionDisabled ? "Cannot delete the last block" : "Delete block"
+          }
         >
           🗑️
         </button>
@@ -157,6 +163,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
     null
   );
   const [isControlsHovered, setIsControlsHovered] = useState(false);
+  const [isDeletionDisabled, setIsDeletionDisabled] = useState(false);
 
   const updateBlockType = useCallback(() => {
     const selection = $getSelection();
@@ -182,6 +189,11 @@ export function BlockHoverPlugin(): JSX.Element | null {
         }
       }
     }
+
+    // Check if deletion should be disabled (only one top-level node)
+    const root = $getRoot();
+    const topLevelNodeCount = root.getChildrenSize();
+    setIsDeletionDisabled(topLevelNodeCount <= 1);
   }, [editor]);
 
   useEffect(() => {
@@ -378,6 +390,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
       currentType={currentBlockType}
       onMouseEnter={handleControlsMouseEnter}
       onMouseLeave={handleControlsMouseLeave}
+      isDeletionDisabled={isDeletionDisabled}
     />
   );
 }
