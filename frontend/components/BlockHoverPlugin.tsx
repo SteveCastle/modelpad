@@ -7,15 +7,12 @@ import {
   SELECTION_CHANGE_COMMAND,
   $getNodeByKey,
   $getRoot,
-  $createTextNode,
-  TextNode,
 } from "lexical";
 import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
 import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
 import { $isPromptNode } from "./PromptNode";
 import { $isAIGenerationNode } from "./AIGenerationNode";
-import { $isTagNode } from "./TagNode";
 import { useStore } from "../store";
 import "./BlockHoverPlugin.css";
 import "./PromptNode.css";
