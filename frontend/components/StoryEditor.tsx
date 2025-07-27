@@ -112,24 +112,15 @@ function TableOfContents({
   const [editor] = useLexicalComposerContext();
 
   // Debug logging
-  console.log("TableOfContents received data:", tableOfContents);
 
   if (!tableOfContents || tableOfContents.length === 0) {
     return null;
   }
 
   const scrollToHeading = (headingKey: string, headingText: string) => {
-    console.log(
-      "Attempting to scroll to heading with key:",
-      headingKey,
-      "text:",
-      headingText
-    );
-
     // Use Lexical's getElementByKey to find the heading element
     let headingElement: HTMLElement | Element | null =
       editor.getElementByKey(headingKey);
-    console.log("Found heading element via Lexical:", headingElement);
 
     // If not found by Lexical key, try finding by text content within the editor
     if (!headingElement) {
@@ -140,7 +131,6 @@ function TableOfContents({
         const allHeadings = editorElement.querySelectorAll(
           "h1, h2, h3, h4, h5, h6"
         );
-        console.log("All headings in editor:", allHeadings);
 
         // Try to find heading by matching text content
         allHeadings.forEach((heading) => {
@@ -151,10 +141,6 @@ function TableOfContents({
             headingElement = heading;
           }
         });
-
-        if (headingElement) {
-          console.log("Found heading by text content:", headingElement);
-        }
       }
     }
 
@@ -162,8 +148,6 @@ function TableOfContents({
       console.error("Could not find heading by any method");
       return;
     }
-
-    console.log("Final heading element to scroll to:", headingElement);
 
     // Find the actual scrollable container by checking scrollHeight vs clientHeight
     let scrollContainer: Element | null = null;
@@ -176,17 +160,8 @@ function TableOfContents({
         getComputedStyle(parent).overflow === "auto" ||
         getComputedStyle(parent).overflowY === "auto";
 
-      console.log("Checking parent:", parent, {
-        scrollHeight: parent.scrollHeight,
-        clientHeight: parent.clientHeight,
-        hasScroll,
-        isScrollable,
-        overflow: getComputedStyle(parent).overflow,
-      });
-
       if (hasScroll && isScrollable) {
         scrollContainer = parent;
-        console.log("Found scrollable container:", scrollContainer);
         break;
       }
       parent = parent.parentElement;
@@ -205,36 +180,22 @@ function TableOfContents({
       for (const candidate of candidates) {
         if (candidate && candidate.scrollHeight > candidate.clientHeight) {
           scrollContainer = candidate;
-          console.log("Found container via selector:", candidate);
           break;
         }
       }
     }
 
-    console.log("Final scroll container:", scrollContainer);
-
     if (
       scrollContainer &&
       scrollContainer.scrollHeight > scrollContainer.clientHeight
     ) {
-      console.log("Using container scroll approach");
-      console.log("Container scrollTop before:", scrollContainer.scrollTop);
-      console.log("Container clientHeight:", scrollContainer.clientHeight);
-      console.log("Container scrollHeight:", scrollContainer.scrollHeight);
-
       // Get positions
       const containerRect = scrollContainer.getBoundingClientRect();
       const elementRect = headingElement.getBoundingClientRect();
 
-      console.log("Container rect:", containerRect);
-      console.log("Element rect:", elementRect);
-
       // Calculate scroll position
       const relativeTop = elementRect.top - containerRect.top;
       const targetScrollTop = scrollContainer.scrollTop + relativeTop - 20;
-
-      console.log("Relative top:", relativeTop);
-      console.log("Target scroll position:", targetScrollTop);
 
       // Try scrollTo
       scrollContainer.scrollTo({
@@ -244,11 +205,6 @@ function TableOfContents({
 
       // Check if scroll happened after a brief delay
       setTimeout(() => {
-        console.log(
-          "Container scrollTop after scrollTo:",
-          scrollContainer.scrollTop
-        );
-
         // If scroll didn't happen, try alternative approach
         if (scrollContainer.scrollTop === 0 && targetScrollTop > 0) {
           console.log("ScrollTo failed, trying scrollIntoView fallback");
@@ -260,9 +216,6 @@ function TableOfContents({
         }
       }, 100);
     } else {
-      console.log(
-        "No valid scroll container found, using scrollIntoView directly"
-      );
       headingElement.scrollIntoView({
         behavior: "smooth",
         block: "start",

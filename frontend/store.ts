@@ -99,10 +99,6 @@ export const extractTagsFromLexicalState = (
 ): { id: string; path: string[] }[] => {
   try {
     const lexicalState = JSON.parse(bodyJson);
-    console.log(
-      "🏷️ [extractTagsFromLexicalState] Lexical state:",
-      lexicalState
-    );
     const tags: { id: string; path: string[] }[] = [];
 
     const extractTagsRecursively = (node: unknown) => {
@@ -131,7 +127,6 @@ export const extractTagsFromLexicalState = (
       // Fallback for different lexical state structures
       extractTagsRecursively(lexicalState);
     }
-    console.log("🏷️ [extractTagsFromLexicalState] Extracted tags:", tags);
     return tags;
   } catch (error) {
     console.warn("Failed to extract tags from lexical state:", error);
@@ -614,24 +609,12 @@ export const useStore = create<State>()(
         }));
       },
       mergeNotes: (notes: Note[], updateActiveStory: boolean) => {
-        console.log(
-          "📋 [mergeNotes] Called with notes:",
-          notes.length,
-          "updateActiveStory:",
-          updateActiveStory
-        );
-
         set(() => {
           // Extract tags from each note's body and update the note
           const notesWithTags = notes.map((note) => ({
             ...note,
             tags: extractTagsFromLexicalState(note.body),
           }));
-
-          console.log(
-            "📋 [mergeNotes] Notes with tags:",
-            notesWithTags.map((n) => ({ id: n.id, tags: n.tags }))
-          );
 
           // Iterate over the existing stories and if the note ID exists, update the story
           const openTabs = get().stories.map((s) => {
@@ -667,7 +650,6 @@ export const useStore = create<State>()(
         });
 
         // Tag usage counts are now calculated dynamically via getTagUsageCounts()
-        console.log("📋 [mergeNotes] Stories updated with tags");
       },
       toggleReadingMode: () => {
         set((state) => ({
@@ -781,28 +763,12 @@ export const useStore = create<State>()(
         }));
       },
       updateStory: (id: string, content: Content) => {
-        console.log("📝 [updateStory] Called for story:", id);
-
         set(() => {
           const contentJson = JSON.stringify(content);
           const extractedTags = extractTagsFromLexicalState(contentJson);
 
-          console.log(
-            "📝 [updateStory] Extracted tags for story:",
-            extractedTags
-          );
-          console.log(
-            "📝 [updateStory] Before update - current stories count:",
-            get().stories.length
-          );
-
           const updatedStories = get().stories.map((s) =>
             s.id === id ? { ...s, content, tags: extractedTags } : s
-          );
-
-          console.log(
-            "📝 [updateStory] After update - story tags:",
-            updatedStories.find((s) => s.id === id)?.tags
           );
 
           return {
@@ -811,7 +777,6 @@ export const useStore = create<State>()(
         });
 
         // Tag usage counts are now calculated dynamically via getTagUsageCounts()
-        console.log("📝 [updateStory] Story updated with tags");
       },
       updateTitle: (id: string, title: string) => {
         set(() => ({

@@ -10,12 +10,12 @@ import {
   $createTextNode,
   TextNode,
 } from "lexical";
-import { $convertFromMarkdownString } from "@lexical/markdown";
-import { DEFAULT_TRANSFORMERS } from "./LexicalMarkdownShortcutPlugin";
+import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
 import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
 import { $isPromptNode } from "./PromptNode";
 import { $isAIGenerationNode } from "./AIGenerationNode";
+import { $isTagNode } from "./TagNode";
 import { useStore } from "../store";
 import "./BlockHoverPlugin.css";
 import "./PromptNode.css";
@@ -704,57 +704,36 @@ export function BlockHoverPlugin(): JSX.Element | null {
             // Use Lexical's built-in markdown conversion
             // Create a temporary root to parse the markdown
             const root = $getRoot();
-            const originalChildren = [...root.getChildren()];
 
-            // Clear the root temporarily to parse markdown
-            root.clear();
+            // Get the current nodes in the root except for the AI generation node
+            const currentNodes = root
+              .getChildren()
+              .filter((node) => node.getKey() !== aiNode.getKey());
 
             // Parse the markdown using Lexical's built-in converter
-            $convertFromMarkdownString(markdownText, DEFAULT_TRANSFORMERS);
+            $convertFromMarkdownString(
+              markdownText,
+              TRANSFORMERS,
+              root,
+              false,
+              false
+            );
 
-            // Get the parsed nodes
-            const parsedNodes = [...root.getChildren()];
-
-            // Restore the original editor content
-            root.clear();
-            originalChildren.forEach((child) => root.append(child));
-
-            // Insert the parsed nodes in the correct order
-            if (parsedNodes.length > 0) {
-              // Clear the parent and insert all nodes
-              parentElement.clear();
-              parsedNodes.forEach((node) => {
-                parentElement.append(node);
-              });
-
-              // Position cursor after the last inserted node
-              const lastNode = parsedNodes[parsedNodes.length - 1];
-              const nextSibling = lastNode.getNextSibling();
-              if (nextSibling && nextSibling instanceof TextNode) {
-                nextSibling.select(0, 0);
-              } else {
-                // Create a space after the last node for better cursor positioning
-                const spaceNode = $createTextNode(" ");
-                lastNode.insertAfter(spaceNode);
-                spaceNode.select(0, 0);
+            // Remove any empty nodes from the root
+            root.getChildren().forEach((node) => {
+              if (node.getTextContent() === "") {
+                node.remove();
               }
-            } else {
-              // Fallback: if no nodes were parsed, insert as plain text
-              const textNode = $createTextNode(markdownText);
-              parentElement.clear();
-              parentElement.append(textNode);
-              textNode.select(0, 0);
-            }
-          } else {
-            // Fallback: just convert to text node
-            const textNode = aiNode.convertToTextNode();
-            aiNode.replace(textNode);
+            });
+
+            // Add the current nodes back to the root before the first node in the root now
+            const firstNode = root.getFirstChild();
+            currentNodes.forEach((node) => {
+              firstNode.insertBefore(node);
+            });
           }
         } catch (error) {
-          // If markdown conversion fails, just convert to text
-          console.warn("Markdown conversion failed:", error);
-          const textNode = aiNode.convertToTextNode();
-          aiNode.replace(textNode);
+          console.error("Error converting markdown:", error);
         }
       }
     });

@@ -14,6 +14,7 @@ import {
   AIGenerationNode,
 } from "../components/AIGenerationNode";
 import { $createPromptNode, $isPromptNode } from "../components/PromptNode";
+import { $isTagNode } from "../components/TagNode";
 import { useStore, PromptTypeKeys, PromptGeneration } from "../store";
 import { providers } from "../providers";
 import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
@@ -82,7 +83,7 @@ export function useAIGeneration() {
         // Update the prompt node in the editor using the generation tracking
         editor.update(() => {
           const generation = getPromptGeneration(promptId);
-          if (generation) {
+          if (generation && generation.promptNodeKey) {
             const promptNode = $getNodeByKey(generation.promptNodeKey);
             if ($isPromptNode(promptNode)) {
               promptNode.setStatus("generating");
@@ -206,7 +207,7 @@ export function useAIGeneration() {
         // Update prompt node status to completed if this is a generation with promptId
         if (action === "generate" && promptId) {
           const generation = getPromptGeneration(promptId);
-          if (generation) {
+          if (generation && generation.promptNodeKey) {
             const promptNode = $getNodeByKey(generation.promptNodeKey);
             if ($isPromptNode(promptNode)) {
               promptNode.setStatus("completed");
@@ -249,30 +250,55 @@ export function useAIGeneration() {
 
       editor.update(() => {
         const targetNode = $getNodeByKey(options.targetNodeKey!);
+        console.log("targetNode", targetNode);
         if (targetNode && $isElementNode(targetNode)) {
-          const originalText = targetNode.getTextContent();
+          // Separate tag nodes from text content
+          const children = targetNode.getChildren();
+          const tagNodes: LexicalNode[] = [];
+          const textContent: string[] = [];
 
-          // Create the PromptNode
-          const promptNode = $createPromptNode(
-            originalText,
-            promptId!,
-            "pending",
-            originalText
-          );
+          // Process each child node
+          children.forEach((child) => {
+            if ($isTagNode(child)) {
+              // Preserve tag nodes
+              tagNodes.push(child);
+            } else {
+              // Collect text content from non-tag nodes
+              textContent.push(child.getTextContent());
+            }
+          });
 
-          // Clear the element and add PromptNode as child
+          const originalText = textContent.join("");
+
+          // Clear the element
           targetNode.clear();
-          targetNode.append(promptNode);
 
-          // Keep the same targetNodeKey since we're modifying the existing element
-          // Store the PromptNode key for tracking
-          const actualPromptNodeKey = promptNode.getKey();
+          // Add PromptNode only if there's text content
+          if (originalText.trim()) {
+            const promptNode = $createPromptNode(
+              originalText,
+              promptId!,
+              "pending",
+              originalText
+            );
+            targetNode.append(promptNode);
+          }
+
+          // Re-add tag nodes in their original positions
+          tagNodes.forEach((tagNode) => {
+            targetNode.append(tagNode);
+          });
+
+          // Store the PromptNode key for tracking (if it exists)
+          const actualPromptNodeKey = originalText.trim()
+            ? targetNode.getFirstChild()?.getKey()
+            : undefined;
 
           // Create generation tracking
           const generation: PromptGeneration = {
             promptId: promptId!,
             storyId: activeStoryId,
-            promptNodeKey: actualPromptNodeKey, // Use the actual PromptNode key
+            promptNodeKey: actualPromptNodeKey || "", // Use the actual PromptNode key
             generatedNodeKeys: [],
             originalContent: originalText,
             status: "pending",
@@ -379,7 +405,7 @@ export function useAIGeneration() {
 
         editor.update(() => {
           const generation = getPromptGeneration(promptId);
-          if (generation) {
+          if (generation && generation.promptNodeKey) {
             const promptNode = $getNodeByKey(generation.promptNodeKey);
             if ($isPromptNode(promptNode)) {
               promptNode.setStatus("cancelled");
@@ -405,13 +431,15 @@ export function useAIGeneration() {
       });
 
       // Update prompt node - restore original content and set status
-      const promptNode = $getNodeByKey(generation.promptNodeKey);
-      if ($isPromptNode(promptNode)) {
-        // If generation was cancelled, restore original content
-        if (generation.status === "cancelled") {
-          promptNode.setTextContent(generation.originalContent);
+      if (generation.promptNodeKey) {
+        const promptNode = $getNodeByKey(generation.promptNodeKey);
+        if ($isPromptNode(promptNode)) {
+          // If generation was cancelled, restore original content
+          if (generation.status === "cancelled") {
+            promptNode.setTextContent(generation.originalContent);
+          }
+          promptNode.setStatus("completed");
         }
-        promptNode.setStatus("completed");
       }
     });
 
@@ -439,9 +467,11 @@ export function useAIGeneration() {
       });
 
       // Update prompt node status to pending
-      const promptNode = $getNodeByKey(generation.promptNodeKey);
-      if ($isPromptNode(promptNode)) {
-        promptNode.setStatus("pending");
+      if (generation.promptNodeKey) {
+        const promptNode = $getNodeByKey(generation.promptNodeKey);
+        if ($isPromptNode(promptNode)) {
+          promptNode.setStatus("pending");
+        }
       }
     });
 
@@ -455,17 +485,24 @@ export function useAIGeneration() {
 
     // Find the parent element of the PromptNode to use as targetNodeKey
     editor.getEditorState().read(() => {
-      const promptNode = $getNodeByKey(generation.promptNodeKey);
-      if ($isPromptNode(promptNode)) {
-        const parentElement = promptNode.getParent();
-        if (parentElement && $isElementNode(parentElement)) {
-          // Re-trigger generation using the parent element as target
-          generate("newScene", "", {
-            customText: generation.originalContent,
-            action: "generate",
-            targetNodeKey: parentElement.getKey(),
-          });
+      if (generation.promptNodeKey) {
+        const promptNode = $getNodeByKey(generation.promptNodeKey);
+        if ($isPromptNode(promptNode)) {
+          const parentElement = promptNode.getParent();
+          if (parentElement && $isElementNode(parentElement)) {
+            // Re-trigger generation using the parent element as target
+            generate("newScene", "", {
+              customText: generation.originalContent,
+              action: "generate",
+              targetNodeKey: parentElement.getKey(),
+            });
+          }
         }
+      } else {
+        // If no PromptNode exists, we need to find the target element differently
+        // This could happen if there were only tag nodes
+        // For now, we'll skip regeneration in this case
+        console.warn("No PromptNode found for regeneration - skipping");
       }
     });
   };
@@ -477,9 +514,11 @@ export function useAIGeneration() {
 
     // Update prompt node status to pending
     editor.update(() => {
-      const promptNode = $getNodeByKey(generation.promptNodeKey);
-      if ($isPromptNode(promptNode)) {
-        promptNode.setStatus("pending");
+      if (generation.promptNodeKey) {
+        const promptNode = $getNodeByKey(generation.promptNodeKey);
+        if ($isPromptNode(promptNode)) {
+          promptNode.setStatus("pending");
+        }
       }
     });
 
@@ -493,17 +532,24 @@ export function useAIGeneration() {
 
     // Find the parent element of the PromptNode to use as targetNodeKey
     editor.getEditorState().read(() => {
-      const promptNode = $getNodeByKey(generation.promptNodeKey);
-      if ($isPromptNode(promptNode)) {
-        const parentElement = promptNode.getParent();
-        if (parentElement && $isElementNode(parentElement)) {
-          // Re-trigger generation using the parent element as target
-          generate("newScene", "", {
-            customText: generation.originalContent,
-            action: "generate",
-            targetNodeKey: parentElement.getKey(),
-          });
+      if (generation.promptNodeKey) {
+        const promptNode = $getNodeByKey(generation.promptNodeKey);
+        if ($isPromptNode(promptNode)) {
+          const parentElement = promptNode.getParent();
+          if (parentElement && $isElementNode(parentElement)) {
+            // Re-trigger generation using the parent element as target
+            generate("newScene", "", {
+              customText: generation.originalContent,
+              action: "generate",
+              targetNodeKey: parentElement.getKey(),
+            });
+          }
         }
+      } else {
+        // If no PromptNode exists, we need to find the target element differently
+        // This could happen if there were only tag nodes
+        // For now, we'll skip regeneration in this case
+        console.warn("No PromptNode found for redo - skipping");
       }
     });
   };
