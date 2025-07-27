@@ -215,12 +215,6 @@ function TableOfContents({
           });
         }
       }, 100);
-    } else {
-      headingElement.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-        inline: "nearest",
-      });
     }
   };
 
