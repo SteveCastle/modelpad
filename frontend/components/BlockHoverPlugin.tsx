@@ -52,14 +52,10 @@ function FloatingWrapper({
     whileElementsMounted: autoUpdate,
   });
 
-  // Tie the floating logic to the external reference element
   useLayoutEffect(() => {
-    if (referenceEl) {
-      refs.setReference(referenceEl);
-    }
+    if (referenceEl) refs.setReference(referenceEl);
   }, [referenceEl, refs]);
 
-  // Bail early until we have a computed position
   if (x == null || y == null) return null;
 
   return (
@@ -76,7 +72,7 @@ function FloatingWrapper({
 }
 
 /************************************************************
- * PromptControls
+ * PromptControls (unchanged)
  ************************************************************/
 interface PromptControlsProps {
   element: HTMLElement;
@@ -108,9 +104,9 @@ function PromptControls({
   return (
     <FloatingWrapper
       referenceEl={element}
+      className="block-controls"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="block-controls"
     >
       <div className="block-controls-buttons">
         {status === "generating" && (
@@ -122,7 +118,6 @@ function PromptControls({
             ❌
           </button>
         )}
-
         {(status === "completed" || status === "cancelled") && (
           <>
             <button
@@ -165,7 +160,7 @@ function PromptControls({
 }
 
 /************************************************************
- * AIGenerationControls
+ * AIGenerationControls (unchanged)
  ************************************************************/
 interface AIGenerationControlsProps {
   element: HTMLElement;
@@ -187,9 +182,9 @@ function AIGenerationControls({
   return (
     <FloatingWrapper
       referenceEl={element}
+      className="block-controls"
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="block-controls"
     >
       <div className="block-controls-buttons">
         <button
@@ -213,7 +208,7 @@ function AIGenerationControls({
 }
 
 /************************************************************
- * BlockControls
+ * BlockControls – rewrite pop‑over now a FloatingWrapper
  ************************************************************/
 interface BlockControlsProps {
   element: HTMLElement;
@@ -239,58 +234,93 @@ function BlockControls({
   const [showRewriteInput, setShowRewriteInput] = useState(false);
   const [rewriteInstructions, setRewriteInstructions] = useState("");
 
+  const {
+    x: menuX,
+    y: menuY,
+    strategy: menuStrategy,
+    refs: menuRefs,
+  } = useFloating({
+    placement: "right-start",
+    middleware: [offset(4), flip(), shift({ padding: 8 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  useLayoutEffect(() => {
+    if (element) menuRefs.setReference(element);
+  }, [element, menuRefs]);
+
   const handleRewriteSubmit = () => {
     onRewrite(rewriteInstructions);
     setRewriteInstructions("");
     setShowRewriteInput(false);
   };
 
+  if (menuX == null || menuY == null) return null;
+
   return (
-    <FloatingWrapper
-      referenceEl={element}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      className="block-controls"
-    >
-      <div className="block-controls-buttons">
-        <button
-          className="block-control-btn ai-btn"
-          onClick={onAIGenerate}
-          disabled={isAIGenerating}
-          title={
-            isAIGenerating
-              ? "AI is generating..."
-              : "Generate AI content from this block"
-          }
-        >
-          {isAIGenerating ? "⏳" : "⚡"}
-        </button>
-        <button
-          className="block-control-btn rewrite-btn"
-          onClick={() => setShowRewriteInput(!showRewriteInput)}
-          disabled={isAIGenerating}
-          title={
-            isAIGenerating
-              ? "AI is generating..."
-              : "Rewrite this block with AI"
-          }
-        >
-          ✏️
-        </button>
-        <button
-          className="block-control-btn delete-btn"
-          onClick={onDelete}
-          disabled={isDeletionDisabled}
-          title={
-            isDeletionDisabled ? "Cannot delete the last block" : "Delete block"
-          }
-        >
-          🗑️
-        </button>
+    <>
+      {/* Main controls */}
+      <div
+        ref={menuRefs.setFloating}
+        className="block-controls"
+        style={{
+          position: menuStrategy,
+          top: menuY,
+          left: menuX,
+          zIndex: 1000,
+        }}
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        <div className="block-controls-buttons">
+          <button
+            className="block-control-btn ai-btn"
+            onClick={onAIGenerate}
+            disabled={isAIGenerating}
+            title={
+              isAIGenerating
+                ? "AI is generating..."
+                : "Generate AI content from this block"
+            }
+          >
+            {isAIGenerating ? "⏳" : "⚡"}
+          </button>
+          <button
+            className="block-control-btn rewrite-btn"
+            onClick={() => setShowRewriteInput(!showRewriteInput)}
+            disabled={isAIGenerating}
+            title={
+              isAIGenerating
+                ? "AI is generating..."
+                : "Rewrite this block with AI"
+            }
+          >
+            ✏️
+          </button>
+          <button
+            className="block-control-btn delete-btn"
+            onClick={onDelete}
+            disabled={isDeletionDisabled}
+            title={
+              isDeletionDisabled
+                ? "Cannot delete the last block"
+                : "Delete block"
+            }
+          >
+            🗑️
+          </button>
+        </div>
       </div>
 
+      {/* Rewrite pop‑over anchored to the menu */}
       {showRewriteInput && (
-        <div className="rewrite-input-area">
+        <FloatingWrapper
+          referenceEl={menuRefs.floating?.current ?? element}
+          placement="left-start"
+          className="rewrite-input-area"
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+        >
           <input
             type="text"
             className="rewrite-input"
@@ -315,9 +345,9 @@ function BlockControls({
           >
             Rewrite
           </button>
-        </div>
+        </FloatingWrapper>
       )}
-    </FloatingWrapper>
+    </>
   );
 }
 
