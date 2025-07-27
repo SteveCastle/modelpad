@@ -63,7 +63,7 @@ function TagTypeahead({
     );
     setShowCreateNew(query.trim().length > 0 && !exactMatch);
     setSelectedIndex(0);
-  }, [query, searchTagsByPath]);
+  }, [query]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -237,7 +237,7 @@ function TagEditDropdown({
     );
     setShowCreateNew(searchQuery.trim().length > 0 && !exactMatch);
     setSelectedIndex(0);
-  }, [searchQuery, searchTagsByPath, tagNode, tagUsageCounts]);
+  }, [searchQuery, tagNode, tagUsageCounts]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -454,89 +454,6 @@ export function TagPlugin(): JSX.Element | null {
     null
   );
 
-  const calculateTypeaheadPosition = useCallback(() => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return null;
-
-    const range = selection.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-
-    return {
-      x: rect.left,
-      y: rect.bottom + 4, // No need for scrollY with fixed positioning
-    };
-  }, []);
-
-  // New function to calculate position from DOM element
-  const calculateElementPosition = useCallback((element: HTMLElement) => {
-    const rect = element.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-
-    // Validate that we have a valid rect
-    if (rect.width === 0 && rect.height === 0) {
-      throw new Error("Invalid element rect");
-    }
-
-    // Calculate preferred position (below the element)
-    let x = rect.left;
-    let y = rect.bottom + 4; // Fixed positioning doesn't need scrollY
-
-    // Ensure menu doesn't go off-screen horizontally
-    const menuWidth = 400; // Approximate menu width
-    if (x + menuWidth > viewportWidth) {
-      x = Math.max(8, viewportWidth - menuWidth - 8);
-    }
-    if (x < 8) {
-      x = 8;
-    }
-
-    // Ensure menu doesn't go off-screen vertically
-    const menuHeight = 300; // Approximate menu height
-    if (y + menuHeight > viewportHeight) {
-      // Position above the element instead
-      y = rect.top - menuHeight - 4;
-
-      // If still off-screen, position at top of viewport
-      if (y < 8) {
-        y = 8;
-      }
-    }
-
-    return { x, y };
-  }, []);
-
-  // Improved position calculation with fallbacks
-  const calculatePositionWithFallback = useCallback(
-    (preferredElement?: HTMLElement) => {
-      // First try to use the provided element
-      if (preferredElement) {
-        try {
-          return calculateElementPosition(preferredElement);
-        } catch (error) {
-          console.warn("Failed to calculate element position:", error);
-        }
-      }
-
-      // Fallback to selection-based positioning
-      try {
-        const selectionPosition = calculateTypeaheadPosition();
-        if (selectionPosition) {
-          return selectionPosition;
-        }
-      } catch (error) {
-        console.warn("Failed to calculate selection position:", error);
-      }
-
-      // Final fallback to center of viewport
-      return {
-        x: Math.max(8, (window.innerWidth - 400) / 2),
-        y: 100, // Fixed positioning relative to viewport
-      };
-    },
-    [calculateElementPosition, calculateTypeaheadPosition]
-  );
-
   const clearTagging = useCallback(() => {
     setIsTagging(false);
     setTagQuery("");
@@ -598,7 +515,7 @@ export function TagPlugin(): JSX.Element | null {
       syncStoryTags();
       clearTagEdit();
     },
-    [editor, selectedTagForEdit, updateTagLastUsed, clearTagEdit, syncStoryTags]
+    [editor, selectedTagForEdit, updateTagLastUsed, syncStoryTags, clearTagEdit]
   );
 
   const handleTagEditDelete = useCallback(() => {
@@ -623,30 +540,7 @@ export function TagPlugin(): JSX.Element | null {
     // Sync story tags after deleting tag
     syncStoryTags();
     clearTagEdit();
-  }, [editor, selectedTagForEdit, clearTagEdit, syncStoryTags]);
-
-  const handleTagDelete = useCallback(() => {
-    if (selectedTagForEdit) {
-      editor.update(() => {
-        // Position cursor properly before removing the tag
-        const nextSibling = selectedTagForEdit.getNextSibling();
-        const prevSibling = selectedTagForEdit.getPreviousSibling();
-
-        // Remove the tag
-        selectedTagForEdit.remove();
-
-        // Position cursor after removal
-        if (nextSibling && nextSibling instanceof TextNode) {
-          nextSibling.select(0, 0);
-        } else if (prevSibling && prevSibling instanceof TextNode) {
-          prevSibling.selectEnd();
-        }
-      });
-    }
-
-    // Sync story tags after deleting tag
-    syncStoryTags();
-  }, [editor, selectedTagForEdit, syncStoryTags]);
+  }, [editor, selectedTagForEdit, syncStoryTags, clearTagEdit]);
 
   const handleTagSelect = useCallback(
     (selectedTag: Tag | null) => {
@@ -726,8 +620,8 @@ export function TagPlugin(): JSX.Element | null {
       tagQuery,
       addHierarchicalTag,
       updateTagLastUsed,
-      clearTagging,
       syncStoryTags,
+      clearTagging,
     ]
   );
 
@@ -780,14 +674,7 @@ export function TagPlugin(): JSX.Element | null {
 
       return false;
     },
-    [
-      isTagging,
-      selectedTagForEdit,
-      editor,
-      handleTagDelete,
-      calculateTypeaheadPosition,
-      syncStoryTags,
-    ]
+    [isTagging, editor, syncStoryTags]
   );
 
   const handleSelectionChange = useCallback(() => {
@@ -832,7 +719,28 @@ export function TagPlugin(): JSX.Element | null {
           setTagTextNode(anchorNode);
 
           // Calculate position for typeahead with fallbacks
-          const position = calculatePositionWithFallback();
+          const calculatePosition = () => {
+            try {
+              const selection = window.getSelection();
+              if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const rect = range.getBoundingClientRect();
+                return {
+                  x: rect.left,
+                  y: rect.bottom + 4,
+                };
+              }
+            } catch (error) {
+              console.warn("Failed to calculate selection position:", error);
+            }
+
+            // Fallback to center of viewport
+            return {
+              x: Math.max(8, (window.innerWidth - 400) / 2),
+              y: 100,
+            };
+          };
+          const position = calculatePosition();
           setTypeaheadPosition(position);
         } else {
           clearTagging();
@@ -841,7 +749,7 @@ export function TagPlugin(): JSX.Element | null {
         clearTagging();
       }
     });
-  }, [editor, calculatePositionWithFallback, clearTagging]);
+  }, [editor, clearTagging]);
 
   useEffect(() => {
     return editor.registerCommand(
@@ -869,34 +777,44 @@ export function TagPlugin(): JSX.Element | null {
 
       if (isTagging && typeaheadPosition) {
         if (!target.closest(".tag-typeahead-dropdown")) {
-          clearTagging();
+          setIsTagging(false);
+          setTagQuery("");
+          setTypeaheadPosition(null);
+          setTagStartOffset(0);
+          setTagTextNode(null);
         }
       }
 
       if (showTagEdit && tagEditPosition) {
         if (!target.closest(".tag-edit-dropdown")) {
-          clearTagEdit();
+          setShowTagEdit(false);
+          setTagEditPosition(null);
+          setSelectedTagForEdit(null);
         }
       }
     };
 
     // Handle tag delete events from delete buttons
     const handleTagDeleteEvent = (event: CustomEvent) => {
-      const tagNode = event.detail?.tagNode;
-      if (tagNode) {
+      const tagNodeKey = event.detail?.tagNodeKey;
+      if (tagNodeKey) {
         editor.update(() => {
-          // Position cursor properly before removing the tag
-          const nextSibling = tagNode.getNextSibling();
-          const prevSibling = tagNode.getPreviousSibling();
+          // Find the node by key
+          const tagNode = editor.getEditorState()._nodeMap.get(tagNodeKey);
+          if (tagNode && $isTagNode(tagNode)) {
+            // Position cursor properly before removing the tag
+            const nextSibling = tagNode.getNextSibling();
+            const prevSibling = tagNode.getPreviousSibling();
 
-          // Remove the tag
-          tagNode.remove();
+            // Remove the tag
+            tagNode.remove();
 
-          // Position cursor after removal
-          if (nextSibling && nextSibling instanceof TextNode) {
-            nextSibling.select(0, 0);
-          } else if (prevSibling && prevSibling instanceof TextNode) {
-            prevSibling.selectEnd();
+            // Position cursor after removal
+            if (nextSibling && nextSibling instanceof TextNode) {
+              nextSibling.select(0, 0);
+            } else if (prevSibling && prevSibling instanceof TextNode) {
+              prevSibling.selectEnd();
+            }
           }
         });
 
@@ -907,24 +825,78 @@ export function TagPlugin(): JSX.Element | null {
 
     // Handle tag edit events from clicking on tags
     const handleTagEdit = (event: CustomEvent) => {
-      const { tagNode, targetElement } = event.detail || {};
-      if (tagNode) {
+      const { tagNodeKey, targetElement } = event.detail || {};
+      if (tagNodeKey) {
         // Clear other states
-        clearTagging();
+        setIsTagging(false);
+        setTagQuery("");
+        setTypeaheadPosition(null);
+        setTagStartOffset(0);
+        setTagTextNode(null);
 
-        // Set up tag editing
-        setSelectedTagForEdit(tagNode);
-        setShowTagEdit(true);
+        // Find the node by key and set it for editing
+        editor.getEditorState().read(() => {
+          const tagNode = editor.getEditorState()._nodeMap.get(tagNodeKey);
+          if (tagNode && $isTagNode(tagNode)) {
+            setSelectedTagForEdit(tagNode);
+            setShowTagEdit(true);
 
-        // Use the provided target element, or fall back to event.target
-        const tagElement =
-          targetElement ||
-          ((event.target as HTMLElement)?.closest?.(
-            ".editor-tag"
-          ) as HTMLElement) ||
-          (event.target as HTMLElement);
-        const position = calculatePositionWithFallback(tagElement);
-        setTagEditPosition(position);
+            // Use the provided target element, or fall back to event.target
+            const tagElement =
+              targetElement ||
+              ((event.target as HTMLElement)?.closest?.(
+                ".editor-tag"
+              ) as HTMLElement) ||
+              (event.target as HTMLElement);
+
+            // Calculate position inline to avoid dependency
+            const calculatePosition = (element?: HTMLElement) => {
+              if (element) {
+                try {
+                  const rect = element.getBoundingClientRect();
+                  const viewportHeight = window.innerHeight;
+                  const viewportWidth = window.innerWidth;
+
+                  if (rect.width === 0 && rect.height === 0) {
+                    throw new Error("Invalid element rect");
+                  }
+
+                  let x = rect.left;
+                  let y = rect.bottom + 4;
+
+                  const menuWidth = 400;
+                  if (x + menuWidth > viewportWidth) {
+                    x = Math.max(8, viewportWidth - menuWidth - 8);
+                  }
+                  if (x < 8) {
+                    x = 8;
+                  }
+
+                  const menuHeight = 300;
+                  if (y + menuHeight > viewportHeight) {
+                    y = rect.top - menuHeight - 4;
+                    if (y < 8) {
+                      y = 8;
+                    }
+                  }
+
+                  return { x, y };
+                } catch (error) {
+                  console.warn("Failed to calculate element position:", error);
+                }
+              }
+
+              // Fallback to center of viewport
+              return {
+                x: Math.max(8, (window.innerWidth - 400) / 2),
+                y: 100,
+              };
+            };
+
+            const position = calculatePosition(tagElement);
+            setTagEditPosition(position);
+          }
+        });
       }
     };
 
@@ -946,12 +918,9 @@ export function TagPlugin(): JSX.Element | null {
   }, [
     isTagging,
     typeaheadPosition,
-    clearTagging,
-    editor,
-    calculatePositionWithFallback,
-    clearTagEdit,
     showTagEdit,
     tagEditPosition,
+    editor,
     syncStoryTags,
   ]);
 

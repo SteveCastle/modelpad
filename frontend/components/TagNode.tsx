@@ -129,7 +129,7 @@ export class TagNode extends TextNode {
 
       // Dispatch custom event to be handled by TagPlugin
       const deleteEvent = new CustomEvent("tag-delete", {
-        detail: { tagNode: this },
+        detail: { tagNodeKey: this.getKey() },
         bubbles: true,
       });
       element.dispatchEvent(deleteEvent);
@@ -143,7 +143,7 @@ export class TagNode extends TextNode {
       // Dispatch custom event to show tag edit menu
       const editEvent = new CustomEvent("tag-edit", {
         detail: {
-          tagNode: this,
+          tagNodeKey: this.getKey(),
           targetElement: element, // Include the tag element for positioning
         },
         bubbles: true,
@@ -239,7 +239,7 @@ export class TagNode extends TextNode {
 
         // Dispatch custom event to be handled by TagPlugin
         const deleteEvent = new CustomEvent("tag-delete", {
-          detail: { tagNode: this },
+          detail: { tagNodeKey: this.getKey() },
           bubbles: true,
         });
         dom.dispatchEvent(deleteEvent);
@@ -258,7 +258,7 @@ export class TagNode extends TextNode {
         // Dispatch custom event to show tag edit menu
         const editEvent = new CustomEvent("tag-edit", {
           detail: {
-            tagNode: this,
+            tagNodeKey: this.getKey(),
             targetElement: dom, // Include the tag element for positioning
           },
           bubbles: true,
