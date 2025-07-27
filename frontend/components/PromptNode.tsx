@@ -82,11 +82,11 @@ export class PromptNode extends TextNode {
   }
 
   updateDOM(
-    prevNode: PromptNode,
+    prevNode: LexicalNode,
     dom: HTMLElement,
     config: EditorConfig
   ): boolean {
-    const isUpdated = super.updateDOM(prevNode, dom, config);
+    const isUpdated = super.updateDOM(prevNode as this, dom, config);
     const newClassName = `prompt-text prompt-${this.__status}`;
     if (dom.className !== newClassName) {
       dom.className = newClassName;

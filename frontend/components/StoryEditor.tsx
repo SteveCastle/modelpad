@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
-import LexicalErrorBoundary from "@lexical/react/LexicalErrorBoundary";
+import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { TableOfContentsPlugin } from "@lexical/react/LexicalTableOfContentsPlugin";
@@ -10,6 +10,7 @@ import { CodeHighlightNode, CodeNode } from "@lexical/code";
 import { ListItemNode, ListNode } from "@lexical/list";
 import { TableCellNode, TableNode, TableRowNode } from "@lexical/table";
 import { HeadingNode, QuoteNode } from "@lexical/rich-text";
+import { HorizontalRuleNode } from "@lexical/react/LexicalHorizontalRuleNode";
 import { AutoLinkNode, LinkNode } from "@lexical/link";
 import { AIGenerationNode } from "./AIGenerationNode";
 import { PromptNode } from "./PromptNode";
@@ -19,8 +20,9 @@ import "./PromptNode.css";
 import "./TagNode.css";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
+import { TablePlugin } from "@lexical/react/LexicalTablePlugin";
 import { MarkdownShortcutPlugin } from "./LexicalMarkdownShortcutPlugin";
-import { TRANSFORMERS } from "@lexical/markdown";
+import { DEFAULT_TRANSFORMERS } from "./LexicalMarkdownShortcutPlugin";
 import { useDebouncedCallback } from "use-debounce";
 import CodeHighlightPlugin from "./CodeHighlightPlugin";
 import { BlockHoverPlugin } from "./BlockHoverPlugin";
@@ -354,6 +356,7 @@ export function StoryEditor({
         AIGenerationNode,
         PromptNode,
         TagNode,
+        HorizontalRuleNode,
       ],
       editorState: initialContent,
     }),
@@ -446,9 +449,10 @@ export function StoryEditor({
           ignoreSelectionChange
           ignoreHistoryMergeTagChange
         />
-        <MarkdownShortcutPlugin transformers={TRANSFORMERS} />
+        <MarkdownShortcutPlugin transformers={DEFAULT_TRANSFORMERS} />
         <ListPlugin />
         <LinkPlugin />
+        <TablePlugin />
         <CodeHighlightPlugin />
       </div>
     </LexicalComposer>

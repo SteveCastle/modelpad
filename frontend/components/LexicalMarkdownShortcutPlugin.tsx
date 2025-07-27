@@ -17,6 +17,7 @@ import {
   $isHorizontalRuleNode,
   HorizontalRuleNode,
 } from "@lexical/react/LexicalHorizontalRuleNode";
+import { $createParagraphNode, $createTextNode } from "lexical";
 import { useEffect } from "react";
 
 const HR: ElementTransformer = {
@@ -39,7 +40,42 @@ const HR: ElementTransformer = {
   },
   type: "element",
 };
-export const DEFAULT_TRANSFORMERS = [HR, ...TRANSFORMERS];
+
+// Task list transformer
+const TASK_LIST: ElementTransformer = {
+  dependencies: [HorizontalRuleNode], // Using HR as dependency since we don't have a specific task list node
+  export: () => {
+    // Task list export logic would go here
+    return null;
+  },
+  regExp: /^- \[([ x])\] (.+)$/,
+  replace: (parentNode, _1, _2, isImport) => {
+    // Create a task list item
+    const isChecked = String(_1) === "x";
+    const taskText = String(_2);
+
+    // For now, create a paragraph with checkbox-like formatting
+    const paragraphNode = $createParagraphNode();
+    const checkboxText = isChecked ? "[x] " : "[ ] ";
+    const textNode = $createTextNode(checkboxText + taskText);
+    paragraphNode.append(textNode);
+
+    if (isImport || parentNode.getNextSibling() != null) {
+      parentNode.replace(paragraphNode);
+    } else {
+      parentNode.insertBefore(paragraphNode);
+    }
+
+    paragraphNode.selectNext();
+  },
+  type: "element",
+};
+
+// Note: Footnotes are not directly supported by Lexical's built-in transformers
+// They would require a custom node type and transformer implementation
+// For now, footnotes can be handled as regular text with [^1] format
+
+export const DEFAULT_TRANSFORMERS = [HR, TASK_LIST, ...TRANSFORMERS];
 
 export function MarkdownShortcutPlugin({
   transformers = DEFAULT_TRANSFORMERS,

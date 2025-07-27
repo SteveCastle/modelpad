@@ -8,8 +8,10 @@ import {
   $getNodeByKey,
   $getRoot,
   $createTextNode,
+  TextNode,
 } from "lexical";
-import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
+import { $convertFromMarkdownString } from "@lexical/markdown";
+import { DEFAULT_TRANSFORMERS } from "./LexicalMarkdownShortcutPlugin";
 import { mergeRegister } from "@lexical/utils";
 import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
 import { $isPromptNode } from "./PromptNode";
@@ -650,53 +652,52 @@ export function BlockHoverPlugin(): JSX.Element | null {
           // Get the parent element where we'll insert the converted content
           const parentElement = aiNode.getParent();
           if ($isElementNode(parentElement)) {
-            // Save current editor state
+            // Remove the AI generation node first
+            aiNode.remove();
+
+            // Use Lexical's built-in markdown conversion
+            // Create a temporary root to parse the markdown
             const root = $getRoot();
             const originalChildren = [...root.getChildren()];
 
-            // Clear root and parse markdown
+            // Clear the root temporarily to parse markdown
             root.clear();
-            $convertFromMarkdownString(markdownText, TRANSFORMERS);
 
-            // Extract the parsed nodes
+            // Parse the markdown using Lexical's built-in converter
+            $convertFromMarkdownString(markdownText, DEFAULT_TRANSFORMERS);
+
+            // Get the parsed nodes
             const parsedNodes = [...root.getChildren()];
 
-            // Restore original editor content
+            // Restore the original editor content
             root.clear();
             originalChildren.forEach((child) => root.append(child));
 
-            // Find where to insert the parsed content
-            const aiNodeParent = aiNode.getParent();
-            if ($isElementNode(aiNodeParent)) {
-              // Remove the AI generation node
-              aiNode.remove();
+            // Insert the parsed nodes in the correct order
+            if (parsedNodes.length > 0) {
+              // Clear the parent and insert all nodes
+              parentElement.clear();
+              parsedNodes.forEach((node) => {
+                parentElement.append(node);
+              });
 
-              // If we have parsed nodes, insert them
-              if (parsedNodes.length > 0) {
-                // Insert parsed nodes after the current parent
-                parsedNodes.forEach((node, index) => {
-                  if (index === 0) {
-                    // Replace the parent's content with first parsed node's content
-                    if ($isElementNode(node)) {
-                      aiNodeParent.clear();
-                      const nodeChildren = [...node.getChildren()];
-                      nodeChildren.forEach((child) =>
-                        aiNodeParent.append(child)
-                      );
-                    } else {
-                      aiNodeParent.clear();
-                      aiNodeParent.append(node);
-                    }
-                  } else {
-                    // Insert additional nodes after the parent
-                    aiNodeParent.insertAfter(node);
-                  }
-                });
+              // Position cursor after the last inserted node
+              const lastNode = parsedNodes[parsedNodes.length - 1];
+              const nextSibling = lastNode.getNextSibling();
+              if (nextSibling && nextSibling instanceof TextNode) {
+                nextSibling.select(0, 0);
               } else {
-                // Fallback: convert to plain text if parsing failed
-                aiNodeParent.clear();
-                aiNodeParent.append($createTextNode(markdownText));
+                // Create a space after the last node for better cursor positioning
+                const spaceNode = $createTextNode(" ");
+                lastNode.insertAfter(spaceNode);
+                spaceNode.select(0, 0);
               }
+            } else {
+              // Fallback: if no nodes were parsed, insert as plain text
+              const textNode = $createTextNode(markdownText);
+              parentElement.clear();
+              parentElement.append(textNode);
+              textNode.select(0, 0);
             }
           } else {
             // Fallback: just convert to text node

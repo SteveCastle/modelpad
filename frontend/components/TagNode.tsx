@@ -190,11 +190,11 @@ export class TagNode extends TextNode {
   }
 
   updateDOM(
-    prevNode: TagNode,
+    prevNode: LexicalNode,
     dom: HTMLElement,
     config: EditorConfig
   ): boolean {
-    const isUpdated = super.updateDOM(prevNode, dom, config);
+    const isUpdated = super.updateDOM(prevNode as this, dom, config);
 
     if (dom.className !== "editor-tag") {
       dom.className = "editor-tag";

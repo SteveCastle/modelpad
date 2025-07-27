@@ -5,7 +5,6 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import {
   $convertFromMarkdownString,
   $convertToMarkdownString,
-  TRANSFORMERS,
 } from "@lexical/markdown";
 import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
@@ -15,6 +14,7 @@ import "./Toolbar.css";
 import ModelSettings from "./ModelSettings";
 import ServerSelect from "./ServerSelect";
 import ToolBarPlugin from "./ToolBarPlugin";
+import { DEFAULT_TRANSFORMERS } from "./LexicalMarkdownShortcutPlugin";
 import {
   useSessionContext,
   signOut,
@@ -174,7 +174,7 @@ export function Toolbar() {
             createStory(file.name);
             const markDown = await file.text();
             editor.update(() => {
-              $convertFromMarkdownString(markDown, TRANSFORMERS);
+              $convertFromMarkdownString(markDown, DEFAULT_TRANSFORMERS);
             });
           }
           getFile();
@@ -212,7 +212,7 @@ export function Toolbar() {
             const writableStream = await newHandle.createWritable();
             let markdown = "";
             editor.update(() => {
-              markdown = $convertToMarkdownString(TRANSFORMERS);
+              markdown = $convertToMarkdownString(DEFAULT_TRANSFORMERS);
             });
             await writableStream.write(markdown);
 

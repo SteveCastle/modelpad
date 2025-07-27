@@ -114,13 +114,24 @@ function processListItems(
   write: (text: string) => void
 ): void {
   if (node.children) {
+    // Process children in order to maintain list order
     for (let i = 0; i < node.children.length; i++) {
+      const child = node.children[i];
+
+      // Add proper indentation for nested lists
+      const indent = " ".repeat(depth * 2);
+      write(indent);
+
       if (node.listType === "bullet") {
         write("- ");
       } else if (node.listType === "number") {
-        write(`${i + 1}. `);
+        // Use the actual value if available, otherwise use index + 1
+        const number = child.value !== undefined ? child.value : i + 1;
+        write(`${number}. `);
       }
-      processChildren(node.children[i].children, depth + 1, write);
+
+      // Process the children of this list item
+      processChildren(child.children, depth + 1, write);
       write("\n");
     }
   }

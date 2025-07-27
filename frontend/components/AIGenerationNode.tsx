@@ -54,11 +54,11 @@ export class AIGenerationNode extends TextNode {
   }
 
   updateDOM(
-    prevNode: AIGenerationNode,
+    prevNode: LexicalNode,
     dom: HTMLElement,
     config: EditorConfig
   ): boolean {
-    const isUpdated = super.updateDOM(prevNode, dom, config);
+    const isUpdated = super.updateDOM(prevNode as this, dom, config);
     const newClassName = this.__completed
       ? "ai-generation-text ai-generation-completed"
       : "ai-generation-text";
