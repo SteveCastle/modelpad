@@ -13,6 +13,15 @@ import {
   RangeSelection,
 } from "lexical";
 
+// Helper function to format tag display name (same as Notes.tsx and TagPlugin.tsx)
+const formatTagName = (name: string): string => {
+  return name
+    .replace(/-/g, " ") // Replace hyphens with spaces
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 export type SerializedTagNode = Spread<
   {
     type: "tag";
@@ -104,9 +113,9 @@ export class TagNode extends TextNode {
     element.setAttribute("contenteditable", "false");
     element.setAttribute("spellcheck", "false");
     element.setAttribute("data-click-handler", "true");
-    element.title = `Tag: ${this.__tagName}\nPath: ${this.__tagPath.join(
-      " → "
-    )}`;
+    element.title = `Tag: ${formatTagName(
+      this.__tagName
+    )}\nPath: ${this.__tagPath.map(formatTagName).join(" → ")}`;
 
     // Create delete button
     const deleteButton = document.createElement("button");
@@ -166,13 +175,18 @@ export class TagNode extends TextNode {
   }
 
   getDisplayText(): string {
-    // Show the full hierarchical path with styling
+    // Show the full hierarchical path with formatting
     if (this.__tagPath.length > 1) {
-      const parentPath = this.__tagPath.slice(0, -1).join("/");
-      const lastSegment = this.__tagPath[this.__tagPath.length - 1];
+      const parentPath = this.__tagPath
+        .slice(0, -1)
+        .map(formatTagName)
+        .join("/");
+      const lastSegment = formatTagName(
+        this.__tagPath[this.__tagPath.length - 1]
+      );
       return `${parentPath}/${lastSegment}`;
     }
-    return this.__tagPath[0] || this.__tagName;
+    return formatTagName(this.__tagPath[0] || this.__tagName);
   }
 
   updateDOM(
@@ -207,7 +221,9 @@ export class TagNode extends TextNode {
 
     dom.setAttribute("contenteditable", "false");
     dom.setAttribute("spellcheck", "false");
-    dom.title = `Tag: ${this.__tagName}\nPath: ${this.__tagPath.join(" → ")}`;
+    dom.title = `Tag: ${formatTagName(this.__tagName)}\nPath: ${this.__tagPath
+      .map(formatTagName)
+      .join(" → ")}`;
 
     // Ensure delete button exists
     let deleteButton = dom.querySelector(".tag-delete-button") as HTMLElement;

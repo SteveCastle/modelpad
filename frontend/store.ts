@@ -239,9 +239,10 @@ type State = {
   removePromptGeneration: (promptId: string) => void;
   getPromptGeneration: (promptId: string) => PromptGeneration | undefined;
   // Tag management actions
-  addTag: (tag: Omit<Tag, "id" | "createdAt" | "usageCount">) => Tag;
+  addTag: (tag: Omit<Tag, "id" | "createdAt">) => Tag;
   addHierarchicalTag: (pathString: string) => Tag;
   updateTag: (tagId: string, updates: Partial<Tag>) => void;
+  updateTagLastUsed: (tagId: string) => void;
   deleteTag: (tagId: string) => void;
   getTag: (tagId: string) => Tag | undefined;
   searchTags: (query: string) => Tag[];
@@ -969,6 +970,7 @@ export const useStore = create<State>()(
           ...tag,
           id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
+          lastUsedAt: new Date().toISOString(),
         };
         set(() => ({
           tags: [...get().tags, newTag],
@@ -979,6 +981,15 @@ export const useStore = create<State>()(
         set(() => ({
           tags: get().tags.map((tag) =>
             tag.id === tagId ? { ...tag, ...updates } : tag
+          ),
+        }));
+      },
+      updateTagLastUsed: (tagId: string) => {
+        set(() => ({
+          tags: get().tags.map((tag) =>
+            tag.id === tagId
+              ? { ...tag, lastUsedAt: new Date().toISOString() }
+              : tag
           ),
         }));
       },
@@ -1009,7 +1020,7 @@ export const useStore = create<State>()(
         });
 
         // Update if we had to migrate any tags
-        if (migratedTags.some((tag, index) => !tags[index].path)) {
+        if (migratedTags.some((_tag, index) => !tags[index].path)) {
           set(() => ({ tags: migratedTags }));
         }
       },
@@ -1085,6 +1096,7 @@ export const useStore = create<State>()(
               name: currentName,
               path: currentPath,
               createdAt: new Date().toISOString(),
+              lastUsedAt: new Date().toISOString(),
               // Mark as category if it's not the final level
               isCategory: i < path.length,
             };
@@ -1126,6 +1138,7 @@ export const useStore = create<State>()(
               name: parentName,
               path: parentPath,
               createdAt: new Date().toISOString(),
+              lastUsedAt: new Date().toISOString(),
               isCategory: true,
             });
           }
@@ -1174,6 +1187,17 @@ export const useStore = create<State>()(
             const bUsageCount = tagUsageCounts[b.id] || 0;
             if (bUsageCount !== aUsageCount) {
               return bUsageCount - aUsageCount;
+            }
+
+            // Then by last used at (more recently used first)
+            const aLastUsedAt = a.lastUsedAt
+              ? new Date(a.lastUsedAt).getTime()
+              : 0;
+            const bLastUsedAt = b.lastUsedAt
+              ? new Date(b.lastUsedAt).getTime()
+              : 0;
+            if (bLastUsedAt !== aLastUsedAt) {
+              return bLastUsedAt - aLastUsedAt;
             }
 
             return a.name.localeCompare(b.name);

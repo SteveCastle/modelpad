@@ -13,6 +13,15 @@ import { $createTagNode, $isTagNode, TagNode } from "./TagNode";
 import { useStore, Tag } from "../store";
 import "./TagNode.css";
 
+// Helper function to format tag display name (same as Notes.tsx)
+const formatTagName = (name: string): string => {
+  return name
+    .replace(/-/g, " ") // Replace hyphens with spaces
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+};
+
 interface TagTypeaheadProps {
   query: string;
   position: { x: number; y: number } | null;
@@ -44,6 +53,7 @@ function TagTypeahead({
   const tagUsageCounts = getTagUsageCounts();
 
   useEffect(() => {
+    // searchTagsByPath already sorts by usage count (most used first)
     const filtered = searchTagsByPath(query);
     setFilteredTags(filtered);
 
@@ -134,15 +144,17 @@ function TagTypeahead({
               {tag.path && tag.path.length > 1 ? (
                 <>
                   <span className="tag-path-parents">
-                    {tag.path.slice(0, -1).join("/")}/
+                    {tag.path.slice(0, -1).map(formatTagName).join("/")}/
                   </span>
                   <span className="tag-path-final">
-                    {tag.path[tag.path.length - 1]}
+                    {formatTagName(tag.path[tag.path.length - 1])}
                   </span>
                 </>
               ) : (
                 <span className="tag-path-final">
-                  {tag.path && tag.path.length > 0 ? tag.path[0] : tag.name}
+                  {tag.path && tag.path.length > 0
+                    ? formatTagName(tag.path[0])
+                    : formatTagName(tag.name)}
                 </span>
               )}
             </span>
@@ -163,7 +175,9 @@ function TagTypeahead({
           onClick={() => handleMouseSelect(null)}
           onMouseEnter={() => setSelectedIndex(filteredTags.length)}
         >
-          <span className="tag-preview">Create "{query.trim()}"</span>
+          <span className="tag-preview">
+            Create "{formatTagName(query.trim())}"
+          </span>
         </div>
       )}
     </div>
@@ -200,9 +214,20 @@ function TagEditDropdown({
     const currentTagId = tagNode.getTagId();
 
     // Filter out the current tag and search by query
+    // searchTagsByPath already sorts by usage count (most used first)
     const filtered = searchQuery
       ? searchTagsByPath(searchQuery).filter((tag) => tag.id !== currentTagId)
-      : allTags.filter((tag) => tag.id !== currentTagId);
+      : allTags
+          .filter((tag) => tag.id !== currentTagId)
+          .sort((a, b) => {
+            // Sort by usage count (most used first)
+            const aUsageCount = tagUsageCounts[a.id] || 0;
+            const bUsageCount = tagUsageCounts[b.id] || 0;
+            if (bUsageCount !== aUsageCount) {
+              return bUsageCount - aUsageCount;
+            }
+            return a.name.localeCompare(b.name);
+          });
 
     setFilteredTags(filtered);
 
@@ -212,7 +237,7 @@ function TagEditDropdown({
     );
     setShowCreateNew(searchQuery.trim().length > 0 && !exactMatch);
     setSelectedIndex(0);
-  }, [searchQuery, searchTagsByPath, tagNode]);
+  }, [searchQuery, searchTagsByPath, tagNode, tagUsageCounts]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -300,15 +325,15 @@ function TagEditDropdown({
             {currentTagPath.length > 1 ? (
               <>
                 <span className="tag-path-parents">
-                  {currentTagPath.slice(0, -1).join("/")}/
+                  {currentTagPath.slice(0, -1).map(formatTagName).join("/")}/
                 </span>
                 <span className="tag-path-final">
-                  {currentTagPath[currentTagPath.length - 1]}
+                  {formatTagName(currentTagPath[currentTagPath.length - 1])}
                 </span>
               </>
             ) : (
               <span className="tag-path-final">
-                {currentTagPath[0] || currentTagName}
+                {formatTagName(currentTagPath[0] || currentTagName)}
               </span>
             )}
           </span>
@@ -345,15 +370,17 @@ function TagEditDropdown({
                   {tag.path && tag.path.length > 1 ? (
                     <>
                       <span className="tag-path-parents">
-                        {tag.path.slice(0, -1).join("/")}/
+                        {tag.path.slice(0, -1).map(formatTagName).join("/")}/
                       </span>
                       <span className="tag-path-final">
-                        {tag.path[tag.path.length - 1]}
+                        {formatTagName(tag.path[tag.path.length - 1])}
                       </span>
                     </>
                   ) : (
                     <span className="tag-path-final">
-                      {tag.path && tag.path.length > 0 ? tag.path[0] : tag.name}
+                      {tag.path && tag.path.length > 0
+                        ? formatTagName(tag.path[0])
+                        : formatTagName(tag.name)}
                     </span>
                   )}
                 </span>
@@ -377,7 +404,9 @@ function TagEditDropdown({
               }}
               onMouseEnter={() => setSelectedIndex(filteredTags.length)}
             >
-              <span className="tag-preview">Create "{searchQuery.trim()}"</span>
+              <span className="tag-preview">
+                Create "{formatTagName(searchQuery.trim())}"
+              </span>
             </div>
           )}
         </div>
@@ -404,9 +433,8 @@ function TagEditDropdown({
 
 export function TagPlugin(): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
-  const { addHierarchicalTag, updateStory, activeStoryId } = useStore(
-    (state) => state
-  );
+  const { addHierarchicalTag, updateStory, activeStoryId, updateTagLastUsed } =
+    useStore((state) => state);
   const [isTagging, setIsTagging] = useState(false);
   const [tagQuery, setTagQuery] = useState("");
   const [typeaheadPosition, setTypeaheadPosition] = useState<{
@@ -537,6 +565,9 @@ export function TagPlugin(): JSX.Element | null {
   const handleTagReplace = useCallback(
     (newTag: Tag) => {
       if (selectedTagForEdit) {
+        // Update the last used timestamp for the new tag
+        updateTagLastUsed(newTag.id);
+
         editor.update(() => {
           // Create new tag node with same text but different tag properties
           const newTagNode = $createTagNode(
@@ -567,7 +598,7 @@ export function TagPlugin(): JSX.Element | null {
       syncStoryTags();
       clearTagEdit();
     },
-    [editor, selectedTagForEdit, clearTagEdit, syncStoryTags]
+    [editor, selectedTagForEdit, updateTagLastUsed, clearTagEdit, syncStoryTags]
   );
 
   const handleTagEditDelete = useCallback(() => {
@@ -631,6 +662,9 @@ export function TagPlugin(): JSX.Element | null {
         // If no tag was selected, create a new hierarchical tag
         const finalTag = selectedTag || addHierarchicalTag(tagQuery.trim());
 
+        // Update the last used timestamp for the tag
+        updateTagLastUsed(finalTag.id);
+
         // Create the tag node
         const tagNode = $createTagNode(
           tagText,
@@ -691,6 +725,7 @@ export function TagPlugin(): JSX.Element | null {
       tagStartOffset,
       tagQuery,
       addHierarchicalTag,
+      updateTagLastUsed,
       clearTagging,
       syncStoryTags,
     ]
