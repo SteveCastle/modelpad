@@ -285,6 +285,38 @@
   padding-left: 20px;
 }
 
+.editor-quote {
+  font-style: italic;
+  color: var(--text-color);
+  background-color: rgba(210, 103, 138, 0.05);
+  border-left: 4px solid #d2678a;
+  padding: 16px 20px;
+  margin: 12px 0;
+  border-radius: 0 8px 8px 0;
+  position: relative;
+  font-size: 1.1em;
+  line-height: 1.6em;
+  box-shadow: 0 2px 8px rgba(210, 103, 138, 0.1);
+  transition: all 0.3s ease;
+}
+
+.editor-quote::before {
+  content: '"';
+  position: absolute;
+  top: 8px;
+  left: 12px;
+  font-size: 2.5em;
+  color: rgba(210, 103, 138, 0.3);
+  font-family: Georgia, serif;
+  line-height: 1;
+}
+
+.editor-quote:hover {
+  background-color: rgba(210, 103, 138, 0.08);
+  box-shadow: 0 4px 12px rgba(210, 103, 138, 0.15);
+  transform: translateX(2px);
+}
+
 .editor-text-bold {
   font-weight: bold;
 }
