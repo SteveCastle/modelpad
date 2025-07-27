@@ -5,6 +5,7 @@ import {
   SELECTION_CHANGE_COMMAND,
   $getNodeByKey,
   $getRoot,
+  LexicalNode,
 } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
@@ -78,13 +79,10 @@ interface PromptControlsProps {
   element: HTMLElement;
   status: "pending" | "generating" | "completed" | "cancelled";
   onCancel: () => void;
-  onUndo: () => void;
-  onRedo: () => void;
+  onConvert: () => void;
   onDelete: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
-  canUndo: boolean;
-  canRedo: boolean;
   isDeletionDisabled: boolean;
 }
 
@@ -92,13 +90,10 @@ function PromptControls({
   element,
   status,
   onCancel,
-  onUndo,
-  onRedo,
+  onConvert,
   onDelete,
   onMouseEnter,
   onMouseLeave,
-  canUndo,
-  canRedo,
   isDeletionDisabled,
 }: PromptControlsProps) {
   return (
@@ -119,30 +114,13 @@ function PromptControls({
           </button>
         )}
         {(status === "completed" || status === "cancelled") && (
-          <>
-            <button
-              className="block-control-btn prompt-control-undo"
-              onClick={onUndo}
-              disabled={!canUndo}
-              title={
-                status === "cancelled"
-                  ? "Restore original content"
-                  : "Undo generation"
-              }
-            >
-              ↶
-            </button>
-            <button
-              className="block-control-btn prompt-control-redo"
-              onClick={onRedo}
-              disabled={!canRedo}
-              title={
-                status === "cancelled" ? "Retry generation" : "Redo generation"
-              }
-            >
-              {status === "cancelled" ? "🔄" : "↷"}
-            </button>
-          </>
+          <button
+            className="block-control-btn prompt-control-convert"
+            onClick={onConvert}
+            title="Convert to regular text"
+          >
+            📝
+          </button>
         )}
         <button
           className="block-control-btn prompt-control-delete"
@@ -366,22 +344,15 @@ export function BlockHoverPlugin(): JSX.Element | null {
   const [isDeletionDisabled, setIsDeletionDisabled] = useState(false);
   const [promptNodeInfo, setPromptNodeInfo] = useState<{
     promptId: string;
+    nodeKey: string;
     status: "pending" | "generating" | "completed" | "cancelled";
-    canUndo: boolean;
-    canRedo: boolean;
   } | null>(null);
   const [aiGenerationNodeInfo, setAIGenerationNodeInfo] = useState<{
     nodeKey: string;
   } | null>(null);
 
-  const {
-    generate,
-    cancelGeneration,
-    undoGeneration,
-    redoGeneration,
-    isGenerating,
-    canGenerate,
-  } = useAIGeneration();
+  const { generate, cancelGeneration, isGenerating, canGenerate } =
+    useAIGeneration();
   const { getPromptGeneration } = useStore((state) => state);
 
   /*******************************************************/
@@ -405,8 +376,8 @@ export function BlockHoverPlugin(): JSX.Element | null {
         setAIGenerationNodeInfo(null);
 
         // Check if this element contains a PromptNode or AIGenerationNode
-        let foundPromptNode: any = null;
-        let foundAIGenerationNode: any = null;
+        let foundPromptNode: LexicalNode | null = null;
+        let foundAIGenerationNode: LexicalNode | null = null;
 
         if ($isElementNode(element)) {
           const children = element.getChildren();
@@ -421,21 +392,19 @@ export function BlockHoverPlugin(): JSX.Element | null {
           }
         }
 
-        if (foundPromptNode) {
+        if (foundPromptNode && $isPromptNode(foundPromptNode)) {
           const generation = getPromptGeneration(foundPromptNode.getPromptId());
           if (generation) {
             setPromptNodeInfo({
               promptId: foundPromptNode.getPromptId(),
+              nodeKey: foundPromptNode.getKey(),
               status: generation.status,
-              canUndo: generation.canUndo,
-              canRedo: generation.canRedo,
             });
           } else {
             setPromptNodeInfo({
               promptId: foundPromptNode.getPromptId(),
+              nodeKey: foundPromptNode.getKey(),
               status: foundPromptNode.getStatus(),
-              canUndo: false,
-              canRedo: false,
             });
           }
         } else if (foundAIGenerationNode) {
@@ -522,23 +491,21 @@ export function BlockHoverPlugin(): JSX.Element | null {
                 }
               }
 
-              if (foundPromptNode) {
+              if (foundPromptNode && $isPromptNode(foundPromptNode)) {
                 const generation = getPromptGeneration(
                   foundPromptNode.getPromptId()
                 );
                 if (generation) {
                   newPromptNodeInfo = {
                     promptId: foundPromptNode.getPromptId(),
+                    nodeKey: foundPromptNode.getKey(),
                     status: generation.status,
-                    canUndo: generation.canUndo,
-                    canRedo: generation.canRedo,
                   };
                 } else {
                   newPromptNodeInfo = {
                     promptId: foundPromptNode.getPromptId(),
+                    nodeKey: foundPromptNode.getKey(),
                     status: foundPromptNode.getStatus(),
-                    canUndo: false,
-                    canRedo: false,
                   };
                 }
                 newAIGenerationNodeInfo = null;
@@ -648,11 +615,19 @@ export function BlockHoverPlugin(): JSX.Element | null {
   const handlePromptCancel = () => {
     if (promptNodeInfo) cancelGeneration(promptNodeInfo.promptId);
   };
-  const handlePromptUndo = () => {
-    if (promptNodeInfo) undoGeneration(promptNodeInfo.promptId);
-  };
-  const handlePromptRedo = () => {
-    if (promptNodeInfo) redoGeneration(promptNodeInfo.promptId);
+  const handlePromptConvert = () => {
+    if (promptNodeInfo) {
+      editor.update(() => {
+        const promptNode = $getNodeByKey(promptNodeInfo.nodeKey);
+        if ($isPromptNode(promptNode)) {
+          // Convert the prompt node to a regular text node using its original text
+          const textNode = promptNode.convertToTextNode();
+          promptNode.replace(textNode);
+        }
+      });
+    }
+    setHoveredElement(null);
+    setPromptNodeInfo(null);
   };
 
   /*******************************************************/
@@ -726,13 +701,10 @@ export function BlockHoverPlugin(): JSX.Element | null {
         element={hoveredElement}
         status={promptNodeInfo.status}
         onCancel={handlePromptCancel}
-        onUndo={handlePromptUndo}
-        onRedo={handlePromptRedo}
+        onConvert={handlePromptConvert}
         onDelete={deleteBlock}
         onMouseEnter={handleControlsMouseEnter}
         onMouseLeave={handleControlsMouseLeave}
-        canUndo={promptNodeInfo.canUndo}
-        canRedo={promptNodeInfo.canRedo}
         isDeletionDisabled={isDeletionDisabled}
       />
     );
