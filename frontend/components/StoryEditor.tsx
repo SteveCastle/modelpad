@@ -388,7 +388,7 @@ export function StoryEditor({
           />
         </div>
         <BlockHoverPlugin />
-        <KeyboardShortcutsPlugin />
+        <KeyboardShortcutsPlugin isActive={isActive} />
         <TagPlugin />
         <HistoryPlugin />
         <OnChangePlugin
