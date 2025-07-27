@@ -111,21 +111,9 @@ export function useAIGeneration() {
                   // First token - create AI generation node
                   generateAINode = $createAIGenerationNode(text);
 
-                  // Check if there's already a paragraph after this element that we can append to
-                  const nextSibling = elementNode.getNextSibling();
-                  if (
-                    nextSibling &&
-                    $isElementNode(nextSibling) &&
-                    nextSibling.getType() === "paragraph"
-                  ) {
-                    // Append to existing paragraph
-                    nextSibling.append(generateAINode);
-                  } else {
-                    // Create a new paragraph to contain the AI generation node
-                    const newParagraph = $createParagraphNode();
-                    newParagraph.append(generateAINode);
-                    elementNode.insertAfter(newParagraph);
-                  }
+                  const newParagraph = $createParagraphNode();
+                  newParagraph.append(generateAINode);
+                  elementNode.insertAfter(newParagraph);
 
                   // Track this node for undo functionality
                   const nodeKey = generateAINode.getKey();

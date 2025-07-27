@@ -669,11 +669,16 @@ export function BlockHoverPlugin(): JSX.Element | null {
         try {
           const parentElement = aiNode.getParent();
           if ($isElementNode(parentElement)) {
-            aiNode.remove();
+            // Log the index of the parent element in the root
             const root = $getRoot();
-            const currentNodes = root
-              .getChildren()
-              .filter((node) => node.getKey() !== aiNode.getKey());
+            const parentIndex = root.getChildren().indexOf(parentElement);
+            console.log("parentIndex", parentIndex);
+            // Nodes before the index
+            const beforeNodes = root.getChildren().slice(0, parentIndex);
+            // Nodes after the index
+            const afterNodes = root.getChildren().slice(parentIndex + 1);
+
+            aiNode.remove();
 
             $convertFromMarkdownString(
               markdownText,
@@ -687,7 +692,10 @@ export function BlockHoverPlugin(): JSX.Element | null {
             });
 
             const firstNode = root.getFirstChild();
-            currentNodes.forEach((node) => firstNode.insertBefore(node));
+            const lastNode = root.getLastChild();
+
+            beforeNodes.forEach((node) => firstNode.insertBefore(node));
+            afterNodes.reverse().forEach((node) => lastNode.insertAfter(node));
           }
         } catch (error) {
           console.error("Error converting markdown:", error);
