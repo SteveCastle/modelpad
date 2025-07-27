@@ -1,5 +1,3 @@
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useEffect, useState, useCallback } from "react";
 import {
   $getSelection,
   $isRangeSelection,
@@ -8,29 +6,80 @@ import {
   $getNodeByKey,
   $getRoot,
 } from "lexical";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
 import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
 import { $isPromptNode } from "./PromptNode";
 import { $isAIGenerationNode } from "./AIGenerationNode";
 import { useStore } from "../store";
+import { useState, useCallback, useEffect, useLayoutEffect, JSX } from "react";
+import {
+  useFloating,
+  offset,
+  flip,
+  shift,
+  autoUpdate,
+  Placement,
+} from "@floating-ui/react";
+
 import "./BlockHoverPlugin.css";
 import "./PromptNode.css";
 
-interface BlockControlsProps {
-  element: HTMLElement;
-  onDelete: () => void;
-  onAIGenerate: () => void;
-  onRewrite: (instructions: string) => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
-  isDeletionDisabled: boolean;
-  isAIGenerating: boolean;
+/************************************************************
+ * Generic floating‑UI wrapper
+ ************************************************************/
+interface FloatingWrapperProps {
+  referenceEl: HTMLElement | null;
+  placement?: Placement;
+  className?: string;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+  children: React.ReactNode;
 }
 
+function FloatingWrapper({
+  referenceEl,
+  placement = "right-start",
+  className,
+  onMouseEnter,
+  onMouseLeave,
+  children,
+}: FloatingWrapperProps) {
+  const { x, y, strategy, refs } = useFloating({
+    placement,
+    middleware: [offset(4), flip(), shift({ padding: 8 })],
+    whileElementsMounted: autoUpdate,
+  });
+
+  // Tie the floating logic to the external reference element
+  useLayoutEffect(() => {
+    if (referenceEl) {
+      refs.setReference(referenceEl);
+    }
+  }, [referenceEl, refs]);
+
+  // Bail early until we have a computed position
+  if (x == null || y == null) return null;
+
+  return (
+    <div
+      ref={refs.setFloating}
+      className={className}
+      style={{ position: strategy, top: y, left: x, zIndex: 1000 }}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      {children}
+    </div>
+  );
+}
+
+/************************************************************
+ * PromptControls
+ ************************************************************/
 interface PromptControlsProps {
   element: HTMLElement;
-  promptId: string;
   status: "pending" | "generating" | "completed" | "cancelled";
   onCancel: () => void;
   onUndo: () => void;
@@ -40,16 +89,6 @@ interface PromptControlsProps {
   onMouseLeave: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  isDeletionDisabled: boolean;
-}
-
-interface AIGenerationControlsProps {
-  element: HTMLElement;
-  nodeKey: string;
-  onConvert: () => void;
-  onDelete: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
   isDeletionDisabled: boolean;
 }
 
@@ -65,49 +104,13 @@ function PromptControls({
   canUndo,
   canRedo,
   isDeletionDisabled,
-}: Omit<PromptControlsProps, "promptId">) {
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-
-  useEffect(() => {
-    const updatePosition = () => {
-      const rect = element.getBoundingClientRect();
-      const menuHeight = 100; // Height of the menu at the top
-      const minTopMargin = 10; // Additional margin from menu
-
-      // Calculate initial position
-      let top = rect.top + window.scrollY;
-      const left = rect.right - 5; // Slightly overlap the right edge
-
-      // Ensure controls don't go above the menu area
-      const viewportTop = window.scrollY;
-      if (top < viewportTop + menuHeight + minTopMargin) {
-        top = viewportTop + menuHeight + minTopMargin;
-      }
-
-      setPosition({ top, left });
-    };
-
-    updatePosition();
-    window.addEventListener("scroll", updatePosition);
-    window.addEventListener("resize", updatePosition);
-
-    return () => {
-      window.removeEventListener("scroll", updatePosition);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [element]);
-
+}: PromptControlsProps) {
   return (
-    <div
-      className="block-controls"
-      style={{
-        position: "absolute",
-        top: position.top,
-        left: position.left,
-        zIndex: 1000,
-      }}
+    <FloatingWrapper
+      referenceEl={element}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      className="block-controls"
     >
       <div className="block-controls-buttons">
         {status === "generating" && (
@@ -157,8 +160,20 @@ function PromptControls({
           🗑️
         </button>
       </div>
-    </div>
+    </FloatingWrapper>
   );
+}
+
+/************************************************************
+ * AIGenerationControls
+ ************************************************************/
+interface AIGenerationControlsProps {
+  element: HTMLElement;
+  onConvert: () => void;
+  onDelete: () => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  isDeletionDisabled: boolean;
 }
 
 function AIGenerationControls({
@@ -168,49 +183,13 @@ function AIGenerationControls({
   onMouseEnter,
   onMouseLeave,
   isDeletionDisabled,
-}: Omit<AIGenerationControlsProps, "nodeKey">) {
-  const [position, setPosition] = useState({ top: 0, left: 0 });
-
-  useEffect(() => {
-    const updatePosition = () => {
-      const rect = element.getBoundingClientRect();
-      const menuHeight = 100; // Height of the menu at the top
-      const minTopMargin = 10; // Additional margin from menu
-
-      // Calculate initial position
-      let top = rect.top + window.scrollY;
-      const left = rect.right - 5; // Slightly overlap the right edge
-
-      // Ensure controls don't go above the menu area
-      const viewportTop = window.scrollY;
-      if (top < viewportTop + menuHeight + minTopMargin) {
-        top = viewportTop + menuHeight + minTopMargin;
-      }
-
-      setPosition({ top, left });
-    };
-
-    updatePosition();
-    window.addEventListener("scroll", updatePosition);
-    window.addEventListener("resize", updatePosition);
-
-    return () => {
-      window.removeEventListener("scroll", updatePosition);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [element]);
-
+}: AIGenerationControlsProps) {
   return (
-    <div
-      className="block-controls"
-      style={{
-        position: "absolute",
-        top: position.top,
-        left: position.left,
-        zIndex: 1000,
-      }}
+    <FloatingWrapper
+      referenceEl={element}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      className="block-controls"
     >
       <div className="block-controls-buttons">
         <button
@@ -229,8 +208,22 @@ function AIGenerationControls({
           ❌
         </button>
       </div>
-    </div>
+    </FloatingWrapper>
   );
+}
+
+/************************************************************
+ * BlockControls
+ ************************************************************/
+interface BlockControlsProps {
+  element: HTMLElement;
+  onDelete: () => void;
+  onAIGenerate: () => void;
+  onRewrite: (instructions: string) => void;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  isDeletionDisabled: boolean;
+  isAIGenerating: boolean;
 }
 
 function BlockControls({
@@ -243,38 +236,8 @@ function BlockControls({
   isDeletionDisabled,
   isAIGenerating,
 }: BlockControlsProps) {
-  const [position, setPosition] = useState({ top: 0, left: 0 });
   const [showRewriteInput, setShowRewriteInput] = useState(false);
   const [rewriteInstructions, setRewriteInstructions] = useState("");
-
-  useEffect(() => {
-    const updatePosition = () => {
-      const rect = element.getBoundingClientRect();
-      const menuHeight = 100; // Height of the menu at the top
-      const minTopMargin = 10; // Additional margin from menu
-
-      // Calculate initial position
-      let top = rect.top + window.scrollY;
-      const left = rect.right - 5; // Slightly overlap the right edge
-
-      // Ensure controls don't go above the menu area
-      const viewportTop = window.scrollY;
-      if (top < viewportTop + menuHeight + minTopMargin) {
-        top = viewportTop + menuHeight + minTopMargin;
-      }
-
-      setPosition({ top, left });
-    };
-
-    updatePosition();
-    window.addEventListener("scroll", updatePosition);
-    window.addEventListener("resize", updatePosition);
-
-    return () => {
-      window.removeEventListener("scroll", updatePosition);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [element]);
 
   const handleRewriteSubmit = () => {
     onRewrite(rewriteInstructions);
@@ -283,16 +246,11 @@ function BlockControls({
   };
 
   return (
-    <div
-      className="block-controls"
-      style={{
-        position: "absolute",
-        top: position.top,
-        left: position.left,
-        zIndex: 1000,
-      }}
+    <FloatingWrapper
+      referenceEl={element}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      className="block-controls"
     >
       <div className="block-controls-buttons">
         <button
@@ -359,10 +317,13 @@ function BlockControls({
           </button>
         </div>
       )}
-    </div>
+    </FloatingWrapper>
   );
 }
 
+/************************************************************
+ * BlockHoverPlugin (unchanged logic, floating‑UI integration)
+ ************************************************************/
 export function BlockHoverPlugin(): JSX.Element | null {
   const [editor] = useLexicalComposerContext();
   const [hoveredElement, setHoveredElement] = useState<HTMLElement | null>(
@@ -393,6 +354,9 @@ export function BlockHoverPlugin(): JSX.Element | null {
   } = useAIGeneration();
   const { getPromptGeneration } = useStore((state) => state);
 
+  /*******************************************************/
+  /*  Update selection / hover logic (same as before)    */
+  /*******************************************************/
   const updateBlockType = useCallback(() => {
     const selection = $getSelection();
     if ($isRangeSelection(selection)) {
@@ -411,8 +375,8 @@ export function BlockHoverPlugin(): JSX.Element | null {
         setAIGenerationNodeInfo(null);
 
         // Check if this element contains a PromptNode or AIGenerationNode
-        let foundPromptNode = null;
-        let foundAIGenerationNode = null;
+        let foundPromptNode: any = null;
+        let foundAIGenerationNode: any = null;
 
         if ($isElementNode(element)) {
           const children = element.getChildren();
@@ -458,6 +422,9 @@ export function BlockHoverPlugin(): JSX.Element | null {
     setIsDeletionDisabled(topLevelNodeCount <= 1);
   }, [editor, getPromptGeneration]);
 
+  /*******************************************************/
+  /*  Hover detection (same as before)                  */
+  /*******************************************************/
   useEffect(() => {
     const editorElement = editor.getRootElement();
     if (!editorElement) return;
@@ -479,46 +446,38 @@ export function BlockHoverPlugin(): JSX.Element | null {
           setPromptNodeInfo(null);
           setAIGenerationNodeInfo(null);
         }
-      }, 100); // Small delay to allow mouse movement to controls
+      }, 100);
     };
 
     const handleMouseOver = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-
-      // Clear any pending hide timeout
       clearHideTimeout();
 
-      // Find the closest block element (excluding prompt nodes which are inline)
-      // Also check if we're already hovering over a block element
+      // Ignore if we hover over existing controls
+      if (target.closest(".block-controls")) return;
+
       const blockElement = target.closest(
         ".editor-paragraph, .editor-heading-h1, .editor-heading-h2, .editor-heading-h3, .editor-heading-h4, .editor-heading-h5, .editor-heading-h6, .editor-blockquote, .editor-list-ol, .editor-list-ul, .codeHighlight"
-      ) as HTMLElement;
-
-      // If we're hovering over the controls themselves, don't change the hover state
-      if (target.closest(".block-controls")) {
-        return;
-      }
+      ) as HTMLElement | null;
 
       if (blockElement && blockElement !== hoveredElement) {
-        // Update hovered element first
         setHoveredElement(blockElement);
 
-        // Find the corresponding lexical node key and set it
+        // Update lexical‑specific info inside the editor read phase
         editor.getEditorState().read(() => {
           const root = editor.getEditorState()._nodeMap;
           let newPromptNodeInfo = null;
           let newAIGenerationNodeInfo = null;
-          let newSelectedElementKey = null;
+          let newSelectedElementKey = null as string | null;
 
           for (const [key] of root) {
             const dom = editor.getElementByKey(key);
             if (dom === blockElement) {
               newSelectedElementKey = key;
 
-              // Get the node and check if it contains a PromptNode or AIGenerationNode
               const node = editor.getEditorState()._nodeMap.get(key);
-              let foundPromptNode = null;
-              let foundAIGenerationNode = null;
+              let foundPromptNode: any = null;
+              let foundAIGenerationNode: any = null;
 
               if (node && $isElementNode(node)) {
                 const children = node.getChildren();
@@ -558,15 +517,11 @@ export function BlockHoverPlugin(): JSX.Element | null {
                   nodeKey: foundAIGenerationNode.getKey(),
                 };
                 newPromptNodeInfo = null;
-              } else {
-                newPromptNodeInfo = null;
-                newAIGenerationNodeInfo = null;
               }
               break;
             }
           }
 
-          // Update all states atomically
           setSelectedElementKey(newSelectedElementKey);
           setPromptNodeInfo(newPromptNodeInfo);
           setAIGenerationNodeInfo(newAIGenerationNodeInfo);
@@ -586,14 +541,11 @@ export function BlockHoverPlugin(): JSX.Element | null {
       editorElement.removeEventListener("mouseleave", handleMouseLeave);
       clearHideTimeout();
     };
-  }, [
-    editor,
-    hoveredElement,
-    isControlsHovered,
-    updateBlockType,
-    getPromptGeneration,
-  ]);
+  }, [editor, hoveredElement, isControlsHovered, getPromptGeneration]);
 
+  /*******************************************************/
+  /*  Sync to editor updates                             */
+  /*******************************************************/
   useEffect(() => {
     return mergeRegister(
       editor.registerUpdateListener(({ editorState }) => {
@@ -612,13 +564,14 @@ export function BlockHoverPlugin(): JSX.Element | null {
     );
   }, [editor, updateBlockType]);
 
+  /*******************************************************/
+  /*  Action handlers (unchanged)                        */
+  /*******************************************************/
   const deleteBlock = () => {
     editor.update(() => {
       if (selectedElementKey !== null) {
         const node = $getNodeByKey(selectedElementKey);
-        if (node) {
-          node.remove();
-        }
+        if (node) node.remove();
       }
     });
     setHoveredElement(null);
@@ -632,7 +585,6 @@ export function BlockHoverPlugin(): JSX.Element | null {
       const node = $getNodeByKey(selectedElementKey);
       if (node) {
         const nodeText = node.getTextContent();
-        // Use the node's content as the prompt for AI generation
         generate("newScene", "", {
           customText: nodeText,
           action: "generate" as AIActionType,
@@ -650,7 +602,6 @@ export function BlockHoverPlugin(): JSX.Element | null {
       const node = $getNodeByKey(selectedElementKey);
       if (node) {
         const nodeText = node.getTextContent();
-        // Use the rewrite action to replace the current node
         generate("rewrite", instructions, {
           customText: nodeText,
           action: "rewrite" as AIActionType,
@@ -661,28 +612,22 @@ export function BlockHoverPlugin(): JSX.Element | null {
     setHoveredElement(null);
   };
 
+  /*******************************************************/
+  /*  Prompt Node actions                                 */
+  /*******************************************************/
   const handlePromptCancel = () => {
-    if (promptNodeInfo) {
-      cancelGeneration(promptNodeInfo.promptId);
-    }
+    if (promptNodeInfo) cancelGeneration(promptNodeInfo.promptId);
   };
-
   const handlePromptUndo = () => {
-    if (promptNodeInfo) {
-      undoGeneration(promptNodeInfo.promptId);
-    }
+    if (promptNodeInfo) undoGeneration(promptNodeInfo.promptId);
   };
-
   const handlePromptRedo = () => {
-    if (promptNodeInfo) {
-      redoGeneration(promptNodeInfo.promptId);
-    }
+    if (promptNodeInfo) redoGeneration(promptNodeInfo.promptId);
   };
 
-  const handlePromptDelete = () => {
-    deleteBlock();
-  };
-
+  /*******************************************************/
+  /*  AI Generation Node actions                         */
+  /*******************************************************/
   const handleAIGenerationConvert = () => {
     if (!aiGenerationNodeInfo) return;
 
@@ -692,22 +637,14 @@ export function BlockHoverPlugin(): JSX.Element | null {
         const markdownText = aiNode.getTextContent();
 
         try {
-          // Get the parent element where we'll insert the converted content
           const parentElement = aiNode.getParent();
           if ($isElementNode(parentElement)) {
-            // Remove the AI generation node first
             aiNode.remove();
-
-            // Use Lexical's built-in markdown conversion
-            // Create a temporary root to parse the markdown
             const root = $getRoot();
-
-            // Get the current nodes in the root except for the AI generation node
             const currentNodes = root
               .getChildren()
               .filter((node) => node.getKey() !== aiNode.getKey());
 
-            // Parse the markdown using Lexical's built-in converter
             $convertFromMarkdownString(
               markdownText,
               TRANSFORMERS,
@@ -715,19 +652,12 @@ export function BlockHoverPlugin(): JSX.Element | null {
               false,
               false
             );
-
-            // Remove any empty nodes from the root
             root.getChildren().forEach((node) => {
-              if (node.getTextContent() === "") {
-                node.remove();
-              }
+              if (node.getTextContent() === "") node.remove();
             });
 
-            // Add the current nodes back to the root before the first node in the root now
             const firstNode = root.getFirstChild();
-            currentNodes.forEach((node) => {
-              firstNode.insertBefore(node);
-            });
+            currentNodes.forEach((node) => firstNode.insertBefore(node));
           }
         } catch (error) {
           console.error("Error converting markdown:", error);
@@ -739,23 +669,19 @@ export function BlockHoverPlugin(): JSX.Element | null {
     setAIGenerationNodeInfo(null);
   };
 
-  const handleAIGenerationDelete = () => {
-    deleteBlock();
-  };
+  const handleAIGenerationDelete = () => deleteBlock();
 
-  const handleControlsMouseEnter = () => {
-    setIsControlsHovered(true);
-  };
+  /*******************************************************/
+  /*  Hover state management for floating controls       */
+  /*******************************************************/
+  const handleControlsMouseEnter = () => setIsControlsHovered(true);
+  const handleControlsMouseLeave = () => setIsControlsHovered(false);
 
-  const handleControlsMouseLeave = () => {
-    setIsControlsHovered(false);
-  };
+  /*******************************************************/
+  /*  Render                                             */
+  /*******************************************************/
+  if (!hoveredElement) return null;
 
-  if (!hoveredElement) {
-    return null;
-  }
-
-  // Show PromptControls for PromptNodes, AIGenerationControls for AIGenerationNodes, BlockControls for regular blocks
   if (promptNodeInfo) {
     return (
       <PromptControls
@@ -764,7 +690,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
         onCancel={handlePromptCancel}
         onUndo={handlePromptUndo}
         onRedo={handlePromptRedo}
-        onDelete={handlePromptDelete}
+        onDelete={deleteBlock}
         onMouseEnter={handleControlsMouseEnter}
         onMouseLeave={handleControlsMouseLeave}
         canUndo={promptNodeInfo.canUndo}
