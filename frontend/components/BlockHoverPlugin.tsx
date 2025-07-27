@@ -74,10 +74,20 @@ function PromptControls({
   useEffect(() => {
     const updatePosition = () => {
       const rect = element.getBoundingClientRect();
-      setPosition({
-        top: rect.top + window.scrollY,
-        left: rect.right + 10,
-      });
+      const menuHeight = 100; // Height of the menu at the top
+      const minTopMargin = 10; // Additional margin from menu
+
+      // Calculate initial position
+      let top = rect.top + window.scrollY;
+      const left = rect.right - 5; // Slightly overlap the right edge
+
+      // Ensure controls don't go above the menu area
+      const viewportTop = window.scrollY;
+      if (top < viewportTop + menuHeight + minTopMargin) {
+        top = viewportTop + menuHeight + minTopMargin;
+      }
+
+      setPosition({ top, left });
     };
 
     updatePosition();
@@ -167,10 +177,20 @@ function AIGenerationControls({
   useEffect(() => {
     const updatePosition = () => {
       const rect = element.getBoundingClientRect();
-      setPosition({
-        top: rect.top + window.scrollY,
-        left: rect.right + 10,
-      });
+      const menuHeight = 100; // Height of the menu at the top
+      const minTopMargin = 10; // Additional margin from menu
+
+      // Calculate initial position
+      let top = rect.top + window.scrollY;
+      const left = rect.right - 5; // Slightly overlap the right edge
+
+      // Ensure controls don't go above the menu area
+      const viewportTop = window.scrollY;
+      if (top < viewportTop + menuHeight + minTopMargin) {
+        top = viewportTop + menuHeight + minTopMargin;
+      }
+
+      setPosition({ top, left });
     };
 
     updatePosition();
@@ -233,10 +253,20 @@ function BlockControls({
   useEffect(() => {
     const updatePosition = () => {
       const rect = element.getBoundingClientRect();
-      setPosition({
-        top: rect.top + window.scrollY,
-        left: rect.right + 10,
-      });
+      const menuHeight = 100; // Height of the menu at the top
+      const minTopMargin = 10; // Additional margin from menu
+
+      // Calculate initial position
+      let top = rect.top + window.scrollY;
+      const left = rect.right - 5; // Slightly overlap the right edge
+
+      // Ensure controls don't go above the menu area
+      const viewportTop = window.scrollY;
+      if (top < viewportTop + menuHeight + minTopMargin) {
+        top = viewportTop + menuHeight + minTopMargin;
+      }
+
+      setPosition({ top, left });
     };
 
     updatePosition();
@@ -462,20 +492,31 @@ export function BlockHoverPlugin(): JSX.Element | null {
       clearHideTimeout();
 
       // Find the closest block element (excluding prompt nodes which are inline)
+      // Also check if we're already hovering over a block element
       const blockElement = target.closest(
         ".editor-paragraph, .editor-heading-h1, .editor-heading-h2, .editor-heading-h3, .editor-heading-h4, .editor-heading-h5, .editor-heading-h6, .editor-blockquote, .editor-list-ol, .editor-list-ul, .codeHighlight"
       ) as HTMLElement;
 
+      // If we're hovering over the controls themselves, don't change the hover state
+      if (target.closest(".block-controls")) {
+        return;
+      }
+
       if (blockElement && blockElement !== hoveredElement) {
+        // Update hovered element first
         setHoveredElement(blockElement);
 
         // Find the corresponding lexical node key and set it
         editor.getEditorState().read(() => {
           const root = editor.getEditorState()._nodeMap;
+          let newPromptNodeInfo = null;
+          let newAIGenerationNodeInfo = null;
+          let newSelectedElementKey = null;
+
           for (const [key] of root) {
             const dom = editor.getElementByKey(key);
             if (dom === blockElement) {
-              setSelectedElementKey(key);
+              newSelectedElementKey = key;
 
               // Get the node and check if it contains a PromptNode or AIGenerationNode
               const node = editor.getEditorState()._nodeMap.get(key);
@@ -500,33 +541,38 @@ export function BlockHoverPlugin(): JSX.Element | null {
                   foundPromptNode.getPromptId()
                 );
                 if (generation) {
-                  setPromptNodeInfo({
+                  newPromptNodeInfo = {
                     promptId: foundPromptNode.getPromptId(),
                     status: generation.status,
                     canUndo: generation.canUndo,
                     canRedo: generation.canRedo,
-                  });
+                  };
                 } else {
-                  setPromptNodeInfo({
+                  newPromptNodeInfo = {
                     promptId: foundPromptNode.getPromptId(),
                     status: foundPromptNode.getStatus(),
                     canUndo: false,
                     canRedo: false,
-                  });
+                  };
                 }
-                setAIGenerationNodeInfo(null);
+                newAIGenerationNodeInfo = null;
               } else if (foundAIGenerationNode) {
-                setAIGenerationNodeInfo({
+                newAIGenerationNodeInfo = {
                   nodeKey: foundAIGenerationNode.getKey(),
-                });
-                setPromptNodeInfo(null);
+                };
+                newPromptNodeInfo = null;
               } else {
-                setPromptNodeInfo(null);
-                setAIGenerationNodeInfo(null);
+                newPromptNodeInfo = null;
+                newAIGenerationNodeInfo = null;
               }
               break;
             }
           }
+
+          // Update all states atomically
+          setSelectedElementKey(newSelectedElementKey);
+          setPromptNodeInfo(newPromptNodeInfo);
+          setAIGenerationNodeInfo(newAIGenerationNodeInfo);
         });
       }
     };
