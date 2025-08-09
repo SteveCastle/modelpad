@@ -307,6 +307,45 @@ export function useAIGeneration() {
     // Track the text node KEY created for streaming output
     // IMPORTANT: do not hold onto node instances across updates
     let currentTextNodeKey: string | null = null;
+    // Track the container (paragraph/heading/etc.) that holds the streaming text
+    let currentContainerKey: string | null = null;
+
+    const getLastTextNodeIn = (
+      containerKey: string | null
+    ): TextNode | null => {
+      if (!containerKey) return null;
+      const container = $getNodeByKey(containerKey);
+      if (!container || !$isElementNode(container)) return null;
+      const children = container.getChildren();
+      for (let i = children.length - 1; i >= 0; i--) {
+        const child = children[i];
+        if (child instanceof TextNode) return child;
+        if ($isElementNode(child)) {
+          const deep = getLastTextNodeIn(child.getKey());
+          if (deep) return deep;
+        }
+      }
+      return null;
+    };
+
+    const trackStreamingTargets = (
+      textNode: TextNode,
+      containerNode: LexicalNode | null | undefined
+    ) => {
+      const container =
+        containerNode && $isElementNode(containerNode)
+          ? containerNode
+          : textNode.getParent();
+      currentContainerKey =
+        container && $isElementNode(container) ? container.getKey() : null;
+      // Use actual text node if still attached, else recover from container
+      const effective = textNode.getParent()
+        ? textNode
+        : getLastTextNodeIn(currentContainerKey);
+      if (effective) {
+        currentTextNodeKey = effective.getKey();
+      }
+    };
     // Track generated nodes for undo functionality (especially for prompt-based generate)
     let generatedNodeKeys: string[] = [];
 
@@ -329,11 +368,16 @@ export function useAIGeneration() {
             const root = $getRoot();
             const selection = $getSelection();
 
-            const maybeTrackNode = (node: TextNode) => {
-              const nodeKey = node.getKey();
-              currentTextNodeKey = nodeKey;
-              if (!generatedNodeKeys.includes(nodeKey)) {
-                generatedNodeKeys.push(nodeKey);
+            const maybeTrackNode = (
+              node: TextNode,
+              container?: LexicalNode | null
+            ) => {
+              trackStreamingTargets(node, container);
+              if (
+                currentTextNodeKey &&
+                !generatedNodeKeys.includes(currentTextNodeKey)
+              ) {
+                generatedNodeKeys.push(currentTextNodeKey);
               }
             };
 
@@ -350,6 +394,8 @@ export function useAIGeneration() {
                   // Cannot replace root; append replacement at end instead
                   const root = $getRoot();
                   root.append(para);
+                  maybeTrackNode(textNode, para);
+                  textNode.select();
                 } else {
                   // If target is not a top-level element, replace its top-level container
                   const topLevel = $isElementNode(target)
@@ -358,9 +404,9 @@ export function useAIGeneration() {
                       : target.getTopLevelElementOrThrow()
                     : target.getTopLevelElementOrThrow();
                   topLevel.replace(para);
+                  maybeTrackNode(textNode, para);
+                  textNode.select();
                 }
-                maybeTrackNode(textNode);
-                textNode.select();
                 break;
               }
               case "insert-after-node":
@@ -383,7 +429,7 @@ export function useAIGeneration() {
                     } else {
                       elementNode.insertBefore(para);
                     }
-                    maybeTrackNode(textNode);
+                    maybeTrackNode(textNode, para);
                     textNode.select();
                   }
                 }
@@ -411,17 +457,18 @@ export function useAIGeneration() {
                   const para = $createParagraphNode();
                   para.append(textNode);
                   element.append(para);
+                  maybeTrackNode(textNode, para);
                 } else if (acceptsText) {
                   // Safe to append text inside this element
                   element.append(textNode);
+                  maybeTrackNode(textNode, element);
                 } else {
                   // Fallback: insert a new paragraph after the target element
                   const para = $createParagraphNode();
                   para.append(textNode);
                   element.insertAfter(para);
+                  maybeTrackNode(textNode, para);
                 }
-
-                maybeTrackNode(textNode);
                 textNode.select();
                 break;
               }
@@ -429,7 +476,7 @@ export function useAIGeneration() {
                 if ($isRangeSelection(selection)) {
                   const textNode = $createTextNode(chunk);
                   selection.insertNodes([textNode]);
-                  maybeTrackNode(textNode);
+                  maybeTrackNode(textNode, textNode.getParent());
                   textNode.select();
                 }
                 break;
@@ -439,7 +486,7 @@ export function useAIGeneration() {
                   selection.removeText();
                   const textNode = $createTextNode(chunk);
                   selection.insertNodes([textNode]);
-                  maybeTrackNode(textNode);
+                  maybeTrackNode(textNode, textNode.getParent());
                   textNode.select();
                 }
                 break;
@@ -461,7 +508,7 @@ export function useAIGeneration() {
                     } else {
                       elementNode.insertBefore(para);
                     }
-                    maybeTrackNode(textNode);
+                    maybeTrackNode(textNode, para);
                     textNode.select();
                   }
                 }
@@ -474,7 +521,7 @@ export function useAIGeneration() {
                 const textNode = $createTextNode(chunk);
                 para.append(textNode);
                 root.append(para);
-                maybeTrackNode(textNode);
+                maybeTrackNode(textNode, para);
                 textNode.select();
                 break;
               }
@@ -488,6 +535,23 @@ export function useAIGeneration() {
               const current = node.getTextContent();
               node.setTextContent(current + chunk);
               node.select();
+            } else {
+              // Recovery: if the original text node was merged/detached, pick the last text node in container
+              const fallback = getLastTextNodeIn(currentContainerKey);
+              if (fallback) {
+                currentTextNodeKey = fallback.getKey();
+                const current = fallback.getTextContent();
+                fallback.setTextContent(current + chunk);
+                fallback.select();
+              } else {
+                // Last resort: append a new paragraph at the end
+                const para = $createParagraphNode();
+                const textNode = $createTextNode(chunk);
+                para.append(textNode);
+                $getRoot().append(para);
+                trackStreamingTargets(textNode, para);
+                textNode.select();
+              }
             }
           }
         };
