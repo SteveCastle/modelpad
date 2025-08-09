@@ -201,7 +201,9 @@ type State = {
   setSideBarOpen: (open: boolean) => void;
   setServerHost: (host: string) => void;
   setServerName: (title: string) => void;
-  addPromptTemplate: (template: Omit<PromptTemplate, "id" | "createdAt">) => PromptTemplate;
+  addPromptTemplate: (
+    template: Omit<PromptTemplate, "id" | "createdAt">
+  ) => PromptTemplate;
   updatePromptTemplate: (id: string, updates: Partial<PromptTemplate>) => void;
   deletePromptTemplate: (id: string) => void;
   setActivePromptTemplate: (id: string) => void;
@@ -292,21 +294,24 @@ const defaultPromptTemplates: PromptTemplate[] = [
   {
     id: "newScene",
     name: "New Scene",
-    systemPrompt: "You are a researcher researching a topic and helping me collect information, and understand a topic.",
+    systemPrompt:
+      "You are a researcher researching a topic and helping me collect information, and understand a topic.",
     mainPrompt: "<text>",
     createdAt: new Date().toISOString(),
   },
   {
     id: "rewrite",
     name: "Rewrite",
-    systemPrompt: "You are a writer rewriting a scene. Rewrite the scene in a different style or from a different perspective.",
+    systemPrompt:
+      "You are a writer rewriting a scene. Rewrite the scene in a different style or from a different perspective.",
     mainPrompt: "<text>",
     createdAt: new Date().toISOString(),
   },
   {
     id: "summarize",
     name: "Summarize",
-    systemPrompt: "You are a writer summarizing a scene. Summarize the scene in a few sentences.",
+    systemPrompt:
+      "You are a writer summarizing a scene. Summarize the scene in a few sentences.",
     mainPrompt: "<text>",
     createdAt: new Date().toISOString(),
   },
@@ -472,7 +477,9 @@ export const useStore = create<State>()(
           },
         }));
       },
-      addPromptTemplate: (template: Omit<PromptTemplate, "id" | "createdAt">) => {
+      addPromptTemplate: (
+        template: Omit<PromptTemplate, "id" | "createdAt">
+      ) => {
         const newTemplate: PromptTemplate = {
           ...template,
           id: crypto.randomUUID(),
@@ -494,13 +501,16 @@ export const useStore = create<State>()(
       deletePromptTemplate: (id: string) => {
         const templates = get().promptTemplates;
         if (templates.length <= 1) return; // Don't allow deleting the last template
-        
+
         set(() => {
-          const newTemplates = templates.filter((template) => template.id !== id);
+          const newTemplates = templates.filter(
+            (template) => template.id !== id
+          );
           const activeId = get().activePromptTemplateId;
           return {
             promptTemplates: newTemplates,
-            activePromptTemplateId: activeId === id ? newTemplates[0].id : activeId,
+            activePromptTemplateId:
+              activeId === id ? newTemplates[0].id : activeId,
           };
         });
       },
@@ -511,7 +521,9 @@ export const useStore = create<State>()(
             activePromptTemplateId: id,
           }));
           // Update last used time
-          get().updatePromptTemplate(id, { lastUsedAt: new Date().toISOString() });
+          get().updatePromptTemplate(id, {
+            lastUsedAt: new Date().toISOString(),
+          });
         }
       },
       getPromptTemplate: (id: string) => {
@@ -1019,43 +1031,54 @@ export const useStore = create<State>()(
           state.collapsedTagIds = new Set(
             state.collapsedTagIds as unknown as string[]
           );
-          
+
           // Migrate old prompt template format to new format
           if (!Array.isArray(state.promptTemplates)) {
-            console.log('Migrating old prompt template format to new format');
+            console.log("Migrating old prompt template format to new format");
             const oldPromptTemplates = state.promptTemplates as any;
-            const oldSystemPromptTemplates = (state as any).systemPromptTemplates || {};
-            const oldRagPromptTemplates = (state as any).ragPromptTemplates || {};
-            
+            const oldSystemPromptTemplates =
+              (state as any).systemPromptTemplates || {};
+
             // Convert old format to new format
             const newPromptTemplates: PromptTemplate[] = [];
-            
+
             // Handle legacy keys
-            const legacyKeys = ['newScene', 'rewrite', 'summarize'];
-            legacyKeys.forEach(key => {
+            const legacyKeys = ["newScene", "rewrite", "summarize"];
+            legacyKeys.forEach((key) => {
               if (oldPromptTemplates[key] !== undefined) {
                 newPromptTemplates.push({
                   id: key,
-                  name: key === 'newScene' ? 'New Scene' : key === 'rewrite' ? 'Rewrite' : 'Summarize',
-                  systemPrompt: oldSystemPromptTemplates[key] || 'You are a helpful AI assistant.',
-                  mainPrompt: oldPromptTemplates[key] || '<text>',
+                  name:
+                    key === "newScene"
+                      ? "New Scene"
+                      : key === "rewrite"
+                      ? "Rewrite"
+                      : "Summarize",
+                  systemPrompt:
+                    oldSystemPromptTemplates[key] ||
+                    "You are a helpful AI assistant.",
+                  mainPrompt: oldPromptTemplates[key] || "<text>",
                   createdAt: new Date().toISOString(),
                 });
               }
             });
-            
+
             // Fallback to defaults if nothing was found
             if (newPromptTemplates.length === 0) {
               newPromptTemplates.push(...defaultPromptTemplates);
             }
-            
+
             state.promptTemplates = newPromptTemplates;
-            
+
             // Set active template if needed
-            if (!state.activePromptTemplateId || typeof (state as any).promptTemplateKey === 'string') {
-              state.activePromptTemplateId = (state as any).promptTemplateKey || newPromptTemplates[0].id;
+            if (
+              !state.activePromptTemplateId ||
+              typeof (state as any).promptTemplateKey === "string"
+            ) {
+              state.activePromptTemplateId =
+                (state as any).promptTemplateKey || newPromptTemplates[0].id;
             }
-            
+
             // Clean up old properties
             delete (state as any).systemPromptTemplates;
             delete (state as any).ragPromptTemplates;

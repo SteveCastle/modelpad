@@ -15,24 +15,24 @@ import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
 
 // Enhanced template variable definitions
 interface TemplateVariables {
-  text: string;                    // Legacy support - maps to activeNodeText
-  activeNodeText: string;          // Text of the current/active node
-  selection?: string;              // Text of any selection (if exists)
-  selectionText?: string;          // Alias for selection
-  contextDocuments: string;        // Formatted context documents
-  currentDocument: string;         // Text of the entire current document
-  currentDocumentText: string;     // Alias for currentDocument
-  textBefore: string;              // Text before the active node
-  textBeforeActiveNode: string;    // Alias for textBefore
-  textAfter: string;               // Text after the active node
-  textAfterActiveNode: string;     // Alias for textAfter
-  documentContext: string;         // Combined before/after context
+  text: string; // Legacy support - maps to activeNodeText
+  activeNodeText: string; // Text of the current/active node
+  selection?: string; // Text of any selection (if exists)
+  selectionText?: string; // Alias for selection
+  contextDocuments: string; // Formatted context documents
+  currentDocument: string; // Text of the entire current document
+  currentDocumentText: string; // Alias for currentDocument
+  textBefore: string; // Text before the active node
+  textBeforeActiveNode: string; // Alias for textBefore
+  textAfter: string; // Text after the active node
+  textAfterActiveNode: string; // Alias for textAfter
+  documentContext: string; // Combined before/after context
 }
 
 function applyTemplate(template: string, context: PromptContext): string {
   // Ensure context is valid
-  if (!context || typeof context !== 'object') {
-    console.error('applyTemplate: Invalid context provided', context);
+  if (!context || typeof context !== "object") {
+    console.error("applyTemplate: Invalid context provided", context);
     return template;
   }
 
@@ -40,59 +40,62 @@ function applyTemplate(template: string, context: PromptContext): string {
   const variables: TemplateVariables = {
     // Primary text (legacy support)
     text: context.activeNodeText || "",
-    
+
     // Active node
     activeNodeText: context.activeNodeText || "",
-    
+
     // Selection (optional)
     selection: context.selectionText || "",
     selectionText: context.selectionText || "",
-    
+
     // Context documents
-    contextDocuments: Array.isArray(context.contextDocuments) 
-      ? context.contextDocuments.join("\n") 
+    contextDocuments: Array.isArray(context.contextDocuments)
+      ? context.contextDocuments.join("\n")
       : "",
-    
+
     // Current document
     currentDocument: context.currentDocumentText || "",
     currentDocumentText: context.currentDocumentText || "",
-    
+
     // Before/after context
     textBefore: context.textBeforeActiveNode || "",
     textBeforeActiveNode: context.textBeforeActiveNode || "",
     textAfter: context.textAfterActiveNode || "",
     textAfterActiveNode: context.textAfterActiveNode || "",
-    
+
     // Combined document context
     documentContext: [
-      context.textBeforeActiveNode && `[BEFORE]\n${context.textBeforeActiveNode}`,
-      context.textAfterActiveNode && `[AFTER]\n${context.textAfterActiveNode}`
-    ].filter(Boolean).join("\n\n"),
+      context.textBeforeActiveNode &&
+        `[BEFORE]\n${context.textBeforeActiveNode}`,
+      context.textAfterActiveNode && `[AFTER]\n${context.textAfterActiveNode}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n"),
   };
 
   // Apply template substitutions
   let result = template || "";
-  
+
   try {
     // Replace template variables with actual values
     Object.entries(variables).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         // Support both <variable> and {{variable}} syntax
         const patterns = [
-          new RegExp(`<${key}>`, 'g'),
-          new RegExp(`\\{\\{${key}\\}\\}`, 'g'),
+          new RegExp(`<${key}>`, "g"),
+          new RegExp(`\\{\\{${key}\\}\\}`, "g"),
         ];
-        
-        patterns.forEach(pattern => {
+
+        patterns.forEach((pattern) => {
           result = result.replace(pattern, String(value));
         });
       }
     });
   } catch (error) {
-    console.error('Error in applyTemplate:', error, { template, context });
+    console.error("Error in applyTemplate:", error, { template, context });
     return template;
   }
-  
+
   return result;
 }
 
@@ -120,18 +123,22 @@ interface PromptBuilderOptions {
   wordCount?: number;
 }
 
-function buildPrompt(context: PromptContext, options: PromptBuilderOptions): {
+function buildPrompt(
+  context: PromptContext,
+  options: PromptBuilderOptions
+): {
   prompt: string;
   systemPrompt: string;
 } {
   const { action, customPrompt = "", promptTemplate, wordCount } = options;
-  
+
   // For rewrite actions, build a specialized prompt
   if (action === "rewrite") {
-    const actualWordCount = wordCount || context.activeNodeText
-      .split(/\s+/)
-      .filter((word) => word.length > 0).length;
-      
+    const actualWordCount =
+      wordCount ||
+      context.activeNodeText.split(/\s+/).filter((word) => word.length > 0)
+        .length;
+
     const baseRewritePrompt = `You are rewriting text as a direct, one-to-one replacement. Your output should match the approximate length of the input (${actualWordCount} words). Write ONLY the rewritten text with no additional commentary or explanation.`;
 
     const rewriteInstructions = customPrompt.trim()
@@ -140,31 +147,36 @@ function buildPrompt(context: PromptContext, options: PromptBuilderOptions): {
 
     // Create a template for rewrite that can use all context variables
     const rewriteTemplate = `${baseRewritePrompt}${rewriteInstructions}\n\nOriginal text to rewrite:\n{{activeNodeText}}`;
-    
+
     return {
       prompt: applyTemplate(rewriteTemplate, context),
       systemPrompt: applyTemplate(baseRewritePrompt, context),
     };
   }
-  
+
   // For generate actions, build context-aware prompt using enhanced templating
-  
+
   // Build RAG context section if documents are available
   let basePrompt = promptTemplate.mainPrompt;
   if (context.contextDocuments.length > 0) {
     const ragPrefix = `Below is a list of documents that you can use for context. You can use these documents to help you generate ideas.\n<docs>\n{{contextDocuments}}\nEND OF DOCS\n\n`;
     basePrompt = ragPrefix + basePrompt;
   }
-  
+
   // Apply enhanced templating to the entire prompt template
   const templatedText = applyTemplate(basePrompt, context);
-  
+
   // Add custom prompt if provided
-  const customPromptText = customPrompt.trim() ? `\n\n${customPrompt.trim()}` : "";
-  
+  const customPromptText = customPrompt.trim()
+    ? `\n\n${customPrompt.trim()}`
+    : "";
+
   // Apply templating to system prompt as well
-  const templatedSystemPrompt = applyTemplate(promptTemplate.systemPrompt, context);
-  
+  const templatedSystemPrompt = applyTemplate(
+    promptTemplate.systemPrompt,
+    context
+  );
+
   return {
     prompt: templatedText + customPromptText,
     systemPrompt: templatedSystemPrompt,
@@ -173,7 +185,7 @@ function buildPrompt(context: PromptContext, options: PromptBuilderOptions): {
 
 // Helper function to extract context information from the editor
 function extractPromptContext(
-  editor: ReturnType<typeof useLexicalComposerContext>[0],
+  _editor: ReturnType<typeof useLexicalComposerContext>[0],
   options: UseAIGenerationOptions,
   tabContext: string[]
 ): PromptContext {
@@ -208,21 +220,27 @@ function extractPromptContext(
       const targetNode = $getNodeByKey(options.targetNodeKey);
       if (targetNode) {
         const allChildren = root.getChildren();
-        const targetIndex = allChildren.findIndex(child => child.getKey() === options.targetNodeKey);
-        
+        const targetIndex = allChildren.findIndex(
+          (child) => child.getKey() === options.targetNodeKey
+        );
+
         if (targetIndex !== -1) {
           // Get text before the target node
           const beforeNodes = allChildren.slice(0, targetIndex);
-          textBeforeActiveNode = beforeNodes.map(node => node.getTextContent() || "").join("\n");
-          
-          // Get text after the target node  
+          textBeforeActiveNode = beforeNodes
+            .map((node) => node.getTextContent() || "")
+            .join("\n");
+
+          // Get text after the target node
           const afterNodes = allChildren.slice(targetIndex + 1);
-          textAfterActiveNode = afterNodes.map(node => node.getTextContent() || "").join("\n");
+          textAfterActiveNode = afterNodes
+            .map((node) => node.getTextContent() || "")
+            .join("\n");
         }
       }
     }
   } catch (error) {
-    console.error('Error in extractPromptContext:', error);
+    console.error("Error in extractPromptContext:", error);
     // Fall back to basic context
     activeNodeText = options.customText || "";
   }
@@ -240,7 +258,12 @@ function extractPromptContext(
 export type AIActionType = "generate" | "rewrite";
 
 // Export the new prompt building functions for potential reuse
-export { buildPrompt, extractPromptContext, applyTemplate, applyTemplateLegacy };
+export {
+  buildPrompt,
+  extractPromptContext,
+  applyTemplate,
+  applyTemplateLegacy,
+};
 export type { PromptContext, PromptBuilderOptions, TemplateVariables };
 
 interface UseAIGenerationOptions {
@@ -370,7 +393,9 @@ export function useAIGeneration() {
 
       // Update the generation tracking if this was a prompt-based generation
       if (action === "generate" && promptId) {
-        const textNodeKeys = generateTextNode ? [generateTextNode.getKey()] : generatedNodeKeys;
+        const textNodeKeys = generateTextNode
+          ? [generateTextNode.getKey()]
+          : generatedNodeKeys;
         updatePromptGeneration(promptId, {
           status: "completed",
           generatedNodeKeys: textNodeKeys,
@@ -439,7 +464,7 @@ export function useAIGeneration() {
 
       // Extract context information using the new helper function
       const promptContext = extractPromptContext(editor, options, tabContext);
-      
+
       // Build prompt using the new flexible prompt builder
       const { prompt, systemPrompt } = buildPrompt(promptContext, {
         action,
@@ -491,7 +516,6 @@ export function useAIGeneration() {
       }
     }
   };
-
 
   return {
     generate,
