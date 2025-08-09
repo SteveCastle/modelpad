@@ -11,7 +11,7 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
 import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
-import { useStore } from "../store";
+import { useStore, PromptTemplate } from "../store";
 import { useState, useCallback, useEffect, useLayoutEffect, JSX } from "react";
 import {
   useFloating,
@@ -19,7 +19,6 @@ import {
   flip,
   shift,
   autoUpdate,
-  Placement,
 } from "@floating-ui/react";
 
 import "./BlockHoverPlugin.css";
@@ -27,47 +26,9 @@ import "./BlockHoverPlugin.css";
 /************************************************************
  * Generic floating‑UI wrapper
  ************************************************************/
-interface FloatingWrapperProps {
-  referenceEl: HTMLElement | null;
-  placement?: Placement;
-  className?: string;
-  onMouseEnter?: () => void;
-  onMouseLeave?: () => void;
-  children: React.ReactNode;
-}
+// Floating wrapper props removed along with FloatingWrapper implementation
 
-function FloatingWrapper({
-  referenceEl,
-  placement = "right-start",
-  className,
-  onMouseEnter,
-  onMouseLeave,
-  children,
-}: FloatingWrapperProps) {
-  const { x, y, strategy, refs } = useFloating({
-    placement,
-    middleware: [offset(4), flip(), shift({ padding: 8 })],
-    whileElementsMounted: autoUpdate,
-  });
-
-  useLayoutEffect(() => {
-    if (referenceEl) refs.setReference(referenceEl);
-  }, [referenceEl, refs]);
-
-  if (x == null || y == null) return null;
-
-  return (
-    <div
-      ref={refs.setFloating}
-      className={className}
-      style={{ position: strategy, top: y, left: x, zIndex: 1000 }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      {children}
-    </div>
-  );
-}
+// FloatingWrapper removed (no rewrite popover now)
 
 /************************************************************
  * BlockControls – rewrite pop‑over now a FloatingWrapper
@@ -75,28 +36,30 @@ function FloatingWrapper({
 interface BlockControlsProps {
   element: HTMLElement;
   onDelete: () => void;
-  onAIGenerate: () => void;
-  onRewrite: (instructions: string) => void;
+  onAIGenerate: (templateId: string) => void;
   onConvertMarkdown: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   isDeletionDisabled: boolean;
   isAIGenerating: boolean;
+  promptTemplates: PromptTemplate[];
 }
 
 function BlockControls({
   element,
   onDelete,
   onAIGenerate,
-  onRewrite,
   onConvertMarkdown,
   onMouseEnter,
   onMouseLeave,
   isDeletionDisabled,
   isAIGenerating,
+  promptTemplates,
 }: BlockControlsProps) {
-  const [showRewriteInput, setShowRewriteInput] = useState(false);
-  const [rewriteInstructions, setRewriteInstructions] = useState("");
+  const editorsNote = useStore((state) => state.editorsNote);
+  const setEditorsNote = useStore((state) => state.setEditorsNote);
+  const [noteOpen, setNoteOpen] = useState(false);
+  // Removed rewrite input; templates handle strategies
 
   const {
     x: menuX,
@@ -108,16 +71,28 @@ function BlockControls({
     middleware: [offset(4), flip(), shift({ padding: 8 })],
     whileElementsMounted: autoUpdate,
   });
+  // Floating UI for the Editor's Note flyout, anchored to the block controls
+  const {
+    x: noteX,
+    y: noteY,
+    strategy: noteStrategy,
+    refs: noteRefs,
+  } = useFloating({
+    placement: "left-start",
+    middleware: [offset(8), flip(), shift({ padding: 8 })],
+    whileElementsMounted: autoUpdate,
+  });
 
   useLayoutEffect(() => {
     if (element) menuRefs.setReference(element);
   }, [element, menuRefs]);
+  useLayoutEffect(() => {
+    if (menuRefs.floating?.current) {
+      noteRefs.setReference(menuRefs.floating.current);
+    }
+  }, [menuRefs.floating, noteRefs]);
 
-  const handleRewriteSubmit = () => {
-    onRewrite(rewriteInstructions);
-    setRewriteInstructions("");
-    setShowRewriteInput(false);
-  };
+  // No rewrite submit handler
 
   if (menuX == null || menuY == null) return null;
 
@@ -137,30 +112,29 @@ function BlockControls({
         onMouseLeave={onMouseLeave}
       >
         <div className="block-controls-buttons">
+          {/* Dynamic prompt template actions */}
+          <div className="block-control-group">
+            {promptTemplates.map((t) => (
+              <button
+                key={t.id}
+                className="block-control-btn ai-btn"
+                onClick={() => onAIGenerate(t.id)}
+                disabled={isAIGenerating}
+                title={`${t.emoji ? t.emoji + " " : ""}${t.name}`}
+                aria-label={t.name}
+              >
+                {t.emoji || "✨"}
+              </button>
+            ))}
+          </div>
           <button
-            className="block-control-btn ai-btn"
-            onClick={onAIGenerate}
-            disabled={isAIGenerating}
-            title={
-              isAIGenerating
-                ? "AI is generating..."
-                : "Generate AI content from this block"
-            }
-          >
-            {isAIGenerating ? "⏳" : "⚡"}
-          </button>
-          <button
-            className="block-control-btn rewrite-btn"
-            onClick={() => setShowRewriteInput(!showRewriteInput)}
-            disabled={isAIGenerating}
-            title={
-              isAIGenerating
-                ? "AI is generating..."
-                : "Rewrite this block with AI"
-            }
+            className="block-control-btn"
+            onClick={() => setNoteOpen((v) => !v)}
+            title="Editor’s Note"
           >
             ✏️
           </button>
+          {/* Removed standalone rewrite button */}
           <button
             className="block-control-btn convert-markdown-btn"
             onClick={onConvertMarkdown}
@@ -188,40 +162,36 @@ function BlockControls({
         </div>
       </div>
 
-      {/* Rewrite pop‑over anchored to the menu */}
-      {showRewriteInput && (
-        <FloatingWrapper
-          referenceEl={menuRefs.floating?.current ?? element}
-          placement="left-start"
-          className="rewrite-input-area"
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
+      {/* Editor's Note flyout */}
+      {noteOpen && noteX != null && noteY != null && (
+        <div
+          ref={noteRefs.setFloating}
+          className="editors-note-flyout"
+          style={{
+            position: noteStrategy,
+            top: noteY,
+            left: noteX,
+            zIndex: 1001,
+          }}
         >
+          <div className="editors-note-row">
+            <span className="editors-note-label">Editor’s Note</span>
+            <button
+              className="editors-note-close"
+              onClick={() => setNoteOpen(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
           <input
             type="text"
-            className="rewrite-input"
-            placeholder="How should I rewrite this? (optional)"
-            value={rewriteInstructions}
-            onChange={(e) => setRewriteInstructions(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleRewriteSubmit();
-              } else if (e.key === "Escape") {
-                setShowRewriteInput(false);
-                setRewriteInstructions("");
-              }
-            }}
-            autoFocus
+            value={editorsNote}
+            placeholder="Add context or instruction..."
+            onChange={(e) => setEditorsNote(e.target.value)}
+            className="editors-note-input"
           />
-          <button
-            className="rewrite-submit-btn"
-            onClick={handleRewriteSubmit}
-            disabled={isAIGenerating}
-          >
-            Rewrite
-          </button>
-        </FloatingWrapper>
+        </div>
       )}
     </>
   );
@@ -242,9 +212,8 @@ export function BlockHoverPlugin(): JSX.Element | null {
   const [isDeletionDisabled, setIsDeletionDisabled] = useState(false);
 
   const { generate, isGenerating, canGenerate } = useAIGeneration();
-  const activePromptTemplateId = useStore(
-    (state) => state.activePromptTemplateId
-  );
+  const promptTemplates = useStore((state) => state.promptTemplates);
+  // activePromptTemplateId not needed here; templates are passed into controls
 
   /*******************************************************/
   /*  Update selection / hover logic (same as before)    */
@@ -375,14 +344,14 @@ export function BlockHoverPlugin(): JSX.Element | null {
     setHoveredElement(null);
   };
 
-  const handleAIGenerate = () => {
+  const handleAIGenerate = (templateId: string) => {
     if (!canGenerate || !selectedElementKey) return;
 
     editor.getEditorState().read(() => {
       const node = $getNodeByKey(selectedElementKey);
       if (node) {
         const nodeText = node.getTextContent();
-        generate(activePromptTemplateId, "", {
+        generate(templateId, "", {
           customText: nodeText,
           action: "generate" as AIActionType,
           targetNodeKey: selectedElementKey,
@@ -392,22 +361,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
     setHoveredElement(null);
   };
 
-  const handleRewrite = (instructions: string) => {
-    if (!canGenerate || !selectedElementKey) return;
-
-    editor.getEditorState().read(() => {
-      const node = $getNodeByKey(selectedElementKey);
-      if (node) {
-        const nodeText = node.getTextContent();
-        generate(activePromptTemplateId, instructions, {
-          customText: nodeText,
-          action: "rewrite" as AIActionType,
-          targetNodeKey: selectedElementKey,
-        });
-      }
-    });
-    setHoveredElement(null);
-  };
+  // Rewrite flow removed; use templates with appropriate insertion strategy
 
   const handleConvertMarkdown = () => {
     if (!selectedElementKey) return;
@@ -477,12 +431,12 @@ export function BlockHoverPlugin(): JSX.Element | null {
       element={hoveredElement}
       onDelete={deleteBlock}
       onAIGenerate={handleAIGenerate}
-      onRewrite={handleRewrite}
       onConvertMarkdown={handleConvertMarkdown}
       onMouseEnter={handleControlsMouseEnter}
       onMouseLeave={handleControlsMouseLeave}
       isDeletionDisabled={isDeletionDisabled}
       isAIGenerating={isGenerating}
+      promptTemplates={promptTemplates}
     />
   );
 }

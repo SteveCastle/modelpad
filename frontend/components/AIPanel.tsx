@@ -282,6 +282,237 @@ export default function AIPanel({
 
   const renderContextControl = () => (
     <div className="context-control-content">
+      <h2>Prompt Templates</h2>
+      <div className="prompt-template-section">
+        <div className="prompt-tab-buttons">
+          {Array.isArray(promptTemplates) &&
+            promptTemplates.map((template) => (
+              <button
+                key={template.id}
+                className={`prompt-tab-button ${
+                  activePromptTemplateId === template.id ? "active" : ""
+                }`}
+                onClick={() => setActivePromptTemplate(template.id)}
+              >
+                {template.name}
+                {promptTemplates.length > 1 && (
+                  <button
+                    className="delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deletePromptTemplate(template.id);
+                    }}
+                    title="Delete template"
+                  >
+                    ×
+                  </button>
+                )}
+              </button>
+            ))}
+          <button
+            className="prompt-tab-button add-button"
+            onClick={() => {
+              const newTemplate = addPromptTemplate({
+                name: `Template ${promptTemplates.length + 1}`,
+                systemPrompt: "You are a helpful AI assistant.",
+                mainPrompt: "<text>",
+              });
+              setActivePromptTemplate(newTemplate.id);
+            }}
+            title="Add new template"
+          >
+            +
+          </button>
+        </div>
+
+        {activePromptTemplateId &&
+          Array.isArray(promptTemplates) &&
+          (() => {
+            const currentTemplate = promptTemplates.find(
+              (t) => t.id === activePromptTemplateId
+            );
+            if (!currentTemplate) return null;
+
+            return (
+              <div className="prompt-editing-area">
+                <div className="prompt-field">
+                  <label className="prompt-label">Template Name</label>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      type="text"
+                      className="prompt-input"
+                      placeholder="Emoji (optional)"
+                      style={{ width: 64, textAlign: "center" }}
+                      value={currentTemplate.emoji || ""}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        updatePromptTemplate(activePromptTemplateId, {
+                          emoji: val.slice(0, 2),
+                        });
+                      }}
+                    />
+                    <input
+                      type="text"
+                      className="prompt-input"
+                      value={currentTemplate.name}
+                      onChange={(e) => {
+                        updatePromptTemplate(activePromptTemplateId, {
+                          name: e.target.value,
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="prompt-field">
+                  <label className="prompt-label">System Prompt</label>
+                  <textarea
+                    className="prompt-textarea custom-scrollbar"
+                    value={currentTemplate.systemPrompt}
+                    onChange={(e) => {
+                      updatePromptTemplate(activePromptTemplateId, {
+                        systemPrompt: e.target.value,
+                      });
+                    }}
+                    rows={4}
+                  />
+                </div>
+                <div className="prompt-field">
+                  <label className="prompt-label">Main Prompt Template</label>
+                  <textarea
+                    className="prompt-textarea custom-scrollbar"
+                    value={currentTemplate.mainPrompt}
+                    onChange={(e) => {
+                      updatePromptTemplate(activePromptTemplateId, {
+                        mainPrompt: e.target.value,
+                      });
+                    }}
+                    rows={4}
+                  />
+                </div>
+                <div className="prompt-field">
+                  <label className="prompt-label">Insertion Strategy</label>
+                  <div className="prompt-row">
+                    <select
+                      className="prompt-select"
+                      value={
+                        currentTemplate.insertionStrategy?.kind ||
+                        "insert-after-node"
+                      }
+                      onChange={(e) => {
+                        const kind = e.target.value as
+                          | "replace-node"
+                          | "insert-after-node"
+                          | "insert-before-node"
+                          | "append-inside-node"
+                          | "insert-at-cursor"
+                          | "replace-selection"
+                          | "insert-after-selection"
+                          | "insert-before-selection"
+                          | "append-to-document-end";
+                        const newParagraph =
+                          currentTemplate.insertionStrategy?.newParagraph;
+                        updatePromptTemplate(activePromptTemplateId, {
+                          insertionStrategy: {
+                            kind,
+                            ...(kind === "insert-after-node" ||
+                            kind === "insert-before-node" ||
+                            kind === "insert-after-selection" ||
+                            kind === "insert-before-selection"
+                              ? { newParagraph: newParagraph ?? true }
+                              : {}),
+                          },
+                        });
+                      }}
+                    >
+                      <option value="insert-after-node">
+                        Insert after node
+                      </option>
+                      <option value="insert-before-node">
+                        Insert before node
+                      </option>
+                      <option value="replace-node">Replace node</option>
+                      <option value="append-inside-node">
+                        Append inside node
+                      </option>
+                      <option value="insert-at-cursor">Insert at cursor</option>
+                      <option value="replace-selection">
+                        Replace selection
+                      </option>
+                      <option value="insert-after-selection">
+                        Insert after selection
+                      </option>
+                      <option value="insert-before-selection">
+                        Insert before selection
+                      </option>
+                      <option value="append-to-document-end">
+                        Append to document end
+                      </option>
+                    </select>
+
+                    {(currentTemplate.insertionStrategy?.kind ===
+                      "insert-after-node" ||
+                      currentTemplate.insertionStrategy?.kind ===
+                        "insert-before-node" ||
+                      currentTemplate.insertionStrategy?.kind ===
+                        "insert-after-selection" ||
+                      currentTemplate.insertionStrategy?.kind ===
+                        "insert-before-selection") && (
+                      <label
+                        className="prompt-inline"
+                        style={{
+                          display: "inline-flex",
+                          gap: 8,
+                          marginLeft: 12,
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            currentTemplate.insertionStrategy?.newParagraph ??
+                            true
+                          }
+                          onChange={(e) => {
+                            const newParagraph = e.target.checked;
+                            const kind =
+                              currentTemplate.insertionStrategy?.kind ||
+                              "insert-after-node";
+                            updatePromptTemplate(activePromptTemplateId, {
+                              insertionStrategy: { kind, newParagraph },
+                            });
+                          }}
+                        />
+                        New paragraph
+                      </label>
+                    )}
+                  </div>
+                  <div className="prompt-help">
+                    Some strategies require a target node/selection. If missing,
+                    generation may fall back to appending at the end.
+                  </div>
+                </div>
+                <div className="prompt-info">
+                  <strong>Template Variables:</strong>
+                  <br />• <code>&lt;text&gt;</code> - Current/active node text
+                  <br />• <code>&lt;selection&gt;</code> - Selected text (if
+                  any)
+                  <br />• <code>&lt;contextDocuments&gt;</code> - Context from
+                  other tabs
+                  <br />• <code>&lt;currentDocument&gt;</code> - Full current
+                  document
+                  <br />• <code>&lt;textBefore&gt;</code> - Text before current
+                  section
+                  <br />• <code>&lt;textAfter&gt;</code> - Text after current
+                  section
+                  <br />• <code>&lt;documentContext&gt;</code> - Combined
+                  before/after context
+                  <br />
+                  <br />
+                </div>
+              </div>
+            );
+          })()}
+      </div>
+
       <h2>Tabs</h2>
       <div className="context-list">
         {sortedStories.map((story) => (
@@ -361,121 +592,6 @@ export default function AIPanel({
             </span>
           </button>
         </div>
-      </div>
-
-      <h2>Prompt Templates</h2>
-      <div className="prompt-template-section">
-        <div className="prompt-tab-buttons">
-          {Array.isArray(promptTemplates) &&
-            promptTemplates.map((template) => (
-              <button
-                key={template.id}
-                className={`prompt-tab-button ${
-                  activePromptTemplateId === template.id ? "active" : ""
-                }`}
-                onClick={() => setActivePromptTemplate(template.id)}
-              >
-                {template.name}
-                {promptTemplates.length > 1 && (
-                  <button
-                    className="delete-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deletePromptTemplate(template.id);
-                    }}
-                    title="Delete template"
-                  >
-                    ×
-                  </button>
-                )}
-              </button>
-            ))}
-          <button
-            className="prompt-tab-button add-button"
-            onClick={() => {
-              const newTemplate = addPromptTemplate({
-                name: `Template ${promptTemplates.length + 1}`,
-                systemPrompt: "You are a helpful AI assistant.",
-                mainPrompt: "<text>",
-              });
-              setActivePromptTemplate(newTemplate.id);
-            }}
-            title="Add new template"
-          >
-            +
-          </button>
-        </div>
-
-        {activePromptTemplateId &&
-          Array.isArray(promptTemplates) &&
-          (() => {
-            const currentTemplate = promptTemplates.find(
-              (t) => t.id === activePromptTemplateId
-            );
-            if (!currentTemplate) return null;
-
-            return (
-              <div className="prompt-editing-area">
-                <div className="prompt-field">
-                  <label className="prompt-label">Template Name</label>
-                  <input
-                    type="text"
-                    className="prompt-input"
-                    value={currentTemplate.name}
-                    onChange={(e) => {
-                      updatePromptTemplate(activePromptTemplateId, {
-                        name: e.target.value,
-                      });
-                    }}
-                  />
-                </div>
-                <div className="prompt-field">
-                  <label className="prompt-label">System Prompt</label>
-                  <textarea
-                    className="prompt-textarea custom-scrollbar"
-                    value={currentTemplate.systemPrompt}
-                    onChange={(e) => {
-                      updatePromptTemplate(activePromptTemplateId, {
-                        systemPrompt: e.target.value,
-                      });
-                    }}
-                    rows={4}
-                  />
-                </div>
-                <div className="prompt-field">
-                  <label className="prompt-label">Main Prompt Template</label>
-                  <textarea
-                    className="prompt-textarea custom-scrollbar"
-                    value={currentTemplate.mainPrompt}
-                    onChange={(e) => {
-                      updatePromptTemplate(activePromptTemplateId, {
-                        mainPrompt: e.target.value,
-                      });
-                    }}
-                    rows={4}
-                  />
-                </div>
-                <div className="prompt-info">
-                  <strong>Template Variables:</strong>
-                  <br />• <code>&lt;text&gt;</code> - Current/active node text
-                  <br />• <code>&lt;selection&gt;</code> - Selected text (if
-                  any)
-                  <br />• <code>&lt;contextDocuments&gt;</code> - Context from
-                  other tabs
-                  <br />• <code>&lt;currentDocument&gt;</code> - Full current
-                  document
-                  <br />• <code>&lt;textBefore&gt;</code> - Text before current
-                  section
-                  <br />• <code>&lt;textAfter&gt;</code> - Text after current
-                  section
-                  <br />• <code>&lt;documentContext&gt;</code> - Combined
-                  before/after context
-                  <br />
-                  <br />
-                </div>
-              </div>
-            );
-          })()}
       </div>
     </div>
   );

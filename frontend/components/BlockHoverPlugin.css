@@ -139,6 +139,65 @@
   cursor: not-allowed;
 }
 
+/* Editor's Note Flyout */
+.editors-note-flyout {
+  background: var(--context-menu-bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 300px;
+  max-width: 420px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.editors-note-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.editors-note-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  opacity: 0.9;
+}
+
+.editors-note-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.editors-note-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.editors-note-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background-color: rgba(0, 0, 0, 0.25);
+  color: var(--text-color);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+}
+
+.editors-note-input:focus {
+  border-color: var(--link-color);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  background-color: rgba(0, 0, 0, 0.32);
+}
+
 .block-type-menu {
   position: absolute;
   top: 0;

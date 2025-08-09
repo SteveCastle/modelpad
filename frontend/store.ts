@@ -37,10 +37,26 @@ const ensureValidContentStructure = (
 export type PromptTemplate = {
   id: string;
   name: string;
+  emoji?: string;
   systemPrompt: string;
   mainPrompt: string;
   createdAt: string;
   lastUsedAt?: string;
+  // Preferred insertion behavior for streamed output when using this template
+  insertionStrategy?: {
+    kind:
+      | "replace-node"
+      | "insert-after-node"
+      | "insert-before-node"
+      | "append-inside-node"
+      | "insert-at-cursor"
+      | "replace-selection"
+      | "insert-after-selection"
+      | "insert-before-selection"
+      | "append-to-document-end";
+    // Applies to insert-before/after-node and insert-before/after-selection
+    newParagraph?: boolean;
+  };
 };
 
 type ViewSettings = {
@@ -177,6 +193,7 @@ type State = {
   activeStoryId: string;
   activePromptTemplateId: string;
   promptTemplates: PromptTemplate[];
+  editorsNote: string;
   abortController?: AbortController;
   generationState: LoadingStates;
   availableModels: string[];
@@ -208,6 +225,7 @@ type State = {
   deletePromptTemplate: (id: string) => void;
   setActivePromptTemplate: (id: string) => void;
   getPromptTemplate: (id: string) => PromptTemplate | undefined;
+  setEditorsNote: (note: string) => void;
   toggleReadingMode: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -294,26 +312,32 @@ const defaultPromptTemplates: PromptTemplate[] = [
   {
     id: "newScene",
     name: "New Scene",
+    emoji: "⚡",
     systemPrompt:
       "You are a researcher researching a topic and helping me collect information, and understand a topic.",
     mainPrompt: "<text>",
     createdAt: new Date().toISOString(),
+    insertionStrategy: { kind: "insert-after-node", newParagraph: true },
   },
   {
     id: "rewrite",
     name: "Rewrite",
+    emoji: "✏️",
     systemPrompt:
       "You are a writer rewriting a scene. Rewrite the scene in a different style or from a different perspective.",
     mainPrompt: "<text>",
     createdAt: new Date().toISOString(),
+    insertionStrategy: { kind: "replace-node" },
   },
   {
     id: "summarize",
     name: "Summarize",
+    emoji: "📝",
     systemPrompt:
       "You are a writer summarizing a scene. Summarize the scene in a few sentences.",
     mainPrompt: "<text>",
     createdAt: new Date().toISOString(),
+    insertionStrategy: { kind: "insert-after-node", newParagraph: true },
   },
 ];
 
@@ -345,6 +369,7 @@ export const useStore = create<State>()(
       modelSettings: ollamaSettings,
       activePromptTemplateId: "newScene",
       promptTemplates: defaultPromptTemplates,
+      editorsNote: "",
       activeStoryId: initialStories[0].id,
       abortController: new AbortController(),
       generationState: "no-connection",
@@ -485,6 +510,10 @@ export const useStore = create<State>()(
           id: crypto.randomUUID(),
           createdAt: new Date().toISOString(),
           lastUsedAt: new Date().toISOString(),
+          emoji: template.emoji || "✨",
+          insertionStrategy:
+            template.insertionStrategy ||
+            ({ kind: "insert-after-node", newParagraph: true } as const),
         };
         set(() => ({
           promptTemplates: [...get().promptTemplates, newTemplate],
@@ -525,6 +554,9 @@ export const useStore = create<State>()(
             lastUsedAt: new Date().toISOString(),
           });
         }
+      },
+      setEditorsNote: (note: string) => {
+        set(() => ({ editorsNote: note }));
       },
       getPromptTemplate: (id: string) => {
         return get().promptTemplates.find((template) => template.id === id);
@@ -1017,6 +1049,7 @@ export const useStore = create<State>()(
         sideBarOpen: state.sideBarOpen,
         activePromptTemplateId: state.activePromptTemplateId,
         promptTemplates: state.promptTemplates,
+        editorsNote: state.editorsNote,
         tags: state.tags,
         activeNotesTab: state.activeNotesTab,
         collapsedNoteIds: Array.from(state.collapsedNoteIds),
@@ -1035,9 +1068,17 @@ export const useStore = create<State>()(
           // Migrate old prompt template format to new format
           if (!Array.isArray(state.promptTemplates)) {
             console.log("Migrating old prompt template format to new format");
-            const oldPromptTemplates = state.promptTemplates as any;
+            const oldPromptTemplates =
+              state.promptTemplates as unknown as Record<
+                string,
+                string | undefined
+              >;
             const oldSystemPromptTemplates =
-              (state as any).systemPromptTemplates || {};
+              (
+                state as unknown as {
+                  systemPromptTemplates?: Record<string, string | undefined>;
+                }
+              ).systemPromptTemplates || {};
 
             // Convert old format to new format
             const newPromptTemplates: PromptTemplate[] = [];
@@ -1059,6 +1100,10 @@ export const useStore = create<State>()(
                     "You are a helpful AI assistant.",
                   mainPrompt: oldPromptTemplates[key] || "<text>",
                   createdAt: new Date().toISOString(),
+                  insertionStrategy:
+                    key === "rewrite"
+                      ? { kind: "replace-node" }
+                      : { kind: "insert-after-node", newParagraph: true },
                 });
               }
             });
@@ -1071,18 +1116,30 @@ export const useStore = create<State>()(
             state.promptTemplates = newPromptTemplates;
 
             // Set active template if needed
+            const legacyKey = (
+              state as unknown as {
+                promptTemplateKey?: string;
+              }
+            ).promptTemplateKey;
             if (
               !state.activePromptTemplateId ||
-              typeof (state as any).promptTemplateKey === "string"
+              typeof legacyKey === "string"
             ) {
               state.activePromptTemplateId =
-                (state as any).promptTemplateKey || newPromptTemplates[0].id;
+                legacyKey || newPromptTemplates[0].id;
             }
 
             // Clean up old properties
-            delete (state as any).systemPromptTemplates;
-            delete (state as any).ragPromptTemplates;
-            delete (state as any).promptTemplateKey;
+            const anyState = state as unknown as Record<string, unknown>;
+            if ("systemPromptTemplates" in anyState) {
+              delete anyState.systemPromptTemplates;
+            }
+            if ("ragPromptTemplates" in anyState) {
+              delete anyState.ragPromptTemplates;
+            }
+            if ("promptTemplateKey" in anyState) {
+              delete anyState.promptTemplateKey;
+            }
           }
         }
       },

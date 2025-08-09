@@ -44,6 +44,7 @@ interface TemplateVariables {
   textAfter: string; // Text after the active node
   textAfterActiveNode: string; // Alias for textAfter
   documentContext: string; // Combined before/after context
+  editorsNote: string; // Editor's note / guidance
 }
 
 function applyTemplate(template: string, context: PromptContext): string {
@@ -88,6 +89,10 @@ function applyTemplate(template: string, context: PromptContext): string {
     ]
       .filter(Boolean)
       .join("\n\n"),
+
+    // Editor's note (present on PromptContext)
+    editorsNote:
+      (context as PromptContext & { editorsNote?: string }).editorsNote || "",
   };
 
   // Apply template substitutions
@@ -128,6 +133,7 @@ interface PromptContext {
   currentDocumentText: string;
   textBeforeActiveNode: string;
   textAfterActiveNode: string;
+  editorsNote?: string;
 }
 
 interface PromptBuilderOptions {
@@ -269,6 +275,7 @@ function extractPromptContext(
     currentDocumentText: currentDocumentText || "",
     textBeforeActiveNode: textBeforeActiveNode || "",
     textAfterActiveNode: textAfterActiveNode || "",
+    editorsNote: useStore.getState().editorsNote || "",
   };
 }
 
@@ -508,6 +515,13 @@ export function useAIGeneration() {
     const action = options.action || "generate";
     let promptId: string | undefined;
 
+    // Resolve prompt template early for insertion strategy decisions
+    const promptTemplate = getPromptTemplate(promptTemplateId);
+    if (!promptTemplate) {
+      console.error(`Prompt template with id ${promptTemplateId} not found`);
+      return;
+    }
+
     // Create generation tracking for generate action
     if (action === "generate" && options.targetNodeKey) {
       promptId = crypto.randomUUID();
@@ -536,9 +550,39 @@ export function useAIGeneration() {
       });
     }
 
-    // Determine insertion strategy based on action and provided options
+    // Determine insertion strategy: options override > template > action fallback
+    const strategyFromTemplate = (() => {
+      const s = promptTemplate.insertionStrategy;
+      if (!s) return undefined;
+      switch (s.kind) {
+        case "replace-node":
+        case "insert-after-node":
+        case "insert-before-node":
+        case "append-inside-node": {
+          if (options.targetNodeKey) {
+            return {
+              ...s,
+              targetNodeKey: options.targetNodeKey,
+            } as InsertionStrategy;
+          }
+          // No target, fall back to append to end
+          return { kind: "append-to-document-end" } as InsertionStrategy;
+        }
+        case "insert-after-selection":
+        case "insert-before-selection": {
+          return {
+            kind: s.kind,
+            newParagraph: s.newParagraph,
+          } as InsertionStrategy;
+        }
+        default:
+          return { kind: s.kind } as InsertionStrategy;
+      }
+    })();
+
     const strategy: InsertionStrategy =
       options.insertionStrategy ||
+      strategyFromTemplate ||
       (action === "generate"
         ? options.targetNodeKey
           ? {
@@ -555,13 +599,6 @@ export function useAIGeneration() {
       createActionCallbacks(action, promptId, strategy);
 
     editor.update(() => {
-      // Get the prompt template
-      const promptTemplate = getPromptTemplate(promptTemplateId);
-      if (!promptTemplate) {
-        console.error(`Prompt template with id ${promptTemplateId} not found`);
-        return;
-      }
-
       // Extract context information using the new helper function
       const promptContext = extractPromptContext(editor, options, tabContext);
 
