@@ -1,19 +1,14 @@
 import {
   $getSelection,
   $isRangeSelection,
-  $isElementNode,
   SELECTION_CHANGE_COMMAND,
   $getNodeByKey,
   $getRoot,
-  LexicalNode,
 } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
 import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
-import { $isPromptNode } from "./PromptNode";
-import { $isAIGenerationNode } from "./AIGenerationNode";
-import { useStore } from "../store";
 import { useState, useCallback, useEffect, useLayoutEffect, JSX } from "react";
 import {
   useFloating,
@@ -25,7 +20,6 @@ import {
 } from "@floating-ui/react";
 
 import "./BlockHoverPlugin.css";
-import "./PromptNode.css";
 
 /************************************************************
  * Generic floating‑UI wrapper
@@ -72,118 +66,6 @@ function FloatingWrapper({
   );
 }
 
-/************************************************************
- * PromptControls (unchanged)
- ************************************************************/
-interface PromptControlsProps {
-  element: HTMLElement;
-  status: "pending" | "generating" | "completed" | "cancelled";
-  onCancel: () => void;
-  onConvert: () => void;
-  onDelete: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
-  isDeletionDisabled: boolean;
-}
-
-function PromptControls({
-  element,
-  status,
-  onCancel,
-  onConvert,
-  onDelete,
-  onMouseEnter,
-  onMouseLeave,
-  isDeletionDisabled,
-}: PromptControlsProps) {
-  return (
-    <FloatingWrapper
-      referenceEl={element}
-      className="block-controls"
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      <div className="block-controls-buttons">
-        {status === "generating" && (
-          <button
-            className="block-control-btn prompt-control-cancel"
-            onClick={onCancel}
-            title="Cancel generation"
-          >
-            ❌
-          </button>
-        )}
-        {(status === "completed" || status === "cancelled") && (
-          <button
-            className="block-control-btn prompt-control-convert"
-            onClick={onConvert}
-            title="Convert to regular text"
-          >
-            📝
-          </button>
-        )}
-        <button
-          className="block-control-btn prompt-control-delete"
-          onClick={onDelete}
-          disabled={isDeletionDisabled}
-          title={
-            isDeletionDisabled ? "Cannot delete the last block" : "Delete block"
-          }
-        >
-          🗑️
-        </button>
-      </div>
-    </FloatingWrapper>
-  );
-}
-
-/************************************************************
- * AIGenerationControls (unchanged)
- ************************************************************/
-interface AIGenerationControlsProps {
-  element: HTMLElement;
-  onConvert: () => void;
-  onDelete: () => void;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
-  isDeletionDisabled: boolean;
-}
-
-function AIGenerationControls({
-  element,
-  onConvert,
-  onDelete,
-  onMouseEnter,
-  onMouseLeave,
-  isDeletionDisabled,
-}: AIGenerationControlsProps) {
-  return (
-    <FloatingWrapper
-      referenceEl={element}
-      className="block-controls"
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-    >
-      <div className="block-controls-buttons">
-        <button
-          className="block-control-btn ai-generation-accept"
-          onClick={onConvert}
-          title="Accept"
-        >
-          ✅
-        </button>
-        <button
-          className="block-control-btn ai-generation-reject"
-          onClick={onDelete}
-          disabled={isDeletionDisabled}
-          title="Reject"
-        >
-          ❌
-        </button>
-      </div>
-    </FloatingWrapper>
-  );
-}
 
 /************************************************************
  * BlockControls – rewrite pop‑over now a FloatingWrapper
@@ -193,6 +75,7 @@ interface BlockControlsProps {
   onDelete: () => void;
   onAIGenerate: () => void;
   onRewrite: (instructions: string) => void;
+  onConvertMarkdown: () => void;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
   isDeletionDisabled: boolean;
@@ -204,6 +87,7 @@ function BlockControls({
   onDelete,
   onAIGenerate,
   onRewrite,
+  onConvertMarkdown,
   onMouseEnter,
   onMouseLeave,
   isDeletionDisabled,
@@ -276,6 +160,18 @@ function BlockControls({
             ✏️
           </button>
           <button
+            className="block-control-btn convert-markdown-btn"
+            onClick={onConvertMarkdown}
+            disabled={isAIGenerating}
+            title={
+              isAIGenerating
+                ? "AI is generating..."
+                : "Convert markdown to structured blocks"
+            }
+          >
+            📄
+          </button>
+          <button
             className="block-control-btn delete-btn"
             onClick={onDelete}
             disabled={isDeletionDisabled}
@@ -342,18 +238,8 @@ export function BlockHoverPlugin(): JSX.Element | null {
   );
   const [isControlsHovered, setIsControlsHovered] = useState(false);
   const [isDeletionDisabled, setIsDeletionDisabled] = useState(false);
-  const [promptNodeInfo, setPromptNodeInfo] = useState<{
-    promptId: string;
-    nodeKey: string;
-    status: "pending" | "generating" | "completed" | "cancelled";
-  } | null>(null);
-  const [aiGenerationNodeInfo, setAIGenerationNodeInfo] = useState<{
-    nodeKey: string;
-  } | null>(null);
 
-  const { generate, cancelGeneration, isGenerating, canGenerate } =
-    useAIGeneration();
-  const { getPromptGeneration } = useStore((state) => state);
+  const { generate, isGenerating, canGenerate } = useAIGeneration();
 
   /*******************************************************/
   /*  Update selection / hover logic (same as before)    */
@@ -371,47 +257,6 @@ export function BlockHoverPlugin(): JSX.Element | null {
       if (elementDOM !== null) {
         setSelectedElementKey(elementKey);
 
-        // Reset states
-        setPromptNodeInfo(null);
-        setAIGenerationNodeInfo(null);
-
-        // Check if this element contains a PromptNode or AIGenerationNode
-        let foundPromptNode: LexicalNode | null = null;
-        let foundAIGenerationNode: LexicalNode | null = null;
-
-        if ($isElementNode(element)) {
-          const children = element.getChildren();
-          for (const child of children) {
-            if ($isPromptNode(child)) {
-              foundPromptNode = child;
-              break;
-            } else if ($isAIGenerationNode(child)) {
-              foundAIGenerationNode = child;
-              break;
-            }
-          }
-        }
-
-        if (foundPromptNode && $isPromptNode(foundPromptNode)) {
-          const generation = getPromptGeneration(foundPromptNode.getPromptId());
-          if (generation) {
-            setPromptNodeInfo({
-              promptId: foundPromptNode.getPromptId(),
-              nodeKey: foundPromptNode.getKey(),
-              status: generation.status,
-            });
-          } else {
-            setPromptNodeInfo({
-              promptId: foundPromptNode.getPromptId(),
-              nodeKey: foundPromptNode.getKey(),
-              status: foundPromptNode.getStatus(),
-            });
-          }
-        } else if (foundAIGenerationNode) {
-          setAIGenerationNodeInfo({
-            nodeKey: foundAIGenerationNode.getKey(),
-          });
-        }
       }
     }
 
@@ -419,7 +264,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
     const root = $getRoot();
     const topLevelNodeCount = root.getChildrenSize();
     setIsDeletionDisabled(topLevelNodeCount <= 1);
-  }, [editor, getPromptGeneration]);
+  }, [editor]);
 
   /*******************************************************/
   /*  Hover detection (same as before)                  */
@@ -442,8 +287,6 @@ export function BlockHoverPlugin(): JSX.Element | null {
       hideTimeout = setTimeout(() => {
         if (!isControlsHovered) {
           setHoveredElement(null);
-          setPromptNodeInfo(null);
-          setAIGenerationNodeInfo(null);
         }
       }, 100);
     };
@@ -465,63 +308,17 @@ export function BlockHoverPlugin(): JSX.Element | null {
         // Update lexical‑specific info inside the editor read phase
         editor.getEditorState().read(() => {
           const root = editor.getEditorState()._nodeMap;
-          let newPromptNodeInfo = null;
-          let newAIGenerationNodeInfo = null;
           let newSelectedElementKey = null as string | null;
 
           for (const [key] of root) {
             const dom = editor.getElementByKey(key);
             if (dom === blockElement) {
               newSelectedElementKey = key;
-
-              const node = editor.getEditorState()._nodeMap.get(key);
-              let foundPromptNode: any = null;
-              let foundAIGenerationNode: any = null;
-
-              if (node && $isElementNode(node)) {
-                const children = node.getChildren();
-                for (const child of children) {
-                  if ($isPromptNode(child)) {
-                    foundPromptNode = child;
-                    break;
-                  } else if ($isAIGenerationNode(child)) {
-                    foundAIGenerationNode = child;
-                    break;
-                  }
-                }
-              }
-
-              if (foundPromptNode && $isPromptNode(foundPromptNode)) {
-                const generation = getPromptGeneration(
-                  foundPromptNode.getPromptId()
-                );
-                if (generation) {
-                  newPromptNodeInfo = {
-                    promptId: foundPromptNode.getPromptId(),
-                    nodeKey: foundPromptNode.getKey(),
-                    status: generation.status,
-                  };
-                } else {
-                  newPromptNodeInfo = {
-                    promptId: foundPromptNode.getPromptId(),
-                    nodeKey: foundPromptNode.getKey(),
-                    status: foundPromptNode.getStatus(),
-                  };
-                }
-                newAIGenerationNodeInfo = null;
-              } else if (foundAIGenerationNode) {
-                newAIGenerationNodeInfo = {
-                  nodeKey: foundAIGenerationNode.getKey(),
-                };
-                newPromptNodeInfo = null;
-              }
               break;
             }
           }
 
           setSelectedElementKey(newSelectedElementKey);
-          setPromptNodeInfo(newPromptNodeInfo);
-          setAIGenerationNodeInfo(newAIGenerationNodeInfo);
         });
       }
     };
@@ -538,7 +335,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
       editorElement.removeEventListener("mouseleave", handleMouseLeave);
       clearHideTimeout();
     };
-  }, [editor, hoveredElement, isControlsHovered, getPromptGeneration]);
+  }, [editor, hoveredElement, isControlsHovered]);
 
   /*******************************************************/
   /*  Sync to editor updates                             */
@@ -572,7 +369,6 @@ export function BlockHoverPlugin(): JSX.Element | null {
       }
     });
     setHoveredElement(null);
-    setPromptNodeInfo(null);
   };
 
   const handleAIGenerate = () => {
@@ -609,52 +405,29 @@ export function BlockHoverPlugin(): JSX.Element | null {
     setHoveredElement(null);
   };
 
-  /*******************************************************/
-  /*  Prompt Node actions                                 */
-  /*******************************************************/
-  const handlePromptCancel = () => {
-    if (promptNodeInfo) cancelGeneration(promptNodeInfo.promptId);
-  };
-  const handlePromptConvert = () => {
-    if (promptNodeInfo) {
-      editor.update(() => {
-        const promptNode = $getNodeByKey(promptNodeInfo.nodeKey);
-        if ($isPromptNode(promptNode)) {
-          // Convert the prompt node to a regular text node using its original text
-          const textNode = promptNode.convertToTextNode();
-          promptNode.replace(textNode);
-        }
-      });
-    }
-    setHoveredElement(null);
-    setPromptNodeInfo(null);
-  };
-
-  /*******************************************************/
-  /*  AI Generation Node actions                         */
-  /*******************************************************/
-  const handleAIGenerationConvert = () => {
-    if (!aiGenerationNodeInfo) return;
+  const handleConvertMarkdown = () => {
+    if (!selectedElementKey) return;
 
     editor.update(() => {
-      const aiNode = $getNodeByKey(aiGenerationNodeInfo.nodeKey);
-      if ($isAIGenerationNode(aiNode)) {
-        const markdownText = aiNode.getTextContent();
-
+      const node = $getNodeByKey(selectedElementKey);
+      if (node) {
+        const markdownText = node.getTextContent();
+        
         try {
-          const parentElement = aiNode.getParent();
-          if ($isElementNode(parentElement)) {
-            // Log the index of the parent element in the root
+          const parentElement = node.getParent();
+          if (parentElement) {
+            // Get the root and find the index of the parent element
             const root = $getRoot();
             const parentIndex = root.getChildren().indexOf(parentElement);
-            console.log("parentIndex", parentIndex);
-            // Nodes before the index
+            
+            // Get nodes before and after the current element
             const beforeNodes = root.getChildren().slice(0, parentIndex);
-            // Nodes after the index
             const afterNodes = root.getChildren().slice(parentIndex + 1);
 
-            aiNode.remove();
+            // Remove the current node
+            node.remove();
 
+            // Convert markdown to structured blocks
             $convertFromMarkdownString(
               markdownText,
               TRANSFORMERS,
@@ -662,27 +435,31 @@ export function BlockHoverPlugin(): JSX.Element | null {
               false,
               false
             );
-            root.getChildren().forEach((node) => {
-              if (node.getTextContent() === "") node.remove();
+
+            // Remove empty nodes that might be created
+            root.getChildren().forEach((child) => {
+              if (child.getTextContent() === "") child.remove();
             });
 
+            // Reorder nodes: before nodes, then converted blocks, then after nodes
             const firstNode = root.getFirstChild();
             const lastNode = root.getLastChild();
 
-            beforeNodes.forEach((node) => firstNode.insertBefore(node));
-            afterNodes.reverse().forEach((node) => lastNode.insertAfter(node));
+            beforeNodes.forEach((beforeNode) => {
+              if (firstNode) firstNode.insertBefore(beforeNode);
+            });
+            
+            afterNodes.reverse().forEach((afterNode) => {
+              if (lastNode) lastNode.insertAfter(afterNode);
+            });
           }
         } catch (error) {
           console.error("Error converting markdown:", error);
         }
       }
     });
-
     setHoveredElement(null);
-    setAIGenerationNodeInfo(null);
   };
-
-  const handleAIGenerationDelete = () => deleteBlock();
 
   /*******************************************************/
   /*  Hover state management for floating controls       */
@@ -695,40 +472,13 @@ export function BlockHoverPlugin(): JSX.Element | null {
   /*******************************************************/
   if (!hoveredElement) return null;
 
-  if (promptNodeInfo) {
-    return (
-      <PromptControls
-        element={hoveredElement}
-        status={promptNodeInfo.status}
-        onCancel={handlePromptCancel}
-        onConvert={handlePromptConvert}
-        onDelete={deleteBlock}
-        onMouseEnter={handleControlsMouseEnter}
-        onMouseLeave={handleControlsMouseLeave}
-        isDeletionDisabled={isDeletionDisabled}
-      />
-    );
-  }
-
-  if (aiGenerationNodeInfo) {
-    return (
-      <AIGenerationControls
-        element={hoveredElement}
-        onConvert={handleAIGenerationConvert}
-        onDelete={handleAIGenerationDelete}
-        onMouseEnter={handleControlsMouseEnter}
-        onMouseLeave={handleControlsMouseLeave}
-        isDeletionDisabled={isDeletionDisabled}
-      />
-    );
-  }
-
   return (
     <BlockControls
       element={hoveredElement}
       onDelete={deleteBlock}
       onAIGenerate={handleAIGenerate}
       onRewrite={handleRewrite}
+      onConvertMarkdown={handleConvertMarkdown}
       onMouseEnter={handleControlsMouseEnter}
       onMouseLeave={handleControlsMouseLeave}
       isDeletionDisabled={isDeletionDisabled}
