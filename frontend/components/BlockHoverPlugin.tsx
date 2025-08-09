@@ -7,6 +7,7 @@ import {
   $getRoot,
   $createParagraphNode,
 } from "lexical";
+import type { LexicalNode } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
@@ -373,39 +374,37 @@ export function BlockHoverPlugin(): JSX.Element | null {
 
         try {
           if ($isElementNode(node)) {
-            // Create a new container paragraph node to hold the converted markdown
-            const containerNode = $createParagraphNode();
+            // Use a temporary container to parse markdown without nesting result
+            const tempContainer = $createParagraphNode();
 
-            // Insert the container node right after the target node
-            node.insertAfter(containerNode);
+            // Insert the temporary container right after the original node so the
+            // conversion has a valid attachment point
+            node.insertAfter(tempContainer);
 
-            // Convert markdown to structured blocks using the new container
+            // Convert markdown into the temporary container
             $convertFromMarkdownString(
               markdownText,
               TRANSFORMERS,
-              containerNode,
+              tempContainer,
               false,
               false
             );
 
-            // Remove the original node (source of markdown)
-            node.remove();
-
-            // Remove the empty container node if it exists
-            if (containerNode.getChildrenSize() === 0) {
-              containerNode.remove();
+            // Hoist all converted children to be siblings after the original node
+            const convertedChildren = tempContainer.getChildren();
+            if (convertedChildren.length > 0) {
+              let insertAfterNode: LexicalNode = node;
+              for (const child of convertedChildren) {
+                child.remove(); // detach from temp container
+                insertAfterNode.insertAfter(child);
+                insertAfterNode = child;
+              }
+              // Remove the original markdown source node only if conversion produced content
+              node.remove();
             }
 
-            // Clean up any empty nodes that might be created during conversion
-            const root = $getRoot();
-            root.getChildren().forEach((child) => {
-              if (
-                $isElementNode(child) &&
-                child.getTextContent().trim() === ""
-              ) {
-                child.remove();
-              }
-            });
+            // Remove the temporary container (now empty or no longer needed)
+            tempContainer.remove();
           }
         } catch (error) {
           console.error("Error converting markdown:", error);

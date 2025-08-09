@@ -329,8 +329,9 @@ export function useAIGeneration() {
     promptId: string | undefined,
     insertionStrategy: InsertionStrategy
   ) => {
-    // Track the text node created for streaming output
-    let currentTextNode: TextNode | null = null;
+    // Track the text node KEY created for streaming output
+    // IMPORTANT: do not hold onto node instances across updates
+    let currentTextNodeKey: string | null = null;
     // Track generated nodes for undo functionality (especially for prompt-based generate)
     let generatedNodeKeys: string[] = [];
 
@@ -348,14 +349,14 @@ export function useAIGeneration() {
     const tokenCallback = (text: string) => {
       editor.update(() => {
         const ensureAppendToCurrentNode = (chunk: string) => {
-          if (!currentTextNode) {
+          if (!currentTextNodeKey) {
             // First token: place a text node according to strategy
             const root = $getRoot();
             const selection = $getSelection();
 
             const maybeTrackNode = (node: TextNode) => {
-              currentTextNode = node;
               const nodeKey = node.getKey();
+              currentTextNodeKey = nodeKey;
               if (!generatedNodeKeys.includes(nodeKey)) {
                 generatedNodeKeys.push(nodeKey);
               }
@@ -366,11 +367,36 @@ export function useAIGeneration() {
                 const node = insertionStrategy.targetNodeKey
                   ? $getNodeByKey(insertionStrategy.targetNodeKey)
                   : undefined;
-                if (node && $isElementNode(node)) {
-                  node.clear();
+                if (!node) break;
+                if ($isElementNode(node)) {
+                  if (node.getKey() === "root") {
+                    // Fallback: append new paragraph at end when target is root
+                    const para = $createParagraphNode();
+                    const textNode = $createTextNode(chunk);
+                    para.append(textNode);
+                    node.append(para);
+                    maybeTrackNode(textNode);
+                    textNode.select();
+                  } else {
+                    node.clear();
+                    const textNode = $createTextNode(chunk);
+                    node.append(textNode);
+                    maybeTrackNode(textNode);
+                    textNode.select();
+                  }
+                } else {
+                  // Non-element: replace the node itself, or if parent is root, replace its top-level with paragraph
+                  const parent = node.getParent();
                   const textNode = $createTextNode(chunk);
-                  node.append(textNode);
+                  if (parent && parent.getKey() === "root") {
+                    const para = $createParagraphNode();
+                    para.append(textNode);
+                    node.getTopLevelElementOrThrow().replace(para);
+                  } else {
+                    node.replace(textNode);
+                  }
                   maybeTrackNode(textNode);
+                  textNode.select();
                 }
                 break;
               }
@@ -385,34 +411,55 @@ export function useAIGeneration() {
                     elementNode = elementNode.getParent();
                   }
                   if (elementNode && $isElementNode(elementNode)) {
+                    // Always use a paragraph as a sibling to avoid illegal root/text placement
                     const textNode = $createTextNode(chunk);
-                    if (insertionStrategy.newParagraph !== false) {
-                      const para = $createParagraphNode();
-                      para.append(textNode);
-                      if (insertionStrategy.kind === "insert-after-node") {
-                        elementNode.insertAfter(para);
-                      } else {
-                        elementNode.insertBefore(para);
-                      }
+                    const para = $createParagraphNode();
+                    para.append(textNode);
+                    if (insertionStrategy.kind === "insert-after-node") {
+                      elementNode.insertAfter(para);
                     } else {
-                      if (insertionStrategy.kind === "insert-after-node") {
-                        elementNode.insertAfter(textNode);
-                      } else {
-                        elementNode.insertBefore(textNode);
-                      }
+                      elementNode.insertBefore(para);
                     }
                     maybeTrackNode(textNode);
+                    textNode.select();
                   }
                 }
                 break;
               }
               case "append-inside-node": {
-                const node = $getNodeByKey(insertionStrategy.targetNodeKey);
-                if (node && $isElementNode(node)) {
-                  const textNode = $createTextNode(chunk);
-                  node.append(textNode);
-                  maybeTrackNode(textNode);
+                const target = $getNodeByKey(insertionStrategy.targetNodeKey);
+                if (!target) break;
+                const element = $isElementNode(target)
+                  ? target
+                  : target.getParent();
+                if (!element || !$isElementNode(element)) break;
+
+                const textNode = $createTextNode(chunk);
+                const type = element.getType();
+                const isRoot = element.getKey() === "root";
+                const acceptsText =
+                  type === "paragraph" ||
+                  type === "heading" ||
+                  type === "quote" ||
+                  type === "code";
+
+                if (isRoot) {
+                  // Root cannot contain text directly; append new paragraph at end
+                  const para = $createParagraphNode();
+                  para.append(textNode);
+                  element.append(para);
+                } else if (acceptsText) {
+                  // Safe to append text inside this element
+                  element.append(textNode);
+                } else {
+                  // Fallback: insert a new paragraph after the target element
+                  const para = $createParagraphNode();
+                  para.append(textNode);
+                  element.insertAfter(para);
                 }
+
+                maybeTrackNode(textNode);
+                textNode.select();
                 break;
               }
               case "insert-at-cursor": {
@@ -420,6 +467,7 @@ export function useAIGeneration() {
                   const textNode = $createTextNode(chunk);
                   selection.insertNodes([textNode]);
                   maybeTrackNode(textNode);
+                  textNode.select();
                 }
                 break;
               }
@@ -429,6 +477,7 @@ export function useAIGeneration() {
                   const textNode = $createTextNode(chunk);
                   selection.insertNodes([textNode]);
                   maybeTrackNode(textNode);
+                  textNode.select();
                 }
                 break;
               }
@@ -450,31 +499,33 @@ export function useAIGeneration() {
                       elementNode.insertBefore(para);
                     }
                     maybeTrackNode(textNode);
+                    textNode.select();
                   }
                 }
                 break;
               }
               case "append-to-document-end":
               default: {
-                const lastChild = root.getLastChild();
-                if (lastChild && $isElementNode(lastChild)) {
-                  const textNode = $createTextNode(chunk);
-                  lastChild.append(textNode);
-                  maybeTrackNode(textNode);
-                } else {
-                  const para = $createParagraphNode();
-                  const textNode = $createTextNode(chunk);
-                  para.append(textNode);
-                  root.append(para);
-                  maybeTrackNode(textNode);
-                }
+                // Always append a new paragraph at the end for predictable structure
+                const para = $createParagraphNode();
+                const textNode = $createTextNode(chunk);
+                para.append(textNode);
+                root.append(para);
+                maybeTrackNode(textNode);
+                textNode.select();
                 break;
               }
             }
           } else {
             // Subsequent tokens: append to existing text node
-            const current = currentTextNode.getTextContent();
-            currentTextNode.setTextContent(current + chunk);
+            const node = currentTextNodeKey
+              ? $getNodeByKey(currentTextNodeKey)
+              : null;
+            if (node && node instanceof TextNode) {
+              const current = node.getTextContent();
+              node.setTextContent(current + chunk);
+              node.select();
+            }
           }
         };
 
@@ -498,7 +549,7 @@ export function useAIGeneration() {
       }
 
       // Reset the text node references
-      currentTextNode = null;
+      currentTextNodeKey = null;
       generatedNodeKeys = [];
     };
 
