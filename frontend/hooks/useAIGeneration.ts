@@ -30,30 +30,38 @@ interface TemplateVariables {
 }
 
 function applyTemplate(template: string, context: PromptContext): string {
-  // Create template variables from context
+  // Ensure context is valid
+  if (!context || typeof context !== 'object') {
+    console.error('applyTemplate: Invalid context provided', context);
+    return template;
+  }
+
+  // Create template variables from context with safety checks
   const variables: TemplateVariables = {
     // Primary text (legacy support)
-    text: context.activeNodeText,
+    text: context.activeNodeText || "",
     
     // Active node
-    activeNodeText: context.activeNodeText,
+    activeNodeText: context.activeNodeText || "",
     
     // Selection (optional)
     selection: context.selectionText || "",
     selectionText: context.selectionText || "",
     
     // Context documents
-    contextDocuments: context.contextDocuments.join("\n"),
+    contextDocuments: Array.isArray(context.contextDocuments) 
+      ? context.contextDocuments.join("\n") 
+      : "",
     
     // Current document
-    currentDocument: context.currentDocumentText,
-    currentDocumentText: context.currentDocumentText,
+    currentDocument: context.currentDocumentText || "",
+    currentDocumentText: context.currentDocumentText || "",
     
     // Before/after context
-    textBefore: context.textBeforeActiveNode,
-    textBeforeActiveNode: context.textBeforeActiveNode,
-    textAfter: context.textAfterActiveNode,
-    textAfterActiveNode: context.textAfterActiveNode,
+    textBefore: context.textBeforeActiveNode || "",
+    textBeforeActiveNode: context.textBeforeActiveNode || "",
+    textAfter: context.textAfterActiveNode || "",
+    textAfterActiveNode: context.textAfterActiveNode || "",
     
     // Combined document context
     documentContext: [
@@ -63,22 +71,27 @@ function applyTemplate(template: string, context: PromptContext): string {
   };
 
   // Apply template substitutions
-  let result = template;
+  let result = template || "";
   
-  // Replace template variables with actual values
-  Object.entries(variables).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      // Support both <variable> and {{variable}} syntax
-      const patterns = [
-        new RegExp(`<${key}>`, 'g'),
-        new RegExp(`\\{\\{${key}\\}\\}`, 'g'),
-      ];
-      
-      patterns.forEach(pattern => {
-        result = result.replace(pattern, String(value));
-      });
-    }
-  });
+  try {
+    // Replace template variables with actual values
+    Object.entries(variables).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        // Support both <variable> and {{variable}} syntax
+        const patterns = [
+          new RegExp(`<${key}>`, 'g'),
+          new RegExp(`\\{\\{${key}\\}\\}`, 'g'),
+        ];
+        
+        patterns.forEach(pattern => {
+          result = result.replace(pattern, String(value));
+        });
+      }
+    });
+  } catch (error) {
+    console.error('Error in applyTemplate:', error, { template, context });
+    return template;
+  }
   
   return result;
 }
@@ -170,51 +183,57 @@ function extractPromptContext(
   let textBeforeActiveNode = "";
   let textAfterActiveNode = "";
 
-  const selection = $getSelection();
-  const root = $getRoot();
-  currentDocumentText = root.getTextContent();
+  try {
+    const selection = $getSelection();
+    const root = $getRoot();
+    currentDocumentText = root.getTextContent() || "";
 
-  // Use custom text if provided
-  if (options.customText) {
-    activeNodeText = options.customText;
-  } else if ($isRangeSelection(selection)) {
-    selectionText = selection.getTextContent();
-    if (selectionText.length < 2) {
-      activeNodeText = currentDocumentText;
-      selectionText = "";
+    // Use custom text if provided
+    if (options.customText) {
+      activeNodeText = options.customText;
+    } else if ($isRangeSelection(selection)) {
+      selectionText = selection.getTextContent() || "";
+      if (selectionText.length < 2) {
+        activeNodeText = currentDocumentText;
+        selectionText = "";
+      } else {
+        activeNodeText = selectionText;
+      }
     } else {
-      activeNodeText = selectionText;
+      activeNodeText = currentDocumentText;
     }
-  } else {
-    activeNodeText = currentDocumentText;
-  }
 
-  // Extract context before/after active node if we have a target node
-  if (options.targetNodeKey) {
-    const targetNode = $getNodeByKey(options.targetNodeKey);
-    if (targetNode) {
-      const allChildren = root.getChildren();
-      const targetIndex = allChildren.findIndex(child => child.getKey() === options.targetNodeKey);
-      
-      if (targetIndex !== -1) {
-        // Get text before the target node
-        const beforeNodes = allChildren.slice(0, targetIndex);
-        textBeforeActiveNode = beforeNodes.map(node => node.getTextContent()).join("\n");
+    // Extract context before/after active node if we have a target node
+    if (options.targetNodeKey) {
+      const targetNode = $getNodeByKey(options.targetNodeKey);
+      if (targetNode) {
+        const allChildren = root.getChildren();
+        const targetIndex = allChildren.findIndex(child => child.getKey() === options.targetNodeKey);
         
-        // Get text after the target node  
-        const afterNodes = allChildren.slice(targetIndex + 1);
-        textAfterActiveNode = afterNodes.map(node => node.getTextContent()).join("\n");
+        if (targetIndex !== -1) {
+          // Get text before the target node
+          const beforeNodes = allChildren.slice(0, targetIndex);
+          textBeforeActiveNode = beforeNodes.map(node => node.getTextContent() || "").join("\n");
+          
+          // Get text after the target node  
+          const afterNodes = allChildren.slice(targetIndex + 1);
+          textAfterActiveNode = afterNodes.map(node => node.getTextContent() || "").join("\n");
+        }
       }
     }
+  } catch (error) {
+    console.error('Error in extractPromptContext:', error);
+    // Fall back to basic context
+    activeNodeText = options.customText || "";
   }
 
   return {
-    activeNodeText,
-    selectionText,
-    contextDocuments: tabContext,
-    currentDocumentText,
-    textBeforeActiveNode,
-    textAfterActiveNode,
+    activeNodeText: activeNodeText || "",
+    selectionText: selectionText || "",
+    contextDocuments: Array.isArray(tabContext) ? tabContext : [],
+    currentDocumentText: currentDocumentText || "",
+    textBeforeActiveNode: textBeforeActiveNode || "",
+    textAfterActiveNode: textAfterActiveNode || "",
   };
 }
 

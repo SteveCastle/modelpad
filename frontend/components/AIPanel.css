@@ -293,6 +293,7 @@
 
 .prompt-tab-buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 20px;
   padding: 4px;
@@ -302,7 +303,8 @@
 }
 
 .prompt-tab-button {
-  flex: 1;
+  flex: 1 1 120px;
+  min-width: 120px;
   padding: 10px 16px;
   border: none;
   background-color: transparent;
@@ -312,6 +314,40 @@
   transition: all 0.2s ease;
   font-size: 13px;
   font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  position: relative;
+}
+
+/* Small delete button in corner */
+.prompt-tab-button .delete-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: rgba(239, 68, 68, 0.8);
+  color: white;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 10px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  z-index: 1;
+}
+
+.prompt-tab-button:hover .delete-btn {
+  display: flex;
+}
+
+.prompt-tab-button .delete-btn:hover {
+  background: rgba(239, 68, 68, 1);
+  transform: scale(1.1);
 }
 
 .prompt-tab-button:hover {
@@ -384,11 +420,118 @@
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   margin-top: 8px;
-  line-height: 1.4;
+  line-height: 1.6;
+}
+
+.prompt-info br {
+  margin-bottom: 4px;
 }
 
 .prompt-info strong {
   color: rgba(255, 255, 255, 0.8);
+}
+
+.prompt-info code {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: rgba(147, 197, 253, 0.95);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Enhanced Template Title Input */
+.prompt-input {
+  width: 100%;
+  padding: 14px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.2);
+  color: var(--text-color);
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  line-height: 1.4;
+}
+
+.prompt-input:focus {
+  outline: none;
+  border-color: var(--link-color);
+  background-color: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.prompt-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Template Actions Section */
+.prompt-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* Enhanced Delete Template Button */
+.delete-template-button {
+  padding: 10px 20px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.1));
+  color: rgba(248, 113, 113, 0.9);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 120px;
+  justify-content: center;
+}
+
+.delete-template-button:hover {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.15));
+  border-color: rgba(239, 68, 68, 0.4);
+  color: rgba(248, 113, 113, 1);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.delete-template-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.2);
+}
+
+.delete-template-button::before {
+  content: "🗑️";
+  font-size: 12px;
+}
+
+/* Add Template Button Enhancement */
+.prompt-tab-button.add-button {
+  min-width: 40px;
+  max-width: 40px;
+  flex: 0;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  color: rgba(59, 130, 246, 0.9);
+}
+
+.prompt-tab-button.add-button:hover {
+  background-color: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: rgba(59, 130, 246, 1);
+  transform: scale(1.05);
 }
 
 /* Agent Content */

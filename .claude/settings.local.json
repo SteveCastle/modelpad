@@ -5,7 +5,8 @@
       "Bash(npm run lint)",
       "Bash(npm run build:*)",
       "Bash(npm run lint:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(del \"C:\\Users\\steph\\dev\\modelpad\\frontend\\hooks\\templateExample.md\")"
     ],
     "deny": []
   }

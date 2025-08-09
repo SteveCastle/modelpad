@@ -1,9 +1,11 @@
 import {
   $getSelection,
   $isRangeSelection,
+  $isElementNode,
   SELECTION_CHANGE_COMMAND,
   $getNodeByKey,
   $getRoot,
+  $createParagraphNode,
 } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
@@ -65,7 +67,6 @@ function FloatingWrapper({
     </div>
   );
 }
-
 
 /************************************************************
  * BlockControls – rewrite pop‑over now a FloatingWrapper
@@ -256,7 +257,6 @@ export function BlockHoverPlugin(): JSX.Element | null {
       const elementDOM = editor.getElementByKey(elementKey);
       if (elementDOM !== null) {
         setSelectedElementKey(elementKey);
-
       }
     }
 
@@ -412,45 +412,38 @@ export function BlockHoverPlugin(): JSX.Element | null {
       const node = $getNodeByKey(selectedElementKey);
       if (node) {
         const markdownText = node.getTextContent();
-        
+
         try {
-          const parentElement = node.getParent();
-          if (parentElement) {
-            // Get the root and find the index of the parent element
-            const root = $getRoot();
-            const parentIndex = root.getChildren().indexOf(parentElement);
+          if ($isElementNode(node)) {
+            // Create a new container paragraph node to hold the converted markdown
+            const containerNode = $createParagraphNode();
             
-            // Get nodes before and after the current element
-            const beforeNodes = root.getChildren().slice(0, parentIndex);
-            const afterNodes = root.getChildren().slice(parentIndex + 1);
-
-            // Remove the current node
-            node.remove();
-
-            // Convert markdown to structured blocks
+            // Insert the container node right after the target node
+            node.insertAfter(containerNode);
+            
+            // Convert markdown to structured blocks using the new container
             $convertFromMarkdownString(
               markdownText,
               TRANSFORMERS,
-              root,
+              containerNode,
               false,
               false
             );
 
-            // Remove empty nodes that might be created
-            root.getChildren().forEach((child) => {
-              if (child.getTextContent() === "") child.remove();
-            });
-
-            // Reorder nodes: before nodes, then converted blocks, then after nodes
-            const firstNode = root.getFirstChild();
-            const lastNode = root.getLastChild();
-
-            beforeNodes.forEach((beforeNode) => {
-              if (firstNode) firstNode.insertBefore(beforeNode);
-            });
+            // Remove the original node (source of markdown)
+            node.remove();
             
-            afterNodes.reverse().forEach((afterNode) => {
-              if (lastNode) lastNode.insertAfter(afterNode);
+            // Remove the empty container node if it exists
+            if (containerNode.getChildrenSize() === 0) {
+              containerNode.remove();
+            }
+
+            // Clean up any empty nodes that might be created during conversion
+            const root = $getRoot();
+            root.getChildren().forEach((child) => {
+              if ($isElementNode(child) && child.getTextContent().trim() === "") {
+                child.remove();
+              }
             });
           }
         } catch (error) {

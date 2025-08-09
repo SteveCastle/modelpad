@@ -24,8 +24,7 @@ export default function AIPanel({
   onTabClick,
 }: AIPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
-  const [activePromptTab, setActivePromptTab] =
-    useState<PromptEditTab>(null);
+  const [activePromptTab, setActivePromptTab] = useState<PromptEditTab>(null);
 
   // Update active tab when defaultTab prop changes
   useEffect(() => {
@@ -64,14 +63,18 @@ export default function AIPanel({
     addPromptTemplate,
     deletePromptTemplate,
   } = useStore((state) => state);
-  
+
   // Initialize active prompt tab with the first template
   useState(() => {
-    if (!activePromptTab && Array.isArray(promptTemplates) && promptTemplates.length > 0) {
+    if (
+      !activePromptTab &&
+      Array.isArray(promptTemplates) &&
+      promptTemplates.length > 0
+    ) {
       setActivePromptTab(promptTemplates[0].id);
     }
   });
-  
+
   // Safety check: if promptTemplates is not an array, return early with error message
   if (!Array.isArray(promptTemplates)) {
     return (
@@ -359,17 +362,35 @@ export default function AIPanel({
       <h2>Prompt Templates</h2>
       <div className="prompt-template-section">
         <div className="prompt-tab-buttons">
-          {Array.isArray(promptTemplates) && promptTemplates.map((template) => (
-            <button
-              key={template.id}
-              className={`prompt-tab-button ${
-                activePromptTab === template.id ? "active" : ""
-              }`}
-              onClick={() => setActivePromptTab(template.id)}
-            >
-              {template.name}
-            </button>
-          ))}
+          {Array.isArray(promptTemplates) &&
+            promptTemplates.map((template) => (
+              <button
+                key={template.id}
+                className={`prompt-tab-button ${
+                  activePromptTab === template.id ? "active" : ""
+                }`}
+                onClick={() => setActivePromptTab(template.id)}
+              >
+                {template.name}
+                {promptTemplates.length > 1 && (
+                  <button
+                    className="delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deletePromptTemplate(template.id);
+                      if (activePromptTab === template.id) {
+                        setActivePromptTab(
+                          promptTemplates.find(t => t.id !== template.id)?.id || null
+                        );
+                      }
+                    }}
+                    title="Delete template"
+                  >
+                    ×
+                  </button>
+                )}
+              </button>
+            ))}
           <button
             className="prompt-tab-button add-button"
             onClick={() => {
@@ -386,66 +407,76 @@ export default function AIPanel({
           </button>
         </div>
 
-        {activePromptTab && Array.isArray(promptTemplates) && (() => {
-          const currentTemplate = promptTemplates.find(t => t.id === activePromptTab);
-          if (!currentTemplate) return null;
-          
-          return (
-            <div className="prompt-editing-area">
-              <div className="prompt-field">
-                <label className="prompt-label">Template Name</label>
-                <input
-                  type="text"
-                  className="prompt-input"
-                  value={currentTemplate.name}
-                  onChange={(e) => {
-                    updatePromptTemplate(activePromptTab, { name: e.target.value });
-                  }}
-                />
-              </div>
-              <div className="prompt-field">
-                <label className="prompt-label">System Prompt</label>
-                <textarea
-                  className="prompt-textarea custom-scrollbar"
-                  value={currentTemplate.systemPrompt}
-                  onChange={(e) => {
-                    updatePromptTemplate(activePromptTab, { systemPrompt: e.target.value });
-                  }}
-                  rows={4}
-                />
-              </div>
-              <div className="prompt-field">
-                <label className="prompt-label">Main Prompt Template</label>
-                <textarea
-                  className="prompt-textarea custom-scrollbar"
-                  value={currentTemplate.mainPrompt}
-                  onChange={(e) => {
-                    updatePromptTemplate(activePromptTab, { mainPrompt: e.target.value });
-                  }}
-                  rows={4}
-                />
-              </div>
-              <div className="prompt-info">
-                <strong>Selected Text:</strong> &lt;text&gt;
-                <br />
-                <strong>Context Documents:</strong> Automatically included when tabs are selected for context
-              </div>
-              {promptTemplates.length > 1 && (
-                <div className="prompt-actions">
-                  <button
-                    className="delete-template-button"
-                    onClick={() => {
-                      deletePromptTemplate(activePromptTab);
-                      setActivePromptTab(promptTemplates[0]?.id || null);
+        {activePromptTab &&
+          Array.isArray(promptTemplates) &&
+          (() => {
+            const currentTemplate = promptTemplates.find(
+              (t) => t.id === activePromptTab
+            );
+            if (!currentTemplate) return null;
+
+            return (
+              <div className="prompt-editing-area">
+                <div className="prompt-field">
+                  <label className="prompt-label">Template Name</label>
+                  <input
+                    type="text"
+                    className="prompt-input"
+                    value={currentTemplate.name}
+                    onChange={(e) => {
+                      updatePromptTemplate(activePromptTab, {
+                        name: e.target.value,
+                      });
                     }}
-                  >
-                    Delete Template
-                  </button>
+                  />
                 </div>
-              )}
-            </div>
-          );
-        })()}
+                <div className="prompt-field">
+                  <label className="prompt-label">System Prompt</label>
+                  <textarea
+                    className="prompt-textarea custom-scrollbar"
+                    value={currentTemplate.systemPrompt}
+                    onChange={(e) => {
+                      updatePromptTemplate(activePromptTab, {
+                        systemPrompt: e.target.value,
+                      });
+                    }}
+                    rows={4}
+                  />
+                </div>
+                <div className="prompt-field">
+                  <label className="prompt-label">Main Prompt Template</label>
+                  <textarea
+                    className="prompt-textarea custom-scrollbar"
+                    value={currentTemplate.mainPrompt}
+                    onChange={(e) => {
+                      updatePromptTemplate(activePromptTab, {
+                        mainPrompt: e.target.value,
+                      });
+                    }}
+                    rows={4}
+                  />
+                </div>
+                <div className="prompt-info">
+                  <strong>Template Variables:</strong>
+                  <br />• <code>&lt;text&gt;</code> - Current/active node text
+                  <br />• <code>&lt;selection&gt;</code> - Selected text (if
+                  any)
+                  <br />• <code>&lt;contextDocuments&gt;</code> - Context from
+                  other tabs
+                  <br />• <code>&lt;currentDocument&gt;</code> - Full current
+                  document
+                  <br />• <code>&lt;textBefore&gt;</code> - Text before current
+                  section
+                  <br />• <code>&lt;textAfter&gt;</code> - Text after current
+                  section
+                  <br />• <code>&lt;documentContext&gt;</code> - Combined
+                  before/after context
+                  <br />
+                  <br />
+                </div>
+              </div>
+            );
+          })()}
       </div>
     </div>
   );
