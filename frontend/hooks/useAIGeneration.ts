@@ -137,7 +137,6 @@ interface PromptContext {
 }
 
 interface PromptBuilderOptions {
-  action: AIActionType;
   customPrompt?: string;
   promptTemplate: {
     mainPrompt: string;
@@ -153,31 +152,9 @@ function buildPrompt(
   prompt: string;
   systemPrompt: string;
 } {
-  const { action, customPrompt = "", promptTemplate, wordCount } = options;
+  const { customPrompt = "", promptTemplate } = options;
 
-  // For rewrite actions, build a specialized prompt
-  if (action === "rewrite") {
-    const actualWordCount =
-      wordCount ||
-      context.activeNodeText.split(/\s+/).filter((word) => word.length > 0)
-        .length;
-
-    const baseRewritePrompt = `You are rewriting text as a direct, one-to-one replacement. Your output should match the approximate length of the input (${actualWordCount} words). Write ONLY the rewritten text with no additional commentary or explanation.`;
-
-    const rewriteInstructions = customPrompt.trim()
-      ? `\n\nRewrite instructions: ${customPrompt.trim()}`
-      : `\n\nImprove clarity, style, and flow while maintaining the same meaning and approximate length.`;
-
-    // Create a template for rewrite that can use all context variables
-    const rewriteTemplate = `${baseRewritePrompt}${rewriteInstructions}\n\nOriginal text to rewrite:\n{{activeNodeText}}`;
-
-    return {
-      prompt: applyTemplate(rewriteTemplate, context),
-      systemPrompt: applyTemplate(baseRewritePrompt, context),
-    };
-  }
-
-  // For generate actions, build context-aware prompt using enhanced templating
+  // Build context-aware prompt using enhanced templating
 
   // Build RAG context section if documents are available
   let basePrompt = promptTemplate.mainPrompt;
@@ -279,7 +256,7 @@ function extractPromptContext(
   };
 }
 
-export type AIActionType = "generate" | "rewrite";
+// Action types removed; strategy alone governs behavior
 
 // Export the new prompt building functions for potential reuse
 export {
@@ -292,8 +269,7 @@ export type { PromptContext, PromptBuilderOptions, TemplateVariables };
 
 interface UseAIGenerationOptions {
   customText?: string; // Optional custom text to use instead of selection/document
-  targetNodeKey?: string; // For rewrite action, specify which node to replace
-  action?: AIActionType; // Type of AI action to perform
+  targetNodeKey?: string; // Specify target node for strategy that requires it
   insertionStrategy?: InsertionStrategy; // How streamed tokens should be inserted
 }
 
@@ -325,7 +301,6 @@ export function useAIGeneration() {
 
   // Action-specific callbacks
   const createActionCallbacks = (
-    action: AIActionType,
     promptId: string | undefined,
     insertionStrategy: InsertionStrategy
   ) => {
@@ -338,8 +313,8 @@ export function useAIGeneration() {
     const startCallback = () => {
       setGenerationState("generating");
 
-      // Update prompt node status if this is a generate action with a promptId
-      if (action === "generate" && promptId) {
+      // Update prompt node status if this generation is associated to a promptId
+      if (promptId) {
         updatePromptGeneration(promptId, { status: "generating" });
 
         // Generation state is tracked in the store
@@ -364,40 +339,28 @@ export function useAIGeneration() {
 
             switch (insertionStrategy.kind) {
               case "replace-node": {
-                const node = insertionStrategy.targetNodeKey
+                const target = insertionStrategy.targetNodeKey
                   ? $getNodeByKey(insertionStrategy.targetNodeKey)
                   : undefined;
-                if (!node) break;
-                if ($isElementNode(node)) {
-                  if (node.getKey() === "root") {
-                    // Fallback: append new paragraph at end when target is root
-                    const para = $createParagraphNode();
-                    const textNode = $createTextNode(chunk);
-                    para.append(textNode);
-                    node.append(para);
-                    maybeTrackNode(textNode);
-                    textNode.select();
-                  } else {
-                    node.clear();
-                    const textNode = $createTextNode(chunk);
-                    node.append(textNode);
-                    maybeTrackNode(textNode);
-                    textNode.select();
-                  }
+                if (!target) break;
+                const textNode = $createTextNode(chunk);
+                const para = $createParagraphNode();
+                para.append(textNode);
+                if (target.getKey() === "root") {
+                  // Cannot replace root; append replacement at end instead
+                  const root = $getRoot();
+                  root.append(para);
                 } else {
-                  // Non-element: replace the node itself, or if parent is root, replace its top-level with paragraph
-                  const parent = node.getParent();
-                  const textNode = $createTextNode(chunk);
-                  if (parent && parent.getKey() === "root") {
-                    const para = $createParagraphNode();
-                    para.append(textNode);
-                    node.getTopLevelElementOrThrow().replace(para);
-                  } else {
-                    node.replace(textNode);
-                  }
-                  maybeTrackNode(textNode);
-                  textNode.select();
+                  // If target is not a top-level element, replace its top-level container
+                  const topLevel = $isElementNode(target)
+                    ? target.getParent()?.getKey() === "root"
+                      ? target
+                      : target.getTopLevelElementOrThrow()
+                    : target.getTopLevelElementOrThrow();
+                  topLevel.replace(para);
                 }
+                maybeTrackNode(textNode);
+                textNode.select();
                 break;
               }
               case "insert-after-node":
@@ -538,7 +501,7 @@ export function useAIGeneration() {
       updateContext(activeStoryId, context);
 
       // Update the generation tracking if this was a prompt-based generation
-      if (action === "generate" && promptId) {
+      if (promptId) {
         const textNodeKeys = generatedNodeKeys;
         updatePromptGeneration(promptId, {
           status: "completed",
@@ -563,7 +526,6 @@ export function useAIGeneration() {
   ) => {
     if (!abortController || !model) return;
 
-    const action = options.action || "generate";
     let promptId: string | undefined;
 
     // Resolve prompt template early for insertion strategy decisions
@@ -573,8 +535,8 @@ export function useAIGeneration() {
       return;
     }
 
-    // Create generation tracking for generate action
-    if (action === "generate" && options.targetNodeKey) {
+    // Create generation tracking when we have a specific target node
+    if (options.targetNodeKey) {
       promptId = crypto.randomUUID();
 
       editor.update(() => {
@@ -634,20 +596,16 @@ export function useAIGeneration() {
     const strategy: InsertionStrategy =
       options.insertionStrategy ||
       strategyFromTemplate ||
-      (action === "generate"
-        ? options.targetNodeKey
-          ? {
-              kind: "insert-after-node",
-              targetNodeKey: options.targetNodeKey,
-              newParagraph: true,
-            }
-          : { kind: "append-to-document-end" }
-        : options.targetNodeKey
-        ? { kind: "replace-node", targetNodeKey: options.targetNodeKey }
-        : { kind: "insert-at-cursor" });
+      (options.targetNodeKey
+        ? {
+            kind: "insert-after-node",
+            targetNodeKey: options.targetNodeKey,
+            newParagraph: true,
+          }
+        : { kind: "append-to-document-end" });
 
     const { startCallback, tokenCallback, completedCallback } =
-      createActionCallbacks(action, promptId, strategy);
+      createActionCallbacks(promptId, strategy);
 
     editor.update(() => {
       // Extract context information using the new helper function
@@ -655,15 +613,14 @@ export function useAIGeneration() {
 
       // Build prompt using the new flexible prompt builder
       const { prompt, systemPrompt } = buildPrompt(promptContext, {
-        action,
         customPrompt,
         promptTemplate,
       });
 
       setGenerationState("loading");
 
-      // Only add new paragraph for generate action if not using PromptNode workflow
-      if (action === "generate" && !promptId) {
+      // If not targeting a specific node via promptId, ensure we have a clean paragraph to stream into at end
+      if (!promptId) {
         const root = $getRoot();
         const newParagraphNode = $createParagraphNode();
         root.append(newParagraphNode);

@@ -11,7 +11,7 @@ import type { LexicalNode } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
-import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
+import { useAIGeneration } from "../hooks/useAIGeneration";
 import { useStore, PromptTemplate } from "../store";
 import { useState, useCallback, useEffect, useLayoutEffect, JSX } from "react";
 import {
@@ -354,7 +354,6 @@ export function BlockHoverPlugin(): JSX.Element | null {
         const nodeText = node.getTextContent();
         generate(templateId, "", {
           customText: nodeText,
-          action: "generate" as AIActionType,
           targetNodeKey: selectedElementKey,
         });
       }
