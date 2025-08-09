@@ -11,6 +11,7 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { $convertFromMarkdownString, TRANSFORMERS } from "@lexical/markdown";
 import { mergeRegister } from "@lexical/utils";
 import { useAIGeneration, AIActionType } from "../hooks/useAIGeneration";
+import { useStore } from "../store";
 import { useState, useCallback, useEffect, useLayoutEffect, JSX } from "react";
 import {
   useFloating,
@@ -241,6 +242,9 @@ export function BlockHoverPlugin(): JSX.Element | null {
   const [isDeletionDisabled, setIsDeletionDisabled] = useState(false);
 
   const { generate, isGenerating, canGenerate } = useAIGeneration();
+  const activePromptTemplateId = useStore(
+    (state) => state.activePromptTemplateId
+  );
 
   /*******************************************************/
   /*  Update selection / hover logic (same as before)    */
@@ -378,7 +382,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
       const node = $getNodeByKey(selectedElementKey);
       if (node) {
         const nodeText = node.getTextContent();
-        generate("newScene", "", {
+        generate(activePromptTemplateId, "", {
           customText: nodeText,
           action: "generate" as AIActionType,
           targetNodeKey: selectedElementKey,
@@ -395,7 +399,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
       const node = $getNodeByKey(selectedElementKey);
       if (node) {
         const nodeText = node.getTextContent();
-        generate("rewrite", instructions, {
+        generate(activePromptTemplateId, instructions, {
           customText: nodeText,
           action: "rewrite" as AIActionType,
           targetNodeKey: selectedElementKey,
@@ -417,10 +421,10 @@ export function BlockHoverPlugin(): JSX.Element | null {
           if ($isElementNode(node)) {
             // Create a new container paragraph node to hold the converted markdown
             const containerNode = $createParagraphNode();
-            
+
             // Insert the container node right after the target node
             node.insertAfter(containerNode);
-            
+
             // Convert markdown to structured blocks using the new container
             $convertFromMarkdownString(
               markdownText,
@@ -432,7 +436,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
 
             // Remove the original node (source of markdown)
             node.remove();
-            
+
             // Remove the empty container node if it exists
             if (containerNode.getChildrenSize() === 0) {
               containerNode.remove();
@@ -441,7 +445,10 @@ export function BlockHoverPlugin(): JSX.Element | null {
             // Clean up any empty nodes that might be created during conversion
             const root = $getRoot();
             root.getChildren().forEach((child) => {
-              if ($isElementNode(child) && child.getTextContent().trim() === "") {
+              if (
+                $isElementNode(child) &&
+                child.getTextContent().trim() === ""
+              ) {
                 child.remove();
               }
             });

@@ -12,7 +12,6 @@ import {
 import "./AIPanel.css";
 
 type TabType = "model-settings" | "context-control" | "agent";
-type PromptEditTab = string | null;
 
 interface AIPanelProps {
   defaultTab?: TabType;
@@ -24,7 +23,12 @@ export default function AIPanel({
   onTabClick,
 }: AIPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
-  const [activePromptTab, setActivePromptTab] = useState<PromptEditTab>(null);
+  const activePromptTemplateId = useStore(
+    (state) => state.activePromptTemplateId
+  );
+  const setActivePromptTemplate = useStore(
+    (state) => state.setActivePromptTemplate
+  );
 
   // Update active tab when defaultTab prop changes
   useEffect(() => {
@@ -64,16 +68,16 @@ export default function AIPanel({
     deletePromptTemplate,
   } = useStore((state) => state);
 
-  // Initialize active prompt tab with the first template
-  useState(() => {
+  // Initialize global active prompt template if missing
+  useEffect(() => {
     if (
-      !activePromptTab &&
-      Array.isArray(promptTemplates) &&
+      (!activePromptTemplateId ||
+        !promptTemplates.find((t) => t.id === activePromptTemplateId)) &&
       promptTemplates.length > 0
     ) {
-      setActivePromptTab(promptTemplates[0].id);
+      setActivePromptTemplate(promptTemplates[0].id);
     }
-  });
+  }, [activePromptTemplateId, promptTemplates, setActivePromptTemplate]);
 
   // Safety check: if promptTemplates is not an array, return early with error message
   if (!Array.isArray(promptTemplates)) {
@@ -367,9 +371,9 @@ export default function AIPanel({
               <button
                 key={template.id}
                 className={`prompt-tab-button ${
-                  activePromptTab === template.id ? "active" : ""
+                  activePromptTemplateId === template.id ? "active" : ""
                 }`}
-                onClick={() => setActivePromptTab(template.id)}
+                onClick={() => setActivePromptTemplate(template.id)}
               >
                 {template.name}
                 {promptTemplates.length > 1 && (
@@ -378,11 +382,6 @@ export default function AIPanel({
                     onClick={(e) => {
                       e.stopPropagation();
                       deletePromptTemplate(template.id);
-                      if (activePromptTab === template.id) {
-                        setActivePromptTab(
-                          promptTemplates.find(t => t.id !== template.id)?.id || null
-                        );
-                      }
                     }}
                     title="Delete template"
                   >
@@ -399,7 +398,7 @@ export default function AIPanel({
                 systemPrompt: "You are a helpful AI assistant.",
                 mainPrompt: "<text>",
               });
-              setActivePromptTab(newTemplate.id);
+              setActivePromptTemplate(newTemplate.id);
             }}
             title="Add new template"
           >
@@ -407,11 +406,11 @@ export default function AIPanel({
           </button>
         </div>
 
-        {activePromptTab &&
+        {activePromptTemplateId &&
           Array.isArray(promptTemplates) &&
           (() => {
             const currentTemplate = promptTemplates.find(
-              (t) => t.id === activePromptTab
+              (t) => t.id === activePromptTemplateId
             );
             if (!currentTemplate) return null;
 
@@ -424,7 +423,7 @@ export default function AIPanel({
                     className="prompt-input"
                     value={currentTemplate.name}
                     onChange={(e) => {
-                      updatePromptTemplate(activePromptTab, {
+                      updatePromptTemplate(activePromptTemplateId, {
                         name: e.target.value,
                       });
                     }}
@@ -436,7 +435,7 @@ export default function AIPanel({
                     className="prompt-textarea custom-scrollbar"
                     value={currentTemplate.systemPrompt}
                     onChange={(e) => {
-                      updatePromptTemplate(activePromptTab, {
+                      updatePromptTemplate(activePromptTemplateId, {
                         systemPrompt: e.target.value,
                       });
                     }}
@@ -449,7 +448,7 @@ export default function AIPanel({
                     className="prompt-textarea custom-scrollbar"
                     value={currentTemplate.mainPrompt}
                     onChange={(e) => {
-                      updatePromptTemplate(activePromptTab, {
+                      updatePromptTemplate(activePromptTemplateId, {
                         mainPrompt: e.target.value,
                       });
                     }}

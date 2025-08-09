@@ -8,10 +8,27 @@ import {
   $getNodeByKey,
   $createTextNode,
   TextNode,
+  LexicalNode,
 } from "lexical";
 import { useStore, PromptGeneration } from "../store";
 import { providers } from "../providers";
 import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
+
+// Streaming insertion configuration
+export type InsertionStrategy =
+  | { kind: "replace-node"; targetNodeKey: string }
+  | { kind: "insert-after-node"; targetNodeKey: string; newParagraph?: boolean }
+  | {
+      kind: "insert-before-node";
+      targetNodeKey: string;
+      newParagraph?: boolean;
+    }
+  | { kind: "append-inside-node"; targetNodeKey: string }
+  | { kind: "insert-at-cursor" }
+  | { kind: "replace-selection" }
+  | { kind: "insert-after-selection"; newParagraph?: boolean }
+  | { kind: "insert-before-selection"; newParagraph?: boolean }
+  | { kind: "append-to-document-end" };
 
 // Enhanced template variable definitions
 interface TemplateVariables {
@@ -270,6 +287,7 @@ interface UseAIGenerationOptions {
   customText?: string; // Optional custom text to use instead of selection/document
   targetNodeKey?: string; // For rewrite action, specify which node to replace
   action?: AIActionType; // Type of AI action to perform
+  insertionStrategy?: InsertionStrategy; // How streamed tokens should be inserted
 }
 
 export function useAIGeneration() {
@@ -301,12 +319,13 @@ export function useAIGeneration() {
   // Action-specific callbacks
   const createActionCallbacks = (
     action: AIActionType,
-    targetNodeKey?: string,
-    promptId?: string
+    promptId: string | undefined,
+    insertionStrategy: InsertionStrategy
   ) => {
-    let rewriteTextNode: TextNode | null = null; // Track the text node for rewrite mode
-    let generateTextNode: TextNode | null = null; // Track the text node for generate mode
-    let generatedNodeKeys: string[] = []; // Track generated nodes for undo functionality
+    // Track the text node created for streaming output
+    let currentTextNode: TextNode | null = null;
+    // Track generated nodes for undo functionality (especially for prompt-based generate)
+    let generatedNodeKeys: string[] = [];
 
     const startCallback = () => {
       setGenerationState("generating");
@@ -321,69 +340,138 @@ export function useAIGeneration() {
 
     const tokenCallback = (text: string) => {
       editor.update(() => {
-        if (action === "generate") {
-          // Add new content after the prompt element for generate action
-          if (promptId && targetNodeKey) {
-            const targetNode = $getNodeByKey(targetNodeKey);
-            if (targetNode) {
-              // Find the top-level element node that contains or is the target
-              let elementNode = targetNode;
-              if (!$isElementNode(elementNode)) {
-                elementNode = elementNode.getParent();
-              }
-
-              if (elementNode && $isElementNode(elementNode)) {
-                if (!generateTextNode) {
-                  // First token - create regular text node
-                  generateTextNode = $createTextNode(text);
-
-                  const newParagraph = $createParagraphNode();
-                  newParagraph.append(generateTextNode);
-                  elementNode.insertAfter(newParagraph);
-
-                  // Track this node for undo functionality
-                  const nodeKey = generateTextNode.getKey();
-                  if (!generatedNodeKeys.includes(nodeKey)) {
-                    generatedNodeKeys.push(nodeKey);
-                  }
-                } else {
-                  // Subsequent tokens - append to existing text node
-                  const currentText = generateTextNode.getTextContent();
-                  generateTextNode.setTextContent(currentText + text);
-                }
-              }
-            }
-          } else {
-            // Fallback to original behavior for non-prompt generation
+        const ensureAppendToCurrentNode = (chunk: string) => {
+          if (!currentTextNode) {
+            // First token: place a text node according to strategy
             const root = $getRoot();
-            const lastChild = root.getLastChild();
+            const selection = $getSelection();
 
-            if (lastChild && $isElementNode(lastChild)) {
-              if (!generateTextNode) {
-                generateTextNode = $createTextNode(text);
-                lastChild.append(generateTextNode);
-              } else {
-                const currentText = generateTextNode.getTextContent();
-                generateTextNode.setTextContent(currentText + text);
+            const maybeTrackNode = (node: TextNode) => {
+              currentTextNode = node;
+              const nodeKey = node.getKey();
+              if (!generatedNodeKeys.includes(nodeKey)) {
+                generatedNodeKeys.push(nodeKey);
+              }
+            };
+
+            switch (insertionStrategy.kind) {
+              case "replace-node": {
+                const node = insertionStrategy.targetNodeKey
+                  ? $getNodeByKey(insertionStrategy.targetNodeKey)
+                  : undefined;
+                if (node && $isElementNode(node)) {
+                  node.clear();
+                  const textNode = $createTextNode(chunk);
+                  node.append(textNode);
+                  maybeTrackNode(textNode);
+                }
+                break;
+              }
+              case "insert-after-node":
+              case "insert-before-node": {
+                const node = insertionStrategy.targetNodeKey
+                  ? $getNodeByKey(insertionStrategy.targetNodeKey)
+                  : undefined;
+                if (node) {
+                  let elementNode: LexicalNode | null = node;
+                  if (!$isElementNode(elementNode)) {
+                    elementNode = elementNode.getParent();
+                  }
+                  if (elementNode && $isElementNode(elementNode)) {
+                    const textNode = $createTextNode(chunk);
+                    if (insertionStrategy.newParagraph !== false) {
+                      const para = $createParagraphNode();
+                      para.append(textNode);
+                      if (insertionStrategy.kind === "insert-after-node") {
+                        elementNode.insertAfter(para);
+                      } else {
+                        elementNode.insertBefore(para);
+                      }
+                    } else {
+                      if (insertionStrategy.kind === "insert-after-node") {
+                        elementNode.insertAfter(textNode);
+                      } else {
+                        elementNode.insertBefore(textNode);
+                      }
+                    }
+                    maybeTrackNode(textNode);
+                  }
+                }
+                break;
+              }
+              case "append-inside-node": {
+                const node = $getNodeByKey(insertionStrategy.targetNodeKey);
+                if (node && $isElementNode(node)) {
+                  const textNode = $createTextNode(chunk);
+                  node.append(textNode);
+                  maybeTrackNode(textNode);
+                }
+                break;
+              }
+              case "insert-at-cursor": {
+                if ($isRangeSelection(selection)) {
+                  const textNode = $createTextNode(chunk);
+                  selection.insertNodes([textNode]);
+                  maybeTrackNode(textNode);
+                }
+                break;
+              }
+              case "replace-selection": {
+                if ($isRangeSelection(selection)) {
+                  selection.removeText();
+                  const textNode = $createTextNode(chunk);
+                  selection.insertNodes([textNode]);
+                  maybeTrackNode(textNode);
+                }
+                break;
+              }
+              case "insert-after-selection":
+              case "insert-before-selection": {
+                if ($isRangeSelection(selection)) {
+                  const focusNode: LexicalNode = selection.focus.getNode();
+                  let elementNode: LexicalNode | null = focusNode;
+                  if (!$isElementNode(elementNode)) {
+                    elementNode = elementNode.getParent();
+                  }
+                  if (elementNode && $isElementNode(elementNode)) {
+                    const textNode = $createTextNode(chunk);
+                    const para = $createParagraphNode();
+                    para.append(textNode);
+                    if (insertionStrategy.kind === "insert-after-selection") {
+                      elementNode.insertAfter(para);
+                    } else {
+                      elementNode.insertBefore(para);
+                    }
+                    maybeTrackNode(textNode);
+                  }
+                }
+                break;
+              }
+              case "append-to-document-end":
+              default: {
+                const lastChild = root.getLastChild();
+                if (lastChild && $isElementNode(lastChild)) {
+                  const textNode = $createTextNode(chunk);
+                  lastChild.append(textNode);
+                  maybeTrackNode(textNode);
+                } else {
+                  const para = $createParagraphNode();
+                  const textNode = $createTextNode(chunk);
+                  para.append(textNode);
+                  root.append(para);
+                  maybeTrackNode(textNode);
+                }
+                break;
               }
             }
-          }
-        } else if (action === "rewrite" && targetNodeKey) {
-          // For rewrite, accumulate tokens in the same text node
-          if (!rewriteTextNode) {
-            // First token - clear target and create text node
-            const targetNode = $getNodeByKey(targetNodeKey);
-            if (targetNode && $isElementNode(targetNode)) {
-              targetNode.clear();
-              rewriteTextNode = $createTextNode(text);
-              targetNode.append(rewriteTextNode);
-            }
           } else {
-            // Subsequent tokens - append to existing text node
-            const currentText = rewriteTextNode.getTextContent();
-            rewriteTextNode.setTextContent(currentText + text);
+            // Subsequent tokens: append to existing text node
+            const current = currentTextNode.getTextContent();
+            currentTextNode.setTextContent(current + chunk);
           }
-        }
+        };
+
+        ensureAppendToCurrentNode(text);
       });
     };
 
@@ -393,9 +481,7 @@ export function useAIGeneration() {
 
       // Update the generation tracking if this was a prompt-based generation
       if (action === "generate" && promptId) {
-        const textNodeKeys = generateTextNode
-          ? [generateTextNode.getKey()]
-          : generatedNodeKeys;
+        const textNodeKeys = generatedNodeKeys;
         updatePromptGeneration(promptId, {
           status: "completed",
           generatedNodeKeys: textNodeKeys,
@@ -405,8 +491,7 @@ export function useAIGeneration() {
       }
 
       // Reset the text node references
-      rewriteTextNode = null;
-      generateTextNode = null;
+      currentTextNode = null;
       generatedNodeKeys = [];
     };
 
@@ -451,8 +536,23 @@ export function useAIGeneration() {
       });
     }
 
+    // Determine insertion strategy based on action and provided options
+    const strategy: InsertionStrategy =
+      options.insertionStrategy ||
+      (action === "generate"
+        ? options.targetNodeKey
+          ? {
+              kind: "insert-after-node",
+              targetNodeKey: options.targetNodeKey,
+              newParagraph: true,
+            }
+          : { kind: "append-to-document-end" }
+        : options.targetNodeKey
+        ? { kind: "replace-node", targetNodeKey: options.targetNodeKey }
+        : { kind: "insert-at-cursor" });
+
     const { startCallback, tokenCallback, completedCallback } =
-      createActionCallbacks(action, options.targetNodeKey, promptId);
+      createActionCallbacks(action, promptId, strategy);
 
     editor.update(() => {
       // Get the prompt template
