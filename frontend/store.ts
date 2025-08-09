@@ -34,9 +34,14 @@ const ensureValidContentStructure = (
   return content;
 };
 
-export type PromptTypeKeys = "newScene" | "rewrite" | "summarize";
-
-type PromptTemplates = { [key in PromptTypeKeys]: string };
+export type PromptTemplate = {
+  id: string;
+  name: string;
+  systemPrompt: string;
+  mainPrompt: string;
+  createdAt: string;
+  lastUsedAt?: string;
+};
 
 type ViewSettings = {
   readingMode: boolean;
@@ -170,10 +175,8 @@ type State = {
   model: string | null;
   stories: Story[];
   activeStoryId: string;
-  promptTemplateKey: PromptTypeKeys;
-  systemPromptTemplates: PromptTemplates;
-  ragPromptTemplates: PromptTemplates;
-  promptTemplates: PromptTemplates;
+  activePromptTemplateId: string;
+  promptTemplates: PromptTemplate[];
   abortController?: AbortController;
   generationState: LoadingStates;
   availableModels: string[];
@@ -198,9 +201,11 @@ type State = {
   setSideBarOpen: (open: boolean) => void;
   setServerHost: (host: string) => void;
   setServerName: (title: string) => void;
-  changePromptTemplate: (key: PromptTypeKeys, text: string) => void;
-  changeSystemPromptTemplate: (key: PromptTypeKeys, text: string) => void;
-  changeRagPromptTemplate: (key: PromptTypeKeys, text: string) => void;
+  addPromptTemplate: (template: Omit<PromptTemplate, "id" | "createdAt">) => PromptTemplate;
+  updatePromptTemplate: (id: string, updates: Partial<PromptTemplate>) => void;
+  deletePromptTemplate: (id: string) => void;
+  setActivePromptTemplate: (id: string) => void;
+  getPromptTemplate: (id: string) => PromptTemplate | undefined;
   toggleReadingMode: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
@@ -283,6 +288,30 @@ const defaultStories: Story[] = [
   },
 ];
 
+const defaultPromptTemplates: PromptTemplate[] = [
+  {
+    id: "newScene",
+    name: "New Scene",
+    systemPrompt: "You are a researcher researching a topic and helping me collect information, and understand a topic.",
+    mainPrompt: "<text>",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "rewrite",
+    name: "Rewrite",
+    systemPrompt: "You are a writer rewriting a scene. Rewrite the scene in a different style or from a different perspective.",
+    mainPrompt: "<text>",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "summarize",
+    name: "Summarize",
+    systemPrompt: "You are a writer summarizing a scene. Summarize the scene in a few sentences.",
+    mainPrompt: "<text>",
+    createdAt: new Date().toISOString(),
+  },
+];
+
 const defaultAvailableServers: AvailableServers = {
   modelPadServer: {
     host: import.meta.env.VITE_BACKEND_HOST || "https://modelpad.app",
@@ -309,28 +338,8 @@ export const useStore = create<State>()(
       availableServers: defaultAvailableServers,
       model: null,
       modelSettings: ollamaSettings,
-      promptTemplateKey: "newScene",
-      promptTemplates: {
-        newScene: `<text>`,
-        rewrite: `<text>`,
-        summarize: `<text>`,
-      },
-      systemPromptTemplates: {
-        newScene:
-          "You are a researcher researching a topic and helping me collect information, and understand a topic.",
-        rewrite:
-          "You are a writer rewriting a scene. Rewrite the scene in a different style or from a different perspective.",
-        summarize:
-          "You are a writer summarizing a scene. Summarize the scene in a few sentences.",
-      },
-      ragPromptTemplates: {
-        newScene:
-          "Below is a list of documents that you can use to help you write a new scene. You can use these documents to help you generate ideas for your scene.\n<docs>\nEND OF DOCS",
-        rewrite:
-          "Below is a list of documents that you can use to help you rewrite a scene. You can use these documents to help you generate ideas for your scene.\n<docs>\nEND OF DOCS",
-        summarize:
-          "Below is a list of documents that you can use to help you summarize a scene. You can use these documents to help you generate ideas for your scene.\n<docs>\nEND OF DOCS",
-      },
+      activePromptTemplateId: "newScene",
+      promptTemplates: defaultPromptTemplates,
       activeStoryId: initialStories[0].id,
       abortController: new AbortController(),
       generationState: "no-connection",
@@ -463,29 +472,50 @@ export const useStore = create<State>()(
           },
         }));
       },
-      changePromptTemplate: (key: PromptTypeKeys, text: string) => {
+      addPromptTemplate: (template: Omit<PromptTemplate, "id" | "createdAt">) => {
+        const newTemplate: PromptTemplate = {
+          ...template,
+          id: crypto.randomUUID(),
+          createdAt: new Date().toISOString(),
+          lastUsedAt: new Date().toISOString(),
+        };
         set(() => ({
-          promptTemplates: {
-            ...get().promptTemplates,
-            [key]: text,
-          },
+          promptTemplates: [...get().promptTemplates, newTemplate],
+        }));
+        return newTemplate;
+      },
+      updatePromptTemplate: (id: string, updates: Partial<PromptTemplate>) => {
+        set(() => ({
+          promptTemplates: get().promptTemplates.map((template) =>
+            template.id === id ? { ...template, ...updates } : template
+          ),
         }));
       },
-      changeSystemPromptTemplate: (key: PromptTypeKeys, text: string) => {
-        set(() => ({
-          systemPromptTemplates: {
-            ...get().systemPromptTemplates,
-            [key]: text,
-          },
-        }));
+      deletePromptTemplate: (id: string) => {
+        const templates = get().promptTemplates;
+        if (templates.length <= 1) return; // Don't allow deleting the last template
+        
+        set(() => {
+          const newTemplates = templates.filter((template) => template.id !== id);
+          const activeId = get().activePromptTemplateId;
+          return {
+            promptTemplates: newTemplates,
+            activePromptTemplateId: activeId === id ? newTemplates[0].id : activeId,
+          };
+        });
       },
-      changeRagPromptTemplate: (key: PromptTypeKeys, text: string) => {
-        set(() => ({
-          ragPromptTemplates: {
-            ...get().ragPromptTemplates,
-            [key]: text,
-          },
-        }));
+      setActivePromptTemplate: (id: string) => {
+        const template = get().promptTemplates.find((t) => t.id === id);
+        if (template) {
+          set(() => ({
+            activePromptTemplateId: id,
+          }));
+          // Update last used time
+          get().updatePromptTemplate(id, { lastUsedAt: new Date().toISOString() });
+        }
+      },
+      getPromptTemplate: (id: string) => {
+        return get().promptTemplates.find((template) => template.id === id);
       },
       setServerKey: (serverKey: string) => {
         set(() => ({
@@ -973,9 +1003,8 @@ export const useStore = create<State>()(
         modelSettings: state.modelSettings,
         availableServers: state.availableServers,
         sideBarOpen: state.sideBarOpen,
+        activePromptTemplateId: state.activePromptTemplateId,
         promptTemplates: state.promptTemplates,
-        systemPromptTemplates: state.systemPromptTemplates,
-        ragPromptTemplates: state.ragPromptTemplates,
         tags: state.tags,
         activeNotesTab: state.activeNotesTab,
         collapsedNoteIds: Array.from(state.collapsedNoteIds),
@@ -990,6 +1019,48 @@ export const useStore = create<State>()(
           state.collapsedTagIds = new Set(
             state.collapsedTagIds as unknown as string[]
           );
+          
+          // Migrate old prompt template format to new format
+          if (!Array.isArray(state.promptTemplates)) {
+            console.log('Migrating old prompt template format to new format');
+            const oldPromptTemplates = state.promptTemplates as any;
+            const oldSystemPromptTemplates = (state as any).systemPromptTemplates || {};
+            const oldRagPromptTemplates = (state as any).ragPromptTemplates || {};
+            
+            // Convert old format to new format
+            const newPromptTemplates: PromptTemplate[] = [];
+            
+            // Handle legacy keys
+            const legacyKeys = ['newScene', 'rewrite', 'summarize'];
+            legacyKeys.forEach(key => {
+              if (oldPromptTemplates[key] !== undefined) {
+                newPromptTemplates.push({
+                  id: key,
+                  name: key === 'newScene' ? 'New Scene' : key === 'rewrite' ? 'Rewrite' : 'Summarize',
+                  systemPrompt: oldSystemPromptTemplates[key] || 'You are a helpful AI assistant.',
+                  mainPrompt: oldPromptTemplates[key] || '<text>',
+                  createdAt: new Date().toISOString(),
+                });
+              }
+            });
+            
+            // Fallback to defaults if nothing was found
+            if (newPromptTemplates.length === 0) {
+              newPromptTemplates.push(...defaultPromptTemplates);
+            }
+            
+            state.promptTemplates = newPromptTemplates;
+            
+            // Set active template if needed
+            if (!state.activePromptTemplateId || typeof (state as any).promptTemplateKey === 'string') {
+              state.activePromptTemplateId = (state as any).promptTemplateKey || newPromptTemplates[0].id;
+            }
+            
+            // Clean up old properties
+            delete (state as any).systemPromptTemplates;
+            delete (state as any).ragPromptTemplates;
+            delete (state as any).promptTemplateKey;
+          }
         }
       },
     }

@@ -8,7 +8,7 @@ import { $getSelection, $isRangeSelection, LexicalEditor } from "lexical";
 
 import "./ContextMenu.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useStore, PromptTypeKeys } from "../store";
+import { useStore } from "../store";
 import { useState } from "react";
 import { useAIGeneration } from "../hooks/useAIGeneration";
 
@@ -18,13 +18,21 @@ interface Props {
 }
 
 export default function ContextMenu({ hide }: Props) {
-  const [selectedPrompt, setSelectedPrompt] =
-    useState<PromptTypeKeys>("newScene");
+  const [selectedPromptId, setSelectedPromptId] = useState<string>("");
   const [customPrompt, setCustomPrompt] = useState("");
   const [editor] = useLexicalComposerContext();
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
+  const promptTemplates = useStore((state) => state.promptTemplates);
+  const activePromptTemplateId = useStore((state) => state.activePromptTemplateId);
   const { generate, canGenerate } = useAIGeneration();
+
+  // Initialize selected prompt with active template
+  useState(() => {
+    if (!selectedPromptId && activePromptTemplateId) {
+      setSelectedPromptId(activePromptTemplateId);
+    }
+  });
 
   // Get context pills showing what's included in the prompt
   const getContextPills = () => {
@@ -58,10 +66,10 @@ export default function ContextMenu({ hide }: Props) {
     return pills;
   };
 
-  const handleGenerate = (promptTemplateKey: PromptTypeKeys) => {
+  const handleGenerate = (promptTemplateId: string) => {
     if (!canGenerate) return;
 
-    generate(promptTemplateKey, customPrompt);
+    generate(promptTemplateId, customPrompt);
     // Clear the custom prompt after submitting
     setCustomPrompt("");
   };
@@ -80,57 +88,38 @@ export default function ContextMenu({ hide }: Props) {
               if (e.key === "Enter") {
                 e.preventDefault();
                 hide();
-                handleGenerate(selectedPrompt);
+                handleGenerate(selectedPromptId || activePromptTemplateId);
               }
             }}
           />
         </div>
         <div className={"button-area"}>
-          <button
-            type="button"
-            className={`new-scene-button ${
-              selectedPrompt === "newScene" ? "active" : ""
-            }`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setSelectedPrompt("newScene");
-            }}
-          >
-            <SparklesIcon aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className={`rewrite-button ${
-              selectedPrompt === "rewrite" ? "active" : ""
-            }`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setSelectedPrompt("rewrite");
-            }}
-          >
-            <ArrowPathIcon aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className={`summarize-button ${
-              selectedPrompt === "summarize" ? "active" : ""
-            }`}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setSelectedPrompt("summarize");
-            }}
-          >
-            <ArrowsPointingInIcon aria-hidden="true" />
-          </button>
+          {promptTemplates.map((template, index) => {
+            const isActive = selectedPromptId === template.id || (!selectedPromptId && activePromptTemplateId === template.id);
+            const IconComponent = index === 0 ? SparklesIcon : index === 1 ? ArrowPathIcon : ArrowsPointingInIcon;
+            
+            return (
+              <button
+                key={template.id}
+                type="button"
+                className={`prompt-button ${template.id}-button ${isActive ? "active" : ""}`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setSelectedPromptId(template.id);
+                }}
+                title={template.name}
+              >
+                <IconComponent aria-hidden="true" />
+              </button>
+            );
+          })}
           <button
             type="button"
             className="generate-button"
             onClick={() => {
               hide();
-              handleGenerate(selectedPrompt);
+              handleGenerate(selectedPromptId || activePromptTemplateId);
             }}
           >
             <span className="generate-text">Generate</span>

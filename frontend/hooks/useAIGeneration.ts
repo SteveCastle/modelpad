@@ -15,7 +15,7 @@ import {
 } from "../components/AIGenerationNode";
 import { $createPromptNode, $isPromptNode } from "../components/PromptNode";
 import { $isTagNode } from "../components/TagNode";
-import { useStore, PromptTypeKeys, PromptGeneration } from "../store";
+import { useStore, PromptGeneration } from "../store";
 import { providers } from "../providers";
 import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
 
@@ -23,9 +23,6 @@ function applyTemplate(template: string, text: string) {
   return template.replace("<text>", text);
 }
 
-function applyRagTemplate(template: string, text: string) {
-  return template.replace("<docs>", text);
-}
 
 export type AIActionType = "generate" | "rewrite";
 
@@ -41,9 +38,8 @@ export function useAIGeneration() {
   const {
     model,
     modelSettings,
-    promptTemplates,
-    systemPromptTemplates,
-    ragPromptTemplates,
+    activePromptTemplateId,
+    getPromptTemplate,
     useRag,
     addPromptGeneration,
     updatePromptGeneration,
@@ -223,7 +219,7 @@ export function useAIGeneration() {
   };
 
   const generate = (
-    promptTemplateKey: PromptTypeKeys,
+    promptTemplateId: string = activePromptTemplateId,
     customPrompt: string = "",
     options: UseAIGenerationOptions = {}
   ) => {
@@ -319,8 +315,17 @@ export function useAIGeneration() {
         text = root.getTextContent();
       }
 
+      // Get the prompt template
+      const promptTemplate = getPromptTemplate(promptTemplateId);
+      if (!promptTemplate) {
+        console.error(`Prompt template with id ${promptTemplateId} not found`);
+        return;
+      }
+
       // Build prompt based on action type
       let prompt;
+      let systemPrompt = promptTemplate.systemPrompt;
+      
       if (action === "rewrite") {
         // For rewrite, construct a prompt that emphasizes one-to-one replacement and length matching
         const wordCount = text
@@ -333,17 +338,15 @@ export function useAIGeneration() {
           : `\n\nImprove clarity, style, and flow while maintaining the same meaning and approximate length.`;
 
         prompt = `${baseRewritePrompt}${rewriteInstructions}\n\nOriginal text to rewrite:\n${text}`;
+        systemPrompt = baseRewritePrompt; // Override system prompt for rewrite
       } else {
         // Original generation logic
         const ragText =
           tabContext.length > 0
-            ? applyRagTemplate(
-                ragPromptTemplates[promptTemplateKey],
-                tabContext.join("\n")
-              ) + "\n"
+            ? `Below is a list of documents that you can use for context. You can use these documents to help you generate ideas.\n<docs>\n${tabContext.join("\n")}\nEND OF DOCS\n`
             : "";
         const selectedText = applyTemplate(
-          promptTemplates[promptTemplateKey],
+          promptTemplate.mainPrompt,
           text
         );
         const customPromptText = customPrompt.trim()
@@ -362,7 +365,7 @@ export function useAIGeneration() {
 
       provider.generateText(
         prompt,
-        systemPromptTemplates[promptTemplateKey],
+        systemPrompt,
         startCallback,
         tokenCallback,
         completedCallback,
@@ -479,7 +482,7 @@ export function useAIGeneration() {
           const parentElement = promptNode.getParent();
           if (parentElement && $isElementNode(parentElement)) {
             // Re-trigger generation using the parent element as target
-            generate("newScene", "", {
+            generate(activePromptTemplateId, "", {
               customText: generation.originalContent,
               action: "generate",
               targetNodeKey: parentElement.getKey(),
@@ -526,7 +529,7 @@ export function useAIGeneration() {
           const parentElement = promptNode.getParent();
           if (parentElement && $isElementNode(parentElement)) {
             // Re-trigger generation using the parent element as target
-            generate("newScene", "", {
+            generate(activePromptTemplateId, "", {
               customText: generation.originalContent,
               action: "generate",
               targetNodeKey: parentElement.getKey(),

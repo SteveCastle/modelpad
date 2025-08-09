@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "react-query";
-import { useStore, PromptTypeKeys } from "../store";
+import { useStore } from "../store";
 import { providers } from "../providers";
 import { modelPrettyNameMap } from "../modelPrettyNameMap";
 import RangeSlider from "./RangeSlider";
@@ -12,7 +12,7 @@ import {
 import "./AIPanel.css";
 
 type TabType = "model-settings" | "context-control" | "agent";
-type PromptEditTab = PromptTypeKeys | null;
+type PromptEditTab = string | null;
 
 interface AIPanelProps {
   defaultTab?: TabType;
@@ -25,7 +25,7 @@ export default function AIPanel({
 }: AIPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
   const [activePromptTab, setActivePromptTab] =
-    useState<PromptEditTab>("newScene");
+    useState<PromptEditTab>(null);
 
   // Update active tab when defaultTab prop changes
   useEffect(() => {
@@ -60,12 +60,28 @@ export default function AIPanel({
     useRag,
     setUseRag,
     promptTemplates,
-    systemPromptTemplates,
-    ragPromptTemplates,
-    changePromptTemplate,
-    changeSystemPromptTemplate,
-    changeRagPromptTemplate,
+    updatePromptTemplate,
+    addPromptTemplate,
+    deletePromptTemplate,
   } = useStore((state) => state);
+  
+  // Initialize active prompt tab with the first template
+  useState(() => {
+    if (!activePromptTab && Array.isArray(promptTemplates) && promptTemplates.length > 0) {
+      setActivePromptTab(promptTemplates[0].id);
+    }
+  });
+  
+  // Safety check: if promptTemplates is not an array, return early with error message
+  if (!Array.isArray(promptTemplates)) {
+    return (
+      <div className="ai-tab-component">
+        <div className="error-message">
+          Error: Please refresh the page to migrate your prompt templates.
+        </div>
+      </div>
+    );
+  }
 
   const sortedStories = [...stories].filter(
     (story) => story.id !== activeStoryId
@@ -343,74 +359,93 @@ export default function AIPanel({
       <h2>Prompt Templates</h2>
       <div className="prompt-template-section">
         <div className="prompt-tab-buttons">
+          {Array.isArray(promptTemplates) && promptTemplates.map((template) => (
+            <button
+              key={template.id}
+              className={`prompt-tab-button ${
+                activePromptTab === template.id ? "active" : ""
+              }`}
+              onClick={() => setActivePromptTab(template.id)}
+            >
+              {template.name}
+            </button>
+          ))}
           <button
-            className={`prompt-tab-button ${
-              activePromptTab === "newScene" ? "active" : ""
-            }`}
-            onClick={() => setActivePromptTab("newScene")}
+            className="prompt-tab-button add-button"
+            onClick={() => {
+              const newTemplate = addPromptTemplate({
+                name: `Template ${promptTemplates.length + 1}`,
+                systemPrompt: "You are a helpful AI assistant.",
+                mainPrompt: "<text>",
+              });
+              setActivePromptTab(newTemplate.id);
+            }}
+            title="Add new template"
           >
-            New Scene
-          </button>
-          <button
-            className={`prompt-tab-button ${
-              activePromptTab === "rewrite" ? "active" : ""
-            }`}
-            onClick={() => setActivePromptTab("rewrite")}
-          >
-            Rewrite
-          </button>
-          <button
-            className={`prompt-tab-button ${
-              activePromptTab === "summarize" ? "active" : ""
-            }`}
-            onClick={() => setActivePromptTab("summarize")}
-          >
-            Summarize
+            +
           </button>
         </div>
 
-        {activePromptTab && (
-          <div className="prompt-editing-area">
-            <div className="prompt-field">
-              <label className="prompt-label">System Prompt</label>
-              <textarea
-                className="prompt-textarea custom-scrollbar"
-                value={systemPromptTemplates[activePromptTab]}
-                onChange={(e) => {
-                  changeSystemPromptTemplate(activePromptTab, e.target.value);
-                }}
-                rows={4}
-              />
+        {activePromptTab && Array.isArray(promptTemplates) && (() => {
+          const currentTemplate = promptTemplates.find(t => t.id === activePromptTab);
+          if (!currentTemplate) return null;
+          
+          return (
+            <div className="prompt-editing-area">
+              <div className="prompt-field">
+                <label className="prompt-label">Template Name</label>
+                <input
+                  type="text"
+                  className="prompt-input"
+                  value={currentTemplate.name}
+                  onChange={(e) => {
+                    updatePromptTemplate(activePromptTab, { name: e.target.value });
+                  }}
+                />
+              </div>
+              <div className="prompt-field">
+                <label className="prompt-label">System Prompt</label>
+                <textarea
+                  className="prompt-textarea custom-scrollbar"
+                  value={currentTemplate.systemPrompt}
+                  onChange={(e) => {
+                    updatePromptTemplate(activePromptTab, { systemPrompt: e.target.value });
+                  }}
+                  rows={4}
+                />
+              </div>
+              <div className="prompt-field">
+                <label className="prompt-label">Main Prompt Template</label>
+                <textarea
+                  className="prompt-textarea custom-scrollbar"
+                  value={currentTemplate.mainPrompt}
+                  onChange={(e) => {
+                    updatePromptTemplate(activePromptTab, { mainPrompt: e.target.value });
+                  }}
+                  rows={4}
+                />
+              </div>
+              <div className="prompt-info">
+                <strong>Selected Text:</strong> &lt;text&gt;
+                <br />
+                <strong>Context Documents:</strong> Automatically included when tabs are selected for context
+              </div>
+              {promptTemplates.length > 1 && (
+                <div className="prompt-actions">
+                  <button
+                    className="delete-template-button"
+                    onClick={() => {
+                      deletePromptTemplate(activePromptTab);
+                      setActivePromptTab(promptTemplates[0]?.id || null);
+                    }}
+                  >
+                    Delete Template
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="prompt-field">
-              <label className="prompt-label">RAG Prefix</label>
-              <textarea
-                className="prompt-textarea custom-scrollbar"
-                value={ragPromptTemplates[activePromptTab]}
-                onChange={(e) => {
-                  changeRagPromptTemplate(activePromptTab, e.target.value);
-                }}
-                rows={3}
-              />
-            </div>
-            <div className="prompt-field">
-              <label className="prompt-label">Main Prompt Template</label>
-              <textarea
-                className="prompt-textarea custom-scrollbar"
-                value={promptTemplates[activePromptTab]}
-                onChange={(e) => {
-                  changePromptTemplate(activePromptTab, e.target.value);
-                }}
-                rows={4}
-              />
-            </div>
-            <div className="prompt-info">
-              <strong>Selected Text:</strong> &lt;text&gt;
-              <br />
-              <strong>RAG Docs:</strong> &lt;docs&gt;
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
