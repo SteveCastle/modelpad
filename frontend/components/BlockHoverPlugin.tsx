@@ -174,6 +174,8 @@ function BlockControls({
             left: noteX,
             zIndex: 1001,
           }}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
         >
           <div className="editors-note-row">
             <span className="editors-note-label">Editor’s Note</span>
@@ -185,12 +187,12 @@ function BlockControls({
               ×
             </button>
           </div>
-          <input
-            type="text"
+          <textarea
             value={editorsNote}
             placeholder="Add context or instruction..."
             onChange={(e) => setEditorsNote(e.target.value)}
             className="editors-note-input"
+            rows={6}
           />
         </div>
       )}
@@ -269,8 +271,12 @@ export function BlockHoverPlugin(): JSX.Element | null {
       const target = event.target as HTMLElement;
       clearHideTimeout();
 
-      // Ignore if we hover over existing controls
-      if (target.closest(".block-controls")) return;
+      // Ignore if we hover over existing controls or the editor's note flyout
+      if (
+        target.closest(".block-controls") ||
+        target.closest(".editors-note-flyout")
+      )
+        return;
 
       const blockElement = target.closest(
         ".editor-paragraph, .editor-heading-h1, .editor-heading-h2, .editor-heading-h3, .editor-heading-h4, .editor-heading-h5, .editor-heading-h6, .editor-blockquote, .editor-list-ol, .editor-list-ul, .codeHighlight"
