@@ -13,12 +13,216 @@ import { useStore, PromptGeneration } from "../store";
 import { providers } from "../providers";
 import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
 
-function applyTemplate(template: string, text: string) {
+// Enhanced template variable definitions
+interface TemplateVariables {
+  text: string;                    // Legacy support - maps to activeNodeText
+  activeNodeText: string;          // Text of the current/active node
+  selection?: string;              // Text of any selection (if exists)
+  selectionText?: string;          // Alias for selection
+  contextDocuments: string;        // Formatted context documents
+  currentDocument: string;         // Text of the entire current document
+  currentDocumentText: string;     // Alias for currentDocument
+  textBefore: string;              // Text before the active node
+  textBeforeActiveNode: string;    // Alias for textBefore
+  textAfter: string;               // Text after the active node
+  textAfterActiveNode: string;     // Alias for textAfter
+  documentContext: string;         // Combined before/after context
+}
+
+function applyTemplate(template: string, context: PromptContext): string {
+  // Create template variables from context
+  const variables: TemplateVariables = {
+    // Primary text (legacy support)
+    text: context.activeNodeText,
+    
+    // Active node
+    activeNodeText: context.activeNodeText,
+    
+    // Selection (optional)
+    selection: context.selectionText || "",
+    selectionText: context.selectionText || "",
+    
+    // Context documents
+    contextDocuments: context.contextDocuments.join("\n"),
+    
+    // Current document
+    currentDocument: context.currentDocumentText,
+    currentDocumentText: context.currentDocumentText,
+    
+    // Before/after context
+    textBefore: context.textBeforeActiveNode,
+    textBeforeActiveNode: context.textBeforeActiveNode,
+    textAfter: context.textAfterActiveNode,
+    textAfterActiveNode: context.textAfterActiveNode,
+    
+    // Combined document context
+    documentContext: [
+      context.textBeforeActiveNode && `[BEFORE]\n${context.textBeforeActiveNode}`,
+      context.textAfterActiveNode && `[AFTER]\n${context.textAfterActiveNode}`
+    ].filter(Boolean).join("\n\n"),
+  };
+
+  // Apply template substitutions
+  let result = template;
+  
+  // Replace template variables with actual values
+  Object.entries(variables).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      // Support both <variable> and {{variable}} syntax
+      const patterns = [
+        new RegExp(`<${key}>`, 'g'),
+        new RegExp(`\\{\\{${key}\\}\\}`, 'g'),
+      ];
+      
+      patterns.forEach(pattern => {
+        result = result.replace(pattern, String(value));
+      });
+    }
+  });
+  
+  return result;
+}
+
+// Legacy function for backward compatibility
+function applyTemplateLegacy(template: string, text: string) {
   return template.replace("<text>", text);
 }
 
+interface PromptContext {
+  activeNodeText: string;
+  selectionText?: string;
+  contextDocuments: string[];
+  currentDocumentText: string;
+  textBeforeActiveNode: string;
+  textAfterActiveNode: string;
+}
+
+interface PromptBuilderOptions {
+  action: AIActionType;
+  customPrompt?: string;
+  promptTemplate: {
+    mainPrompt: string;
+    systemPrompt: string;
+  };
+  wordCount?: number;
+}
+
+function buildPrompt(context: PromptContext, options: PromptBuilderOptions): {
+  prompt: string;
+  systemPrompt: string;
+} {
+  const { action, customPrompt = "", promptTemplate, wordCount } = options;
+  
+  // For rewrite actions, build a specialized prompt
+  if (action === "rewrite") {
+    const actualWordCount = wordCount || context.activeNodeText
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length;
+      
+    const baseRewritePrompt = `You are rewriting text as a direct, one-to-one replacement. Your output should match the approximate length of the input (${actualWordCount} words). Write ONLY the rewritten text with no additional commentary or explanation.`;
+
+    const rewriteInstructions = customPrompt.trim()
+      ? `\n\nRewrite instructions: ${customPrompt.trim()}`
+      : `\n\nImprove clarity, style, and flow while maintaining the same meaning and approximate length.`;
+
+    // Create a template for rewrite that can use all context variables
+    const rewriteTemplate = `${baseRewritePrompt}${rewriteInstructions}\n\nOriginal text to rewrite:\n{{activeNodeText}}`;
+    
+    return {
+      prompt: applyTemplate(rewriteTemplate, context),
+      systemPrompt: applyTemplate(baseRewritePrompt, context),
+    };
+  }
+  
+  // For generate actions, build context-aware prompt using enhanced templating
+  
+  // Build RAG context section if documents are available
+  let basePrompt = promptTemplate.mainPrompt;
+  if (context.contextDocuments.length > 0) {
+    const ragPrefix = `Below is a list of documents that you can use for context. You can use these documents to help you generate ideas.\n<docs>\n{{contextDocuments}}\nEND OF DOCS\n\n`;
+    basePrompt = ragPrefix + basePrompt;
+  }
+  
+  // Apply enhanced templating to the entire prompt template
+  const templatedText = applyTemplate(basePrompt, context);
+  
+  // Add custom prompt if provided
+  const customPromptText = customPrompt.trim() ? `\n\n${customPrompt.trim()}` : "";
+  
+  // Apply templating to system prompt as well
+  const templatedSystemPrompt = applyTemplate(promptTemplate.systemPrompt, context);
+  
+  return {
+    prompt: templatedText + customPromptText,
+    systemPrompt: templatedSystemPrompt,
+  };
+}
+
+// Helper function to extract context information from the editor
+function extractPromptContext(
+  editor: ReturnType<typeof useLexicalComposerContext>[0],
+  options: UseAIGenerationOptions,
+  tabContext: string[]
+): PromptContext {
+  let activeNodeText = "";
+  let selectionText = "";
+  let currentDocumentText = "";
+  let textBeforeActiveNode = "";
+  let textAfterActiveNode = "";
+
+  const selection = $getSelection();
+  const root = $getRoot();
+  currentDocumentText = root.getTextContent();
+
+  // Use custom text if provided
+  if (options.customText) {
+    activeNodeText = options.customText;
+  } else if ($isRangeSelection(selection)) {
+    selectionText = selection.getTextContent();
+    if (selectionText.length < 2) {
+      activeNodeText = currentDocumentText;
+      selectionText = "";
+    } else {
+      activeNodeText = selectionText;
+    }
+  } else {
+    activeNodeText = currentDocumentText;
+  }
+
+  // Extract context before/after active node if we have a target node
+  if (options.targetNodeKey) {
+    const targetNode = $getNodeByKey(options.targetNodeKey);
+    if (targetNode) {
+      const allChildren = root.getChildren();
+      const targetIndex = allChildren.findIndex(child => child.getKey() === options.targetNodeKey);
+      
+      if (targetIndex !== -1) {
+        // Get text before the target node
+        const beforeNodes = allChildren.slice(0, targetIndex);
+        textBeforeActiveNode = beforeNodes.map(node => node.getTextContent()).join("\n");
+        
+        // Get text after the target node  
+        const afterNodes = allChildren.slice(targetIndex + 1);
+        textAfterActiveNode = afterNodes.map(node => node.getTextContent()).join("\n");
+      }
+    }
+  }
+
+  return {
+    activeNodeText,
+    selectionText,
+    contextDocuments: tabContext,
+    currentDocumentText,
+    textBeforeActiveNode,
+    textAfterActiveNode,
+  };
+}
 
 export type AIActionType = "generate" | "rewrite";
+
+// Export the new prompt building functions for potential reuse
+export { buildPrompt, extractPromptContext, applyTemplate, applyTemplateLegacy };
+export type { PromptContext, PromptBuilderOptions, TemplateVariables };
 
 interface UseAIGenerationOptions {
   customText?: string; // Optional custom text to use instead of selection/document
@@ -207,22 +411,6 @@ export function useAIGeneration() {
       createActionCallbacks(action, options.targetNodeKey, promptId);
 
     editor.update(() => {
-      const selection = $getSelection();
-      const root = $getRoot();
-      let text;
-
-      // Use custom text if provided, otherwise use selection or document
-      if (options.customText) {
-        text = options.customText;
-      } else if ($isRangeSelection(selection)) {
-        text = selection.getTextContent();
-        if (text.length < 2) {
-          text = root.getTextContent();
-        }
-      } else {
-        text = root.getTextContent();
-      }
-
       // Get the prompt template
       const promptTemplate = getPromptTemplate(promptTemplateId);
       if (!promptTemplate) {
@@ -230,43 +418,21 @@ export function useAIGeneration() {
         return;
       }
 
-      // Build prompt based on action type
-      let prompt;
-      let systemPrompt = promptTemplate.systemPrompt;
+      // Extract context information using the new helper function
+      const promptContext = extractPromptContext(editor, options, tabContext);
       
-      if (action === "rewrite") {
-        // For rewrite, construct a prompt that emphasizes one-to-one replacement and length matching
-        const wordCount = text
-          .split(/\s+/)
-          .filter((word) => word.length > 0).length;
-        const baseRewritePrompt = `You are rewriting text as a direct, one-to-one replacement. Your output should match the approximate length of the input (${wordCount} words). Write ONLY the rewritten text with no additional commentary or explanation.`;
-
-        const rewriteInstructions = customPrompt.trim()
-          ? `\n\nRewrite instructions: ${customPrompt.trim()}`
-          : `\n\nImprove clarity, style, and flow while maintaining the same meaning and approximate length.`;
-
-        prompt = `${baseRewritePrompt}${rewriteInstructions}\n\nOriginal text to rewrite:\n${text}`;
-        systemPrompt = baseRewritePrompt; // Override system prompt for rewrite
-      } else {
-        // Original generation logic
-        const ragText =
-          tabContext.length > 0
-            ? `Below is a list of documents that you can use for context. You can use these documents to help you generate ideas.\n<docs>\n${tabContext.join("\n")}\nEND OF DOCS\n`
-            : "";
-        const selectedText = applyTemplate(
-          promptTemplate.mainPrompt,
-          text
-        );
-        const customPromptText = customPrompt.trim()
-          ? `\n\n${customPrompt.trim()}`
-          : "";
-        prompt = ragText + selectedText + customPromptText;
-      }
+      // Build prompt using the new flexible prompt builder
+      const { prompt, systemPrompt } = buildPrompt(promptContext, {
+        action,
+        customPrompt,
+        promptTemplate,
+      });
 
       setGenerationState("loading");
 
       // Only add new paragraph for generate action if not using PromptNode workflow
       if (action === "generate" && !promptId) {
+        const root = $getRoot();
         const newParagraphNode = $createParagraphNode();
         root.append(newParagraphNode);
       }
