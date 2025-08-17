@@ -1,5 +1,6 @@
 import { ModelSettings } from "../store";
 import ollama from "./ollama";
+import openai from "./openai";
 import claude from "./claude";
 
 type Model = {
@@ -42,5 +43,6 @@ type ProviderMap = {
 
 export const providers: ProviderMap = {
   ollama,
+  openai,
   claude,
 };
