@@ -136,6 +136,18 @@
   padding-bottom: 60px; /* Space for any floating elements */
 }
 
+.root-drop-zone {
+  height: 10px;
+  margin: 2px 4px;
+  border-radius: 4px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.root-drop-zone.active {
+  background-color: rgba(74, 144, 226, 0.12);
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.25) inset;
+}
+
 .loading-container {
   position: relative;
   display: flex;

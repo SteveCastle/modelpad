@@ -34,7 +34,7 @@ import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
 
 import "./Notes.css";
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { LoadingSpinner } from "./LoadingSpinner";
 
@@ -371,14 +371,29 @@ const Notes = ({ onTabClick }: NotesProps) => {
       setOverId(null);
     }, 150);
 
-    if (!over || active.id === over.id) {
+    const activeNote = displayNotes.find((note) => note.id === active.id);
+    if (!activeNote) {
       return;
     }
 
-    const activeNote = displayNotes.find((note) => note.id === active.id);
-    const overNote = displayNotes.find((note) => note.id === over.id);
+    // If dropped outside any folder, remove parent (set to null)
+    if (!over) {
+      updateParentMutation({ id: activeNote.id, parentId: null });
+      return;
+    }
 
-    if (!activeNote || !overNote) {
+    if (active.id === over.id) {
+      return;
+    }
+
+    // If dropped on a root drop zone, unparent
+    if (typeof over.id === "string" && over.id.startsWith("root-drop")) {
+      updateParentMutation({ id: activeNote.id, parentId: null });
+      return;
+    }
+
+    const overNote = displayNotes.find((note) => note.id === over.id);
+    if (!overNote) {
       return;
     }
 
@@ -562,15 +577,21 @@ const Notes = ({ onTabClick }: NotesProps) => {
             onDragEnd={handleDragEnd}
           >
             <ul className="note-list">
-              {displayNotes.map((note) => (
-                <TreeNoteItem
-                  key={note.id}
-                  note={note}
-                  onToggleExpanded={toggleExpanded}
-                  isDragging={activeId === note.id}
-                  isDropTarget={overId === note.id}
-                />
+              <RootDropZone id="root-drop-top" />
+              {displayNotes.map((note, index) => (
+                <Fragment key={note.id}>
+                  {index > 0 && (
+                    <RootDropZone id={`root-drop-between-${note.id}`} />
+                  )}
+                  <TreeNoteItem
+                    note={note}
+                    onToggleExpanded={toggleExpanded}
+                    isDragging={activeId === note.id}
+                    isDropTarget={overId === note.id}
+                  />
+                </Fragment>
               ))}
+              <RootDropZone id="root-drop-bottom" />
             </ul>
             <DragOverlay>
               {draggedNote ? (
@@ -632,6 +653,16 @@ const Notes = ({ onTabClick }: NotesProps) => {
         {activeNotesTab === "vocabulary" && <VocabularyContent />}
       </div>
     </div>
+  );
+};
+
+const RootDropZone = ({ id }: { id: string }) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`root-drop-zone ${isOver ? "active" : ""}`}
+    />
   );
 };
 
