@@ -569,6 +569,8 @@ export default function AIPanel({
                   section
                   <br />• <code>&lt;documentContext&gt;</code> - Combined
                   before/after context
+                  <br />• <code>&lt;editorsNote&gt;</code> - Editor's note or
+                  guidance
                   <br />
                   <br />
                 </div>

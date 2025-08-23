@@ -2,15 +2,15 @@ import { Config } from ".";
 
 const buildUrl = (host: string, path: string): string => {
   try {
-    // During local dev, route Ollama through Vite proxy to avoid CORS
-    if (
-      typeof window !== "undefined" &&
-      /localhost:11434|127\.0\.0\.1:11434/.test(host)
-    ) {
-      return `/ollama${path}`;
+    // During local dev, detect browser running on localhost and route via Vite proxy to avoid CORS
+    if (typeof window !== "undefined") {
+      const browserHost = window.location?.hostname;
+      if (browserHost === "localhost" || browserHost === "127.0.0.1") {
+        return `/ollama${path}`;
+      }
     }
   } catch (e) {
-    // ignore invalid host
+    // ignore environment issues
   }
   return `${host}${path}`;
 };

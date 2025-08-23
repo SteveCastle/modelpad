@@ -13,6 +13,43 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+/* Special header section for the Editor's Note toggle */
+.block-controls-header {
+  position: relative;
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+}
+
+.block-controls-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--border-color);
+  opacity: 0.6;
+}
+
+.note-toggle-btn {
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+}
+
+.note-toggle-btn:hover {
+  background: rgba(59, 130, 246, 0.22);
+  color: #bfdbfe;
+}
+
+.note-toggle-btn .arrow-icon {
+  transition: transform 0.18s ease;
+  transform: rotate(0deg);
+}
+
+.note-toggle-btn.open .arrow-icon {
+  transform: rotate(90deg);
+}
+
 .block-control-btn {
   background: transparent;
   border: none;

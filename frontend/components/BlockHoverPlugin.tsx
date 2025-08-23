@@ -113,6 +113,35 @@ function BlockControls({
         onMouseLeave={onMouseLeave}
       >
         <div className="block-controls-buttons">
+          <div className="block-controls-header">
+            <button
+              className={`block-control-btn note-toggle-btn ${
+                noteOpen ? "open" : ""
+              }`}
+              onClick={() => setNoteOpen((v) => !v)}
+              title="Editor’s Note"
+              aria-label="Toggle Editor’s Note"
+              aria-expanded={noteOpen}
+              aria-controls="editors-note-flyout"
+            >
+              <svg
+                className="arrow-icon"
+                viewBox="0 0 20 20"
+                width="14"
+                height="14"
+                aria-hidden="true"
+              >
+                <path
+                  d="M7 5l6 5-6 5"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
           {/* Dynamic prompt template actions */}
           <div className="block-control-group">
             {promptTemplates.map((t) => (
@@ -128,13 +157,6 @@ function BlockControls({
               </button>
             ))}
           </div>
-          <button
-            className="block-control-btn"
-            onClick={() => setNoteOpen((v) => !v)}
-            title="Editor’s Note"
-          >
-            ✏️
-          </button>
           {/* Removed standalone rewrite button */}
           <button
             className="block-control-btn convert-markdown-btn"
@@ -168,6 +190,7 @@ function BlockControls({
         <div
           ref={noteRefs.setFloating}
           className="editors-note-flyout"
+          id="editors-note-flyout"
           style={{
             position: noteStrategy,
             top: noteY,
