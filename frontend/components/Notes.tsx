@@ -29,12 +29,16 @@ import {
   ChevronDownIcon,
   Bars3Icon,
   DocumentTextIcon,
+  ClockIcon,
+  BarsArrowDownIcon,
+  ListBulletIcon,
+  RectangleStackIcon,
 } from "@heroicons/react/24/solid";
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
 
 import "./Notes.css";
-import { useState, Fragment } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { LoadingSpinner } from "./LoadingSpinner";
 
@@ -53,6 +57,8 @@ type TreeTag = Tag & {
   level: number;
   isExpanded?: boolean;
 };
+
+type SortMode = "recent" | "alpha";
 
 // Utility functions for tree structure
 function buildNoteTree(notes: Note[]): TreeNote[] {
@@ -282,6 +288,8 @@ const Notes = ({ onTabClick }: NotesProps) => {
   const [initializedExpansion, setInitializedExpansion] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>("recent");
+  const [nestingEnabled, setNestingEnabled] = useState(true);
   const queryClient = useQueryClient();
 
   // Get persistent state from store
@@ -397,34 +405,68 @@ const Notes = ({ onTabClick }: NotesProps) => {
     });
   }
 
-  // Build tree structure and flatten for display
-  const displayNotes = data?.notes
-    ? (() => {
-        const treeNotes = buildNoteTree(data.notes);
+  // Build tree structure and flatten for display (when nesting is enabled)
+  const displayNotes =
+    data?.notes && nestingEnabled
+      ? (() => {
+          const compare = (a: TreeNote, b: TreeNote) => {
+            if (sortMode === "alpha") {
+              return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+            }
+            // recent
+            const aTime = new Date(a.updated_at || a.created_at).getTime();
+            const bTime = new Date(b.updated_at || b.created_at).getTime();
+            return bTime - aTime;
+          };
 
-        // Initialize expanded state for all parent notes on first load
-        if (!initializedExpansion && treeNotes.length > 0) {
-          // All notes start expanded by default (not in collapsed set)
-          setInitializedExpansion(true);
-        }
+          const sortRecursive = (nodes: TreeNote[]): TreeNote[] => {
+            return nodes
+              .slice()
+              .sort(compare)
+              .map((n) => ({ ...n, children: sortRecursive(n.children) }));
+          };
 
-        // Update expanded state for tree notes
-        const updateExpandedState = (notes: TreeNote[]): TreeNote[] => {
-          return notes.map((note) => ({
-            ...note,
-            isExpanded: !collapsedNoteIds.has(note.id),
-            children: updateExpandedState(note.children),
-          }));
-        };
+          const treeNotes = sortRecursive(buildNoteTree(data.notes));
 
-        const expandedTreeNotes = updateExpandedState(treeNotes);
-        return flattenTree(expandedTreeNotes);
-      })()
-    : [];
+          // Initialize expanded state for all parent notes on first load
+          if (!initializedExpansion && treeNotes.length > 0) {
+            // All notes start expanded by default (not in collapsed set)
+            setInitializedExpansion(true);
+          }
 
-  const draggedNote = activeId
-    ? displayNotes.find((note) => note.id === activeId)
-    : null;
+          // Update expanded state for tree notes
+          const updateExpandedState = (notes: TreeNote[]): TreeNote[] => {
+            return notes.map((note) => ({
+              ...note,
+              isExpanded: !collapsedNoteIds.has(note.id),
+              children: updateExpandedState(note.children),
+            }));
+          };
+
+          const expandedTreeNotes = updateExpandedState(treeNotes);
+          return flattenTree(expandedTreeNotes);
+        })()
+      : [];
+
+  // Flat list for when nesting is disabled
+  const flatNotes = useMemo(() => {
+    if (!data?.notes) return [] as Note[];
+    const notesCopy = data.notes.slice();
+    notesCopy.sort((a, b) => {
+      if (sortMode === "alpha") {
+        return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+      }
+      const aTime = new Date(a.updated_at || a.created_at).getTime();
+      const bTime = new Date(b.updated_at || b.created_at).getTime();
+      return bTime - aTime;
+    });
+    return notesCopy;
+  }, [data, sortMode]);
+
+  const draggedNote =
+    nestingEnabled && activeId
+      ? displayNotes.find((note) => note.id === activeId)
+      : null;
 
   const EmptyState = () => {
     const hasSearchQuery = searchQuery.trim().length > 0;
@@ -554,46 +596,76 @@ const Notes = ({ onTabClick }: NotesProps) => {
             <XMarkIcon />
           </button>
         </div>
+        <div className="header-controls">
+          <button
+            className="icon-btn"
+            onClick={() =>
+              setSortMode((m) => (m === "recent" ? "alpha" : "recent"))
+            }
+            title={sortMode === "recent" ? "Sort: Recent" : "Sort: A–Z"}
+            aria-label={sortMode === "recent" ? "Sort: Recent" : "Sort: A–Z"}
+          >
+            {sortMode === "recent" ? <ClockIcon /> : <BarsArrowDownIcon />}
+          </button>
+          <button
+            className={`icon-btn ${nestingEnabled ? "active" : ""}`}
+            onClick={() => setNestingEnabled((v) => !v)}
+            title={nestingEnabled ? "Tree view" : "List view"}
+            aria-label={nestingEnabled ? "Tree view" : "List view"}
+          >
+            {nestingEnabled ? <RectangleStackIcon /> : <ListBulletIcon />}
+          </button>
+        </div>
       </div>
       {data ? (
-        displayNotes.length > 0 ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDragEnd={handleDragEnd}
-          >
-            <ul className="note-list">
-              <RootDropZone id="root-drop-top" />
-              {displayNotes.map((note, index) => (
-                <Fragment key={note.id}>
-                  {index > 0 && (
-                    <RootDropZone id={`root-drop-between-${note.id}`} />
-                  )}
-                  <TreeNoteItem
-                    note={note}
-                    onToggleExpanded={toggleExpanded}
-                    isDragging={activeId === note.id}
-                    isDropTarget={overId === note.id}
-                  />
-                </Fragment>
-              ))}
-              <RootDropZone id="root-drop-bottom" />
-            </ul>
-            <DragOverlay>
-              {draggedNote ? (
-                <div className="drag-overlay-item">
-                  <TreeNoteItem
-                    note={draggedNote}
-                    onToggleExpanded={() => {}}
-                    isDragging={true}
-                    isDropTarget={false}
-                  />
-                </div>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+        nestingEnabled ? (
+          displayNotes.length > 0 ? (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              <ul className="note-list">
+                <RootDropZone id="root-drop-top" />
+                {displayNotes.map((note, index) => (
+                  <Fragment key={note.id}>
+                    {index > 0 && (
+                      <RootDropZone id={`root-drop-between-${note.id}`} />
+                    )}
+                    <TreeNoteItem
+                      note={note}
+                      onToggleExpanded={toggleExpanded}
+                      isDragging={activeId === note.id}
+                      isDropTarget={overId === note.id}
+                    />
+                  </Fragment>
+                ))}
+                <RootDropZone id="root-drop-bottom" />
+              </ul>
+              <DragOverlay>
+                {draggedNote ? (
+                  <div className="drag-overlay-item">
+                    <TreeNoteItem
+                      note={draggedNote}
+                      onToggleExpanded={() => {}}
+                      isDragging={true}
+                      isDropTarget={false}
+                    />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          ) : (
+            <EmptyState />
+          )
+        ) : flatNotes.length > 0 ? (
+          <ul className="note-list">
+            {flatNotes.map((note) => (
+              <FlatNoteItem key={note.id} note={note} />
+            ))}
+          </ul>
         ) : (
           <EmptyState />
         )
@@ -1040,6 +1112,40 @@ const TreeTagItem = ({
             </button>
           </div>
         )}
+      </div>
+    </li>
+  );
+};
+
+const FlatNoteItem = ({ note }: { note: Note }) => {
+  const { mergeNotes, setSideBarOpen } = useStore((state) => state);
+  return (
+    <li className="note-item">
+      <div
+        className="note-item-wrapper"
+        onClick={() => {
+          mergeNotes(
+            [
+              {
+                ...note,
+                includeInContext: note.includeInContext || false,
+              },
+            ],
+            true
+          );
+          if (window.innerWidth < 768) {
+            setSideBarOpen(false);
+          }
+        }}
+      >
+        <div className="note-item-content">
+          <div className="note-title-container">
+            <div className="note-title">{note.title}</div>
+          </div>
+          <div className="note-date">
+            {prettyDate(note.updated_at || note.created_at)}
+          </div>
+        </div>
       </div>
     </li>
   );

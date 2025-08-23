@@ -53,11 +53,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 16px;
-  background-color: var(--header-bg-color);
   color: var(--text-color);
-  border-bottom: 1px solid var(--input-bg-color);
   flex-shrink: 0; /* Prevent header from shrinking */
+  gap: 8px;
 }
 
 .Notes .notes-header .search-input {
@@ -121,6 +119,35 @@
 .Notes .notes-header .search-input .clear-btn svg {
   width: 14px;
   height: 14px;
+}
+
+.Notes .notes-header .header-controls {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.Notes .notes-header .icon-btn {
+  width: 32px;
+  height: 32px;
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.Notes .notes-header .icon-btn:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.Notes .notes-header .icon-btn.active {
+  border-color: #4a90e2;
+}
+.Notes .notes-header .icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .note-list {
@@ -708,10 +735,6 @@
 
 /* Ensure good appearance in very wide panels */
 @media (min-width: 400px) {
-  .Notes .notes-header {
-    padding: 12px 20px;
-  }
-
   .note-list {
     padding: 8px 16px;
   }
