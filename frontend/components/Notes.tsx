@@ -348,18 +348,6 @@ const Notes = ({ onTabClick }: NotesProps) => {
   function handleDragOver(event: DragOverEvent) {
     const overId = event.over?.id as string | null;
     setOverId(overId);
-
-    // Auto-expand the note being hovered over if it has children
-    if (overId) {
-      const hoveredNote = displayNotes.find((note) => note.id === overId);
-      if (
-        hoveredNote &&
-        hoveredNote.children.length > 0 &&
-        collapsedNoteIds.has(overId)
-      ) {
-        toggleNoteCollapsed(overId);
-      }
-    }
   }
 
   function handleDragEnd(event: DragEndEvent) {
