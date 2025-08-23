@@ -184,8 +184,15 @@
   padding: 40px 20px;
 }
 
+.note-list {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
 .note-list::-webkit-scrollbar {
   width: 6px;
+  height: 6px;
 }
 
 .note-list::-webkit-scrollbar-track {
@@ -193,13 +200,22 @@
 }
 
 .note-list::-webkit-scrollbar-thumb {
-  background-color: var(--low-contrast-text-color);
-  border-radius: 3px;
-  opacity: 0.3;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  border: 2px solid transparent; /* creates a slimmer look */
+  background-clip: padding-box;
 }
 
 .note-list::-webkit-scrollbar-thumb:hover {
-  opacity: 0.6;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.note-list::-webkit-scrollbar-thumb:active {
+  background-color: rgba(255, 255, 255, 0.38);
+}
+
+.note-list::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .note-item {
@@ -780,6 +796,37 @@
   margin: 0;
   overflow-y: auto;
   flex: 1;
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.tag-list::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.tag-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tag-list::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.tag-list::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.tag-list::-webkit-scrollbar-thumb:active {
+  background-color: rgba(255, 255, 255, 0.38);
+}
+
+.tag-list::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .tag-item {
