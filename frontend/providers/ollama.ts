@@ -1,5 +1,20 @@
 import { Config } from ".";
 
+const buildUrl = (host: string, path: string): string => {
+  try {
+    // During local dev, route Ollama through Vite proxy to avoid CORS
+    if (
+      typeof window !== "undefined" &&
+      /localhost:11434|127\.0\.0\.1:11434/.test(host)
+    ) {
+      return `/ollama${path}`;
+    }
+  } catch (e) {
+    // ignore invalid host
+  }
+  return `${host}${path}`;
+};
+
 async function generateText(
   prompt: string,
   systemPrompt: string,
@@ -9,9 +24,11 @@ async function generateText(
   config: Config
 ) {
   const { host, model, abortSignal, context, modelSettings } = config;
-  fetch(`${host}/api/generate`, {
+  fetch(buildUrl(host, "/api/generate"), {
     signal: abortSignal,
     method: "POST",
+    credentials: "omit",
+
     headers: {
       "Content-Type": "application/json",
     },
@@ -68,13 +85,17 @@ async function generateText(
 }
 
 const getModels = (host: string) => async () => {
-  const res = await fetch(`${host}/api/tags`);
+  const res = await fetch(buildUrl(host, "/api/tags"), {
+    credentials: "omit",
+  });
   return res.json();
 };
 
 const getModelSettings = (host: string, model: string) => async () => {
-  const res = await fetch(`${host}/api/show`, {
+  const res = await fetch(buildUrl(host, "/api/show"), {
     method: "POST",
+    credentials: "omit",
+
     headers: {
       "Content-Type": "application/json",
     },

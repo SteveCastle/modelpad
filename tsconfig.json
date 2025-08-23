@@ -6,6 +6,12 @@
     "module": "ESNext",
     "skipLibCheck": true,
     "esModuleInterop": true,
+    "baseUrl": ".",
+    "paths": {
+      "react-select/creatable": [
+        "node_modules/react-select/dist/declarations/src/Creatable"
+      ]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",

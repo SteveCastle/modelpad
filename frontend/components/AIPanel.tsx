@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import CreatableSelect from "react-select/creatable";
 import { useQuery } from "react-query";
 import { useStore } from "../store";
 import { providers } from "../providers";
@@ -23,6 +24,29 @@ export default function AIPanel({
   onTabClick,
 }: AIPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+  const emojiOptions = [
+    "✨",
+    "⚡",
+    "✏️",
+    "📝",
+    "🔍",
+    "🧠",
+    "🗂️",
+    "🧹",
+    "🧪",
+    "🧩",
+    "📚",
+    "💡",
+    "🛠️",
+    "🎯",
+    "🪄",
+    "🧾",
+    "📈",
+    "♻️",
+    "🗣️",
+    "🔁",
+    "🪶",
+  ];
   const activePromptTemplateId = useStore(
     (state) => state.activePromptTemplateId
   );
@@ -38,7 +62,6 @@ export default function AIPanel({
   // Model Settings state and logic
   const {
     model,
-    activeStoryId,
     changeModel,
     modelSettings,
     availableModels,
@@ -56,10 +79,10 @@ export default function AIPanel({
     onSuccess: () => {},
   });
 
+  const [modelsExpanded, setModelsExpanded] = useState(false);
+
   // Context Control state and logic
   const {
-    stories,
-    setIncludeInContext,
     useRag,
     setUseRag,
     promptTemplates,
@@ -90,25 +113,43 @@ export default function AIPanel({
     );
   }
 
-  const sortedStories = [...stories].filter(
-    (story) => story.id !== activeStoryId
-  );
-
   const renderModelSettings = () => (
     <div className="model-settings-content">
       <div className="available-models">
-        {availableModels.length > 1 &&
-          availableModels.map((m) => (
+        {availableModels.length > 1 && (
+          <>
             <button
-              className={m === model ? "active" : ""}
-              key={m}
-              onClick={() => {
-                changeModel(m);
-              }}
+              className="toggle"
+              aria-expanded={modelsExpanded}
+              onClick={() => setModelsExpanded((v) => !v)}
+              title={(modelPrettyNameMap[model] || model) as string}
             >
-              {modelPrettyNameMap[m] || m}
+              <span className="selected-model-label">
+                {modelPrettyNameMap[model] || model}
+              </span>
+              <span
+                className={`chevron ${modelsExpanded ? "open" : ""}`}
+                aria-hidden
+              >
+                ▾
+              </span>
             </button>
-          ))}
+            {modelsExpanded &&
+              availableModels.map((m) => (
+                <button
+                  className={m === model ? "active" : ""}
+                  key={m}
+                  title={modelPrettyNameMap[m] || m}
+                  onClick={() => {
+                    changeModel(m);
+                    setModelsExpanded(false);
+                  }}
+                >
+                  {modelPrettyNameMap[m] || m}
+                </button>
+              ))}
+          </>
+        )}
       </div>
 
       <div
@@ -267,13 +308,27 @@ export default function AIPanel({
           providerKey === "claude" ? "hidden" : ""
         } number-setting`}
       >
-        <label>Stop Word</label>
-        <input
-          type="text"
-          value={modelSettings.stop}
-          onChange={(e) => {
-            const value = e.target.value;
-            updateModelSettings({ stop: [value] });
+        <label>Stop Words</label>
+        <CreatableSelect
+          isMulti
+          placeholder="Add stop words..."
+          value={(modelSettings.stop || []).map((s) => ({
+            label: s,
+            value: s,
+          }))}
+          onChange={(options) => {
+            const next = Array.isArray(options)
+              ? options.map((o) =>
+                  "value" in o ? (o as { value: string }).value : ""
+                )
+              : [];
+            updateModelSettings({ stop: next });
+          }}
+          onCreateOption={(inputValue) => {
+            const existing = modelSettings.stop || [];
+            if (!existing.includes(inputValue)) {
+              updateModelSettings({ stop: [...existing, inputValue] });
+            }
           }}
         />
       </div>
@@ -294,7 +349,10 @@ export default function AIPanel({
                 }`}
                 onClick={() => setActivePromptTemplate(template.id)}
               >
-                {template.name}
+                {template.emoji && (
+                  <span className="prompt-tab-emoji">{template.emoji}</span>
+                )}
+                <span className="prompt-tab-title">{template.name}</span>
                 {promptTemplates.length > 1 && (
                   <button
                     className="delete-btn"
@@ -337,23 +395,30 @@ export default function AIPanel({
               <div className="prompt-editing-area">
                 <div className="prompt-field">
                   <label className="prompt-label">Template Name</label>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <input
-                      type="text"
-                      className="prompt-input"
-                      placeholder="Emoji (optional)"
-                      style={{ width: 64, textAlign: "center" }}
+                  <div
+                    style={{ display: "flex", gap: 8, alignItems: "center" }}
+                  >
+                    <select
+                      className="prompt-select emoji-select"
                       value={currentTemplate.emoji || ""}
                       onChange={(e) => {
-                        const val = e.target.value.trim();
+                        const val = e.target.value;
                         updatePromptTemplate(activePromptTemplateId, {
-                          emoji: val.slice(0, 2),
+                          emoji: val || undefined,
                         });
                       }}
-                    />
+                    >
+                      <option value="">None</option>
+                      {emojiOptions.map((emj) => (
+                        <option key={emj} value={emj}>
+                          {emj}
+                        </option>
+                      ))}
+                    </select>
                     <input
                       type="text"
                       className="prompt-input"
+                      style={{ flex: 1 }}
                       value={currentTemplate.name}
                       onChange={(e) => {
                         updatePromptTemplate(activePromptTemplateId, {
@@ -448,7 +513,6 @@ export default function AIPanel({
                         Append to document end
                       </option>
                     </select>
-
                     {(currentTemplate.insertionStrategy?.kind ===
                       "insert-after-node" ||
                       currentTemplate.insertionStrategy?.kind ===
@@ -512,32 +576,7 @@ export default function AIPanel({
             );
           })()}
       </div>
-
-      <h2>Tabs</h2>
       <div className="context-list">
-        {sortedStories.map((story) => (
-          <button
-            className="context-item"
-            key={story.id}
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              setIncludeInContext(story.id, !story.includeInContext);
-            }}
-          >
-            <div>
-              <span className="context-name">{story.title}</span>
-            </div>
-            <span className="context-edit">
-              {story.includeInContext ? (
-                <CheckCircleIcon aria-hidden="true" className="check-icon" />
-              ) : (
-                <XCircleIcon className="x-icon" />
-              )}
-            </span>
-          </button>
-        ))}
-
         <h2 className="rag-header">Resources</h2>
         <div className="rag-section">
           <button

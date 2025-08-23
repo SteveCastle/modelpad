@@ -1,37 +1,44 @@
 .ModelSettings {
   background-color: var(--context-menu-bg-color);
-  padding: 1rem 1rem 1rem 1rem;
+  padding: 0.5rem;
   border-radius: 4px;
   z-index: 999;
   max-width: 500px;
 }
 
 .ModelSettings h3 {
-  margin: 0 0 1rem 0;
+  margin: 0 0 0.5rem 0;
   font-size: 1rem;
   font-weight: 700;
 }
 
+.setting {
+  display: flex;
+  flex-direction: column;
+  margin: 0.35rem 0;
+}
+
 .setting .control-group {
-  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .setting.select-setting .control-group {
-  display: flex;
-  align-items: center;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 }
 
 .setting label {
-  margin-right: 10px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  margin: 0 0 0.2rem 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--low-contrast-text-color);
 }
 
 .setting.select-setting .control-group button {
   flex: 1 1 0;
-  margin: 4px;
-  padding: 4px;
+  margin: 2px;
+  padding: 5px 8px;
   border: none;
   background-color: var(--grid-button-bg-color);
   border-radius: 4px;
@@ -50,50 +57,74 @@
 }
 
 .setting.number-setting {
-  display: flex;
-  justify-content: space-between;
-  margin: 1rem;
+  gap: 4px;
+  margin: 0.35rem 0;
 }
 
 .setting.number-setting label {
-  flex: 1 1 0;
-  min-width: 150px;
+  min-width: auto;
 }
 
 .setting.number-setting input {
-  margin-right: 10px;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.85rem;
   flex: 1 1 0;
-  padding: 4px;
-  border: none;
-  background-color: var(--grid-button-bg-color);
-  border-radius: 4px;
-  text-align: center;
+  padding: 6px 8px;
+  border: 1px solid var(--border-color);
+  background-color: var(--input-bg-color);
+  color: var(--text-color);
+  border-radius: 6px;
+  text-align: left;
+  outline: none;
 }
 
 .setting.number-setting input:focus {
   background-color: var(--active-hovered-style-button-bg-color);
+  border-color: var(--active-grid-button-bg-color);
 }
 
 .available-models {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  margin: 1rem 0;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0.2rem 0 0.2rem 0;
 }
 
 .available-models button {
-  flex: 1 1 0;
-  margin: 4px;
-  padding: 4px;
-  min-width: 200px;
+  width: 100%;
+  display: block;
+  margin: 0;
+  padding: 6px 8px;
+  max-width: 100%;
   border: none;
   background-color: var(--grid-button-bg-color);
   border-radius: 4px;
-  text-align: center;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.9rem;
   cursor: pointer;
   transition: background-color 0.2s ease;
+}
+
+.available-models .toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.available-models .selected-model-label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.available-models .chevron {
+  transition: transform 0.15s ease;
+}
+
+.available-models .chevron.open {
+  transform: rotate(180deg);
 }
 
 .available-models button:hover {
@@ -106,4 +137,9 @@
 
 .setting.hidden {
   display: none;
+}
+
+/* Tighten spacing for sliders within settings */
+.ModelSettings .range-slider-container {
+  padding: 6px 0;
 }

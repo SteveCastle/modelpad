@@ -31,3 +31,9 @@ interface Window {
     options: SaveFilePickerOptions
   ) => Promise<FileSystemFileHandle>;
 }
+
+// Temporary shim for react-select Creatable subpath types when using bundler resolution
+declare module "react-select/creatable" {
+  const CreatableSelect: any;
+  export default CreatableSelect;
+}

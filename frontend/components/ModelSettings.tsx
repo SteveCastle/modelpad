@@ -34,6 +34,7 @@ export default function ModelSettings({ model }: { model: string }) {
   });
 
   const [isOpen, setIsOpen] = useState(false);
+  const [modelsExpanded, setModelsExpanded] = useState(false);
 
   const { refs, floatingStyles, context } = useFloating({
     open: isOpen,
@@ -73,18 +74,40 @@ export default function ModelSettings({ model }: { model: string }) {
         >
           <h3>Model Settings</h3>
           <div className="available-models">
-            {availableModels.length > 1 &&
-              availableModels.map((m) => (
+            {availableModels.length > 1 && (
+              <>
                 <button
-                  className={m === model ? "active" : ""}
-                  key={m}
-                  onClick={() => {
-                    changeModel(m);
-                  }}
+                  className="toggle"
+                  aria-expanded={modelsExpanded}
+                  onClick={() => setModelsExpanded((v) => !v)}
+                  title={(modelPrettyNameMap[model] || model) as string}
                 >
-                  {modelPrettyNameMap[m] || m}
+                  <span className="selected-model-label">
+                    {modelPrettyNameMap[model] || model}
+                  </span>
+                  <span
+                    className={`chevron ${modelsExpanded ? "open" : ""}`}
+                    aria-hidden
+                  >
+                    ▾
+                  </span>
                 </button>
-              ))}
+                {modelsExpanded &&
+                  availableModels.map((m) => (
+                    <button
+                      className={m === model ? "active" : ""}
+                      key={m}
+                      title={modelPrettyNameMap[m] || m}
+                      onClick={() => {
+                        changeModel(m);
+                        setModelsExpanded(false);
+                      }}
+                    >
+                      {modelPrettyNameMap[m] || m}
+                    </button>
+                  ))}
+              </>
+            )}
           </div>
           <div
             className={`setting ${

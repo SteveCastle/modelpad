@@ -323,7 +323,7 @@ function App() {
         </Panel>
 
         {/* Right Placeholder Panel */}
-        {session.loading === false && session.userId && !isMobile ? (
+        {!isMobile ? (
           <>
             <PanelResizeHandle className="resize-handle" />
             <Panel

@@ -11,7 +11,6 @@ import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { useStore, extractTagsFromLexicalState } from "../store";
 import "./Toolbar.css";
-import ModelSettings from "./ModelSettings";
 import ServerSelect from "./ServerSelect";
 import ToolBarPlugin from "./ToolBarPlugin";
 import { DEFAULT_TRANSFORMERS } from "./LexicalMarkdownShortcutPlugin";
@@ -20,7 +19,6 @@ import {
   signOut,
 } from "supertokens-auth-react/recipe/session";
 import useCtrlHotkey from "../hooks/useCtrlHotkey";
-import Context from "./Context";
 import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
 
 type MenuOptions = {
@@ -32,7 +30,6 @@ export function Toolbar() {
   const {
     newTitle,
     cancelGeneration,
-    model,
     createStory,
     toggleReadingMode,
     zoomIn,
@@ -324,8 +321,6 @@ export function Toolbar() {
         </div>
         <div className="toolbar-right">
           <ServerSelect />
-          {model && <ModelSettings model={model} />}
-          <Context />
           <button
             className="cancel-button"
             onClick={() => {

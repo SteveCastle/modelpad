@@ -20,6 +20,8 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const sliderRef = useRef<HTMLDivElement>(null);
+  const [isEditingLabel, setIsEditingLabel] = useState(false);
+  const [tempLabelValue, setTempLabelValue] = useState<string>("");
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -74,6 +76,13 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
     }
   };
 
+  const clampAndSnap = (raw: number): number => {
+    const clamped = Math.max(min, Math.min(max, raw));
+    const stepsFromMin = Math.round((clamped - min) / step);
+    const snapped = min + stepsFromMin * step;
+    return Number(snapped.toFixed(getDecimalPlaces(step)));
+  };
+
   const getDecimalPlaces = (num: number): number => {
     if (Math.floor(num) === num) return 0;
     return num.toString().split(".")[1].length || 0;
@@ -120,7 +129,53 @@ const RangeSlider: React.FC<RangeSliderProps> = ({
           style={{ left: `${percentage}%` }}
         />
       </div>
-      {showLabel && <div className="range-slider-label">{value}</div>}
+      {showLabel && (
+        <div className="range-slider-label">
+          {!isEditingLabel ? (
+            <button
+              className="range-slider-label-button"
+              onClick={() => {
+                setTempLabelValue(String(value));
+                setIsEditingLabel(true);
+              }}
+              title="Click to edit value"
+            >
+              {value}
+            </button>
+          ) : (
+            <input
+              className="range-slider-input"
+              type="number"
+              inputMode="decimal"
+              step={step}
+              min={min}
+              max={max}
+              value={tempLabelValue}
+              autoFocus
+              onChange={(e) => setTempLabelValue(e.target.value)}
+              onBlur={() => {
+                const parsed = parseFloat(tempLabelValue);
+                if (!isNaN(parsed)) {
+                  onChange(clampAndSnap(parsed));
+                }
+                setIsEditingLabel(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const parsed = parseFloat(tempLabelValue);
+                  if (!isNaN(parsed)) {
+                    onChange(clampAndSnap(parsed));
+                  }
+                  setIsEditingLabel(false);
+                }
+                if (e.key === "Escape") {
+                  setIsEditingLabel(false);
+                }
+              }}
+            />
+          )}
+        </div>
+      )}
     </div>
   );
 };

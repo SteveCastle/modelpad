@@ -1,6 +1,6 @@
 .range-slider-container {
   width: 100%;
-  padding: 10px 0;
+  padding: 6px 0;
 }
 
 .range-slider {
@@ -40,8 +40,43 @@
 }
 
 .range-slider-label {
-  margin-top: 10px;
+  margin-top: 8px;
   text-align: center;
-  font-size: 14px;
-  color: #6c6a6a;
+  font-size: 13px;
+  color: #9aa0a6;
+}
+
+.range-slider-label-button {
+  background: transparent;
+  border: 1px dashed rgba(154, 160, 166, 0.35);
+  color: inherit;
+  font: inherit;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: text;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.range-slider-label-button:hover,
+.range-slider-label-button:focus {
+  border-color: rgba(154, 160, 166, 0.6);
+  background-color: rgba(154, 160, 166, 0.08);
+  outline: none;
+}
+
+.range-slider-input {
+  width: 120px;
+  max-width: 50%;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color, #444);
+  background-color: var(--input-bg-color, #262626);
+  color: var(--text-color, #fff);
+  text-align: center;
+  outline: none;
+}
+
+.range-slider-input:focus {
+  border-color: var(--link-color, #d2678a);
+  box-shadow: 0 0 0 3px rgba(210, 103, 138, 0.15);
 }
