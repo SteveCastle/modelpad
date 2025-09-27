@@ -349,6 +349,203 @@ export function useAIGeneration() {
     // Track generated nodes for undo functionality (especially for prompt-based generate)
     let generatedNodeKeys: string[] = [];
 
+    // Buffer to ensure in-order insertion and reduce Lexical update churn
+    let tokenBuffer: string[] = [];
+    let flushScheduled = false;
+
+    const scheduleFlush = () => {
+      if (flushScheduled) return;
+      flushScheduled = true;
+      Promise.resolve().then(() => {
+        flushScheduled = false;
+        if (tokenBuffer.length === 0) return;
+        const buffered = tokenBuffer.join("");
+        tokenBuffer = [];
+        // Single editor.update to apply all pending text in order
+        editor.update(() => {
+          const ensureAppendToCurrentNode = (chunk: string) => {
+            if (!currentTextNodeKey) {
+              // First token: place a text node according to strategy
+
+              const maybeTrackNode = (
+                node: TextNode,
+                container?: LexicalNode | null
+              ) => {
+                trackStreamingTargets(node, container);
+                if (
+                  currentTextNodeKey &&
+                  !generatedNodeKeys.includes(currentTextNodeKey)
+                ) {
+                  generatedNodeKeys.push(currentTextNodeKey);
+                }
+              };
+
+              switch (insertionStrategy.kind) {
+                case "replace-node": {
+                  const target = insertionStrategy.targetNodeKey
+                    ? $getNodeByKey(insertionStrategy.targetNodeKey)
+                    : undefined;
+                  if (!target) break;
+                  const textNode = $createTextNode(chunk);
+                  const para = $createParagraphNode();
+                  para.append(textNode);
+                  if (target.getKey() === "root") {
+                    const root = $getRoot();
+                    root.append(para);
+                    maybeTrackNode(textNode, para);
+                  } else {
+                    const topLevel = $isElementNode(target)
+                      ? target.getParent()?.getKey() === "root"
+                        ? target
+                        : target.getTopLevelElementOrThrow()
+                      : target.getTopLevelElementOrThrow();
+                    topLevel.replace(para);
+                    maybeTrackNode(textNode, para);
+                  }
+                  break;
+                }
+                case "insert-after-node":
+                case "insert-before-node": {
+                  const node = insertionStrategy.targetNodeKey
+                    ? $getNodeByKey(insertionStrategy.targetNodeKey)
+                    : undefined;
+                  if (node) {
+                    let elementNode: LexicalNode | null = node;
+                    if (!$isElementNode(elementNode)) {
+                      elementNode = elementNode.getParent();
+                    }
+                    if (elementNode && $isElementNode(elementNode)) {
+                      const textNode = $createTextNode(chunk);
+                      const para = $createParagraphNode();
+                      para.append(textNode);
+                      if (insertionStrategy.kind === "insert-after-node") {
+                        elementNode.insertAfter(para);
+                      } else {
+                        elementNode.insertBefore(para);
+                      }
+                      maybeTrackNode(textNode, para);
+                    }
+                  }
+                  break;
+                }
+                case "append-inside-node": {
+                  const target = $getNodeByKey(insertionStrategy.targetNodeKey);
+                  if (!target) break;
+                  const element = $isElementNode(target)
+                    ? target
+                    : target.getParent();
+                  if (!element || !$isElementNode(element)) break;
+
+                  const textNode = $createTextNode(chunk);
+                  const type = element.getType();
+                  const isRoot = element.getKey() === "root";
+                  const acceptsText =
+                    type === "paragraph" ||
+                    type === "heading" ||
+                    type === "quote" ||
+                    type === "code";
+
+                  if (isRoot) {
+                    const para = $createParagraphNode();
+                    para.append(textNode);
+                    element.append(para);
+                    maybeTrackNode(textNode, para);
+                  } else if (acceptsText) {
+                    element.append(textNode);
+                    maybeTrackNode(textNode, element);
+                  } else {
+                    const para = $createParagraphNode();
+                    para.append(textNode);
+                    element.insertAfter(para);
+                    maybeTrackNode(textNode, para);
+                  }
+                  break;
+                }
+                case "insert-at-cursor": {
+                  const selection = $getSelection();
+                  if ($isRangeSelection(selection)) {
+                    const textNode = $createTextNode(chunk);
+                    selection.insertNodes([textNode]);
+                    maybeTrackNode(textNode, textNode.getParent());
+                  }
+                  break;
+                }
+                case "replace-selection": {
+                  const selection = $getSelection();
+                  if ($isRangeSelection(selection)) {
+                    selection.removeText();
+                    const textNode = $createTextNode(chunk);
+                    selection.insertNodes([textNode]);
+                    maybeTrackNode(textNode, textNode.getParent());
+                  }
+                  break;
+                }
+                case "insert-after-selection":
+                case "insert-before-selection": {
+                  const selection = $getSelection();
+                  if ($isRangeSelection(selection)) {
+                    const focusNode: LexicalNode = selection.focus.getNode();
+                    let elementNode: LexicalNode | null = focusNode;
+                    if (!$isElementNode(elementNode)) {
+                      elementNode = elementNode.getParent();
+                    }
+                    if (elementNode && $isElementNode(elementNode)) {
+                      const textNode = $createTextNode(chunk);
+                      const para = $createParagraphNode();
+                      para.append(textNode);
+                      if (insertionStrategy.kind === "insert-after-selection") {
+                        elementNode.insertAfter(para);
+                      } else {
+                        elementNode.insertBefore(para);
+                      }
+                      maybeTrackNode(textNode, para);
+                    }
+                  }
+                  break;
+                }
+                case "append-to-document-end":
+                default: {
+                  const para = $createParagraphNode();
+                  const textNode = $createTextNode(chunk);
+                  para.append(textNode);
+                  const root = $getRoot();
+                  root.append(para);
+                  maybeTrackNode(textNode, para);
+                  break;
+                }
+              }
+            } else {
+              // Subsequent tokens: append to existing text node
+              const node = currentTextNodeKey
+                ? $getNodeByKey(currentTextNodeKey)
+                : null;
+              if (node && node instanceof TextNode) {
+                const current = node.getTextContent();
+                node.setTextContent(current + chunk);
+              } else {
+                // Recovery: if the original text node was merged/detached, pick the last text node in container
+                const fallback = getLastTextNodeIn(currentContainerKey);
+                if (fallback) {
+                  currentTextNodeKey = fallback.getKey();
+                  const current = fallback.getTextContent();
+                  fallback.setTextContent(current + chunk);
+                } else {
+                  // Last resort: append a new paragraph at the end
+                  const para = $createParagraphNode();
+                  const textNode = $createTextNode(chunk);
+                  para.append(textNode);
+                  $getRoot().append(para);
+                  trackStreamingTargets(textNode, para);
+                }
+              }
+            }
+          };
+
+          ensureAppendToCurrentNode(buffered);
+        });
+      });
+    };
+
     const startCallback = () => {
       setGenerationState("generating");
 
@@ -361,206 +558,40 @@ export function useAIGeneration() {
     };
 
     const tokenCallback = (text: string) => {
-      editor.update(() => {
-        const ensureAppendToCurrentNode = (chunk: string) => {
-          if (!currentTextNodeKey) {
-            // First token: place a text node according to strategy
-            const root = $getRoot();
-            const selection = $getSelection();
-
-            const maybeTrackNode = (
-              node: TextNode,
-              container?: LexicalNode | null
-            ) => {
-              trackStreamingTargets(node, container);
-              if (
-                currentTextNodeKey &&
-                !generatedNodeKeys.includes(currentTextNodeKey)
-              ) {
-                generatedNodeKeys.push(currentTextNodeKey);
-              }
-            };
-
-            switch (insertionStrategy.kind) {
-              case "replace-node": {
-                const target = insertionStrategy.targetNodeKey
-                  ? $getNodeByKey(insertionStrategy.targetNodeKey)
-                  : undefined;
-                if (!target) break;
-                const textNode = $createTextNode(chunk);
-                const para = $createParagraphNode();
-                para.append(textNode);
-                if (target.getKey() === "root") {
-                  // Cannot replace root; append replacement at end instead
-                  const root = $getRoot();
-                  root.append(para);
-                  maybeTrackNode(textNode, para);
-                  textNode.select();
-                } else {
-                  // If target is not a top-level element, replace its top-level container
-                  const topLevel = $isElementNode(target)
-                    ? target.getParent()?.getKey() === "root"
-                      ? target
-                      : target.getTopLevelElementOrThrow()
-                    : target.getTopLevelElementOrThrow();
-                  topLevel.replace(para);
-                  maybeTrackNode(textNode, para);
-                  textNode.select();
-                }
-                break;
-              }
-              case "insert-after-node":
-              case "insert-before-node": {
-                const node = insertionStrategy.targetNodeKey
-                  ? $getNodeByKey(insertionStrategy.targetNodeKey)
-                  : undefined;
-                if (node) {
-                  let elementNode: LexicalNode | null = node;
-                  if (!$isElementNode(elementNode)) {
-                    elementNode = elementNode.getParent();
-                  }
-                  if (elementNode && $isElementNode(elementNode)) {
-                    // Always use a paragraph as a sibling to avoid illegal root/text placement
-                    const textNode = $createTextNode(chunk);
-                    const para = $createParagraphNode();
-                    para.append(textNode);
-                    if (insertionStrategy.kind === "insert-after-node") {
-                      elementNode.insertAfter(para);
-                    } else {
-                      elementNode.insertBefore(para);
-                    }
-                    maybeTrackNode(textNode, para);
-                    textNode.select();
-                  }
-                }
-                break;
-              }
-              case "append-inside-node": {
-                const target = $getNodeByKey(insertionStrategy.targetNodeKey);
-                if (!target) break;
-                const element = $isElementNode(target)
-                  ? target
-                  : target.getParent();
-                if (!element || !$isElementNode(element)) break;
-
-                const textNode = $createTextNode(chunk);
-                const type = element.getType();
-                const isRoot = element.getKey() === "root";
-                const acceptsText =
-                  type === "paragraph" ||
-                  type === "heading" ||
-                  type === "quote" ||
-                  type === "code";
-
-                if (isRoot) {
-                  // Root cannot contain text directly; append new paragraph at end
-                  const para = $createParagraphNode();
-                  para.append(textNode);
-                  element.append(para);
-                  maybeTrackNode(textNode, para);
-                } else if (acceptsText) {
-                  // Safe to append text inside this element
-                  element.append(textNode);
-                  maybeTrackNode(textNode, element);
-                } else {
-                  // Fallback: insert a new paragraph after the target element
-                  const para = $createParagraphNode();
-                  para.append(textNode);
-                  element.insertAfter(para);
-                  maybeTrackNode(textNode, para);
-                }
-                textNode.select();
-                break;
-              }
-              case "insert-at-cursor": {
-                if ($isRangeSelection(selection)) {
-                  const textNode = $createTextNode(chunk);
-                  selection.insertNodes([textNode]);
-                  maybeTrackNode(textNode, textNode.getParent());
-                  textNode.select();
-                }
-                break;
-              }
-              case "replace-selection": {
-                if ($isRangeSelection(selection)) {
-                  selection.removeText();
-                  const textNode = $createTextNode(chunk);
-                  selection.insertNodes([textNode]);
-                  maybeTrackNode(textNode, textNode.getParent());
-                  textNode.select();
-                }
-                break;
-              }
-              case "insert-after-selection":
-              case "insert-before-selection": {
-                if ($isRangeSelection(selection)) {
-                  const focusNode: LexicalNode = selection.focus.getNode();
-                  let elementNode: LexicalNode | null = focusNode;
-                  if (!$isElementNode(elementNode)) {
-                    elementNode = elementNode.getParent();
-                  }
-                  if (elementNode && $isElementNode(elementNode)) {
-                    const textNode = $createTextNode(chunk);
-                    const para = $createParagraphNode();
-                    para.append(textNode);
-                    if (insertionStrategy.kind === "insert-after-selection") {
-                      elementNode.insertAfter(para);
-                    } else {
-                      elementNode.insertBefore(para);
-                    }
-                    maybeTrackNode(textNode, para);
-                    textNode.select();
-                  }
-                }
-                break;
-              }
-              case "append-to-document-end":
-              default: {
-                // Always append a new paragraph at the end for predictable structure
-                const para = $createParagraphNode();
-                const textNode = $createTextNode(chunk);
-                para.append(textNode);
-                root.append(para);
-                maybeTrackNode(textNode, para);
-                textNode.select();
-                break;
-              }
-            }
-          } else {
-            // Subsequent tokens: append to existing text node
-            const node = currentTextNodeKey
-              ? $getNodeByKey(currentTextNodeKey)
-              : null;
-            if (node && node instanceof TextNode) {
-              const current = node.getTextContent();
-              node.setTextContent(current + chunk);
-              node.select();
-            } else {
-              // Recovery: if the original text node was merged/detached, pick the last text node in container
-              const fallback = getLastTextNodeIn(currentContainerKey);
-              if (fallback) {
-                currentTextNodeKey = fallback.getKey();
-                const current = fallback.getTextContent();
-                fallback.setTextContent(current + chunk);
-                fallback.select();
-              } else {
-                // Last resort: append a new paragraph at the end
-                const para = $createParagraphNode();
-                const textNode = $createTextNode(chunk);
-                para.append(textNode);
-                $getRoot().append(para);
-                trackStreamingTargets(textNode, para);
-                textNode.select();
-              }
-            }
-          }
-        };
-
-        ensureAppendToCurrentNode(text);
-      });
+      // Accumulate and flush in order via microtask to avoid out-of-order updates
+      if (!text) return;
+      tokenBuffer.push(text);
+      scheduleFlush();
     };
 
     const completedCallback = (context: number[]) => {
+      // Flush any remaining buffered content before completing
+      if (tokenBuffer.length > 0) {
+        const remaining = tokenBuffer.join("");
+        tokenBuffer = [];
+        editor.update(() => {
+          const node = currentTextNodeKey
+            ? $getNodeByKey(currentTextNodeKey)
+            : null;
+          if (node && node instanceof TextNode) {
+            const current = node.getTextContent();
+            node.setTextContent(current + remaining);
+          } else {
+            const fallback = getLastTextNodeIn(currentContainerKey);
+            if (fallback) {
+              currentTextNodeKey = fallback.getKey();
+              const current = fallback.getTextContent();
+              fallback.setTextContent(current + remaining);
+            } else {
+              const para = $createParagraphNode();
+              const textNode = $createTextNode(remaining);
+              para.append(textNode);
+              $getRoot().append(para);
+              trackStreamingTargets(textNode, para);
+            }
+          }
+        });
+      }
       setGenerationState("ready");
       updateContext(activeStoryId, context);
 
@@ -578,6 +609,8 @@ export function useAIGeneration() {
       // Reset the text node references
       currentTextNodeKey = null;
       generatedNodeKeys = [];
+      tokenBuffer = [];
+      flushScheduled = false;
     };
 
     return { startCallback, tokenCallback, completedCallback };
