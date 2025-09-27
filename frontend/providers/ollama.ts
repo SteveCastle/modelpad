@@ -48,26 +48,56 @@ async function generateText(
       startCallback();
       return new ReadableStream({
         start(controller) {
+          const decoder = new TextDecoder("utf-8");
+          let buffer = "";
+          let lastContext: number[] | undefined;
           function push() {
             reader.read().then(({ done, value }) => {
               if (done) {
                 controller.close();
+                // Attempt to parse any residual buffered line
+                const residual = buffer.trim();
+                if (residual) {
+                  try {
+                    const json = JSON.parse(residual);
+                    const response = json.response;
+                    if (response) {
+                      tokenCallback(response);
+                    }
+                    if (json.context) {
+                      lastContext = json.context as number[];
+                    }
+                  } catch {
+                    // ignore incomplete tail
+                  }
+                }
+                // Finalize with last known context
+                completedCallback(lastContext ?? []);
                 return;
               }
-              // Convert the Uint8Array to string and process the chunk
-              const chunk = new TextDecoder("utf-8").decode(value);
-              try {
-                const json = JSON.parse(chunk);
-                const response = json.response;
-                if (response) {
-                  tokenCallback(response);
+              // Convert the Uint8Array to string and process as newline-delimited JSON
+              const chunk = decoder.decode(value, { stream: true });
+              buffer += chunk;
+              // Process complete lines
+              let newlineIndex = buffer.indexOf("\n");
+              while (newlineIndex !== -1) {
+                const line = buffer.slice(0, newlineIndex).trim();
+                buffer = buffer.slice(newlineIndex + 1);
+                if (line) {
+                  try {
+                    const json = JSON.parse(line);
+                    const response = json.response;
+                    if (response) {
+                      tokenCallback(response);
+                    }
+                    if (json.context) {
+                      lastContext = json.context as number[];
+                    }
+                  } catch (e) {
+                    // ignore malformed lines
+                  }
                 }
-
-                if (json.context) {
-                  completedCallback(json.context);
-                }
-              } catch (e) {
-                console.log(e);
+                newlineIndex = buffer.indexOf("\n");
               }
               // Push the chunk to the stream
               controller.enqueue(value);
