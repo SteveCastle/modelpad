@@ -157,6 +157,8 @@ function BlockControls({
               </button>
             ))}
           </div>
+          {/* Separator between custom prompts and common actions */}
+          <div className="block-controls-separator" aria-hidden="true" />
           {/* Removed standalone rewrite button */}
           <button
             className="block-control-btn convert-markdown-btn"
