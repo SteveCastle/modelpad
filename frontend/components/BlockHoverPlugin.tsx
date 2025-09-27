@@ -380,7 +380,7 @@ export function BlockHoverPlugin(): JSX.Element | null {
     editor.getEditorState().read(() => {
       const node = $getNodeByKey(selectedElementKey);
       if (node) {
-        generate(templateId, "", {
+        generate(templateId, {
           targetNodeKey: selectedElementKey,
         });
       }

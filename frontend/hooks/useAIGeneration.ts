@@ -138,7 +138,6 @@ interface PromptContext {
 }
 
 interface PromptBuilderOptions {
-  customPrompt?: string;
   promptTemplate: {
     mainPrompt: string;
     systemPrompt: string;
@@ -153,7 +152,7 @@ function buildPrompt(
   prompt: string;
   systemPrompt: string;
 } {
-  const { customPrompt = "", promptTemplate } = options;
+  const { promptTemplate } = options;
 
   // Build context-aware prompt using enhanced templating
 
@@ -167,11 +166,6 @@ function buildPrompt(
   // Apply enhanced templating to the entire prompt template
   const templatedText = applyTemplate(basePrompt, context);
 
-  // Add custom prompt if provided
-  const customPromptText = customPrompt.trim()
-    ? `\n\n${customPrompt.trim()}`
-    : "";
-
   // Apply templating to system prompt as well
   const templatedSystemPrompt = applyTemplate(
     promptTemplate.systemPrompt,
@@ -179,7 +173,7 @@ function buildPrompt(
   );
 
   return {
-    prompt: templatedText + customPromptText,
+    prompt: templatedText,
     systemPrompt: templatedSystemPrompt,
   };
 }
@@ -236,6 +230,8 @@ function extractPromptContext(
   } catch (error) {
     console.error("Error in extractPromptContext:", error);
   }
+  console.log(textBeforeActiveNode);
+  console.log("activeNodeText", activeNodeText);
   return {
     activeNodeText: activeNodeText || "",
     selectionText: selectionText || "",
@@ -629,7 +625,6 @@ export function useAIGeneration() {
 
   const generate = (
     promptTemplateId: string = activePromptTemplateId,
-    customPrompt: string = "",
     options: UseAIGenerationOptions = {}
   ) => {
     if (!abortController || !model) return;
@@ -732,7 +727,6 @@ export function useAIGeneration() {
 
       // Build prompt using the new flexible prompt builder
       const { prompt, systemPrompt } = buildPrompt(promptContext, {
-        customPrompt,
         promptTemplate,
       });
 
