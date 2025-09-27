@@ -25,6 +25,7 @@ import { BlockHoverPlugin } from "./BlockHoverPlugin";
 import { KeyboardShortcutsPlugin } from "./KeyboardShortcutsPlugin";
 import { TagPlugin } from "./TagPlugin";
 import { Toolbar } from "./Toolbar";
+import AutoScrollPlugin from "./AutoScrollPlugin";
 import { useStore, Story } from "../store";
 import "./TableOfContents.css";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
@@ -395,6 +396,7 @@ export function StoryEditor({
         <LinkPlugin />
         <TablePlugin />
         <CodeHighlightPlugin />
+        <AutoScrollPlugin />
       </div>
     </LexicalComposer>
   );

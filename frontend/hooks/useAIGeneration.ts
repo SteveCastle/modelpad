@@ -1,4 +1,5 @@
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useEffect, useRef } from "react";
 import {
   $createParagraphNode,
   $getRoot,
@@ -200,19 +201,8 @@ function extractPromptContext(
     const root = $getRoot();
     currentDocumentText = root.getTextContent() || "";
 
-    // Use custom text if provided
-    if (options.customText) {
-      activeNodeText = options.customText;
-    } else if ($isRangeSelection(selection)) {
+    if ($isRangeSelection(selection)) {
       selectionText = selection.getTextContent() || "";
-      if (selectionText.length < 2) {
-        activeNodeText = currentDocumentText;
-        selectionText = "";
-      } else {
-        activeNodeText = selectionText;
-      }
-    } else {
-      activeNodeText = currentDocumentText;
     }
 
     // Extract context before/after active node if we have a target node
@@ -225,6 +215,10 @@ function extractPromptContext(
         );
 
         if (targetIndex !== -1) {
+          // Get text of the target node
+          const targetNodeText = targetNode.getTextContent() || "";
+          activeNodeText = targetNodeText;
+
           // Get text before the target node
           const beforeNodes = allChildren.slice(0, targetIndex);
           textBeforeActiveNode = beforeNodes
@@ -241,10 +235,7 @@ function extractPromptContext(
     }
   } catch (error) {
     console.error("Error in extractPromptContext:", error);
-    // Fall back to basic context
-    activeNodeText = options.customText || "";
   }
-
   return {
     activeNodeText: activeNodeText || "",
     selectionText: selectionText || "",
@@ -268,13 +259,14 @@ export {
 export type { PromptContext, PromptBuilderOptions, TemplateVariables };
 
 interface UseAIGenerationOptions {
-  customText?: string; // Optional custom text to use instead of selection/document
   targetNodeKey?: string; // Specify target node for strategy that requires it
   insertionStrategy?: InsertionStrategy; // How streamed tokens should be inserted
 }
 
 export function useAIGeneration() {
   const [editor] = useLexicalComposerContext();
+  // Track last non-empty selection to survive focus changes
+  const lastSelectionTextRef = useRef<string>("");
   const abortController = useStore((state) => state.abortController);
   const {
     model,
@@ -298,6 +290,25 @@ export function useAIGeneration() {
     .map((s) => convertJSONToMarkdown(JSON.stringify(s.content)));
 
   const provider = providers[providerKey];
+
+  // Update last selection text on editor updates
+  useEffect(() => {
+    return editor.registerUpdateListener(({ editorState }) => {
+      editorState.read(() => {
+        try {
+          const selection = $getSelection();
+          if ($isRangeSelection(selection) && !selection.isCollapsed()) {
+            const text = selection.getTextContent() || "";
+            if (text) {
+              lastSelectionTextRef.current = text;
+            }
+          }
+        } catch (e) {
+          // ignore selection read errors
+        }
+      });
+    });
+  }, [editor]);
 
   // Action-specific callbacks
   const createActionCallbacks = (
@@ -706,7 +717,19 @@ export function useAIGeneration() {
 
     editor.update(() => {
       // Extract context information using the new helper function
-      const promptContext = extractPromptContext(editor, options, tabContext);
+      const baseContext = extractPromptContext(editor, options, tabContext);
+      const promptContext = { ...baseContext };
+
+      // Fallback to last known selection when current selection is empty (e.g., focus lost)
+      if (
+        !options.customText &&
+        (!promptContext.selectionText ||
+          promptContext.selectionText.length === 0) &&
+        lastSelectionTextRef.current
+      ) {
+        promptContext.selectionText = lastSelectionTextRef.current;
+        promptContext.activeNodeText = lastSelectionTextRef.current;
+      }
 
       // Build prompt using the new flexible prompt builder
       const { prompt, systemPrompt } = buildPrompt(promptContext, {
