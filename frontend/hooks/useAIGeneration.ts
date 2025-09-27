@@ -722,7 +722,6 @@ export function useAIGeneration() {
 
       // Fallback to last known selection when current selection is empty (e.g., focus lost)
       if (
-        !options.customText &&
         (!promptContext.selectionText ||
           promptContext.selectionText.length === 0) &&
         lastSelectionTextRef.current
