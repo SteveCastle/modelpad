@@ -6,6 +6,20 @@
   flex-direction: column;
 }
 
+/* Modern typography system */
+:root {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+    Helvetica Neue, Arial, "Noto Sans", "Liberation Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  --type-leading: 1.65;
+  --type-leading-relaxed: 1.8;
+  --heading-tight: 1.25;
+  --type-letterspace: 0.005em;
+  --type-letterspace-tight: -0.005em;
+}
+
 /* Resizable Panel Styles */
 .App [data-panel-group] {
   height: 100%;
@@ -192,6 +206,8 @@
   overflow-x: hidden;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Give the last child of editor-input a bottom margin of 6rem */
@@ -213,7 +229,7 @@
 .editor-blockquote,
 .editor-list-ol,
 .editor-list-ul {
-  font-family: "Gill Sans", "Gill Sans MT", Calibri, "Trebuchet MS", sans-serif;
+  font-family: var(--font-sans);
   border: 1px solid rgba(255, 255, 255, 0.05);
   border-radius: 4px;
   margin: 4px 0;
@@ -221,6 +237,13 @@
   background-color: rgba(255, 255, 255, 0.01);
   transition: all 0.2s ease;
   position: relative;
+}
+
+/* Base paragraph typography */
+.editor-paragraph {
+  font-size: 1.08em;
+  line-height: var(--type-leading);
+  letter-spacing: var(--type-letterspace);
 }
 
 .editor-list-ol,
@@ -236,50 +259,58 @@
 
 /* Individual heading styles */
 .editor-heading-h1 {
-  font-size: 2.5em;
-  font-weight: bold;
+  font-size: 2.25em;
+  line-height: var(--heading-tight);
+  font-weight: 750;
+  letter-spacing: var(--type-letterspace-tight);
   color: var(--text-color);
-  background-color: rgba(210, 103, 138, 0.05);
 }
 
 .editor-heading-h2 {
-  font-size: 2em;
-  font-weight: bold;
+  font-size: 1.9em;
+  line-height: var(--heading-tight);
+  font-weight: 700;
+  letter-spacing: var(--type-letterspace-tight);
   color: var(--text-color);
-  background-color: rgba(210, 103, 138, 0.03);
 }
 
 .editor-heading-h3 {
-  font-size: 1.7em;
-  font-weight: bold;
+  font-size: 1.6em;
+  line-height: var(--heading-tight);
+  font-weight: 650;
+  letter-spacing: var(--type-letterspace-tight);
   color: var(--text-color);
-  background-color: rgba(210, 103, 138, 0.02);
 }
 
 .editor-heading-h4 {
-  font-size: 1.4em;
-  font-weight: bold;
+  font-size: 1.35em;
+  line-height: var(--heading-tight);
+  font-weight: 650;
+  letter-spacing: var(--type-letterspace-tight);
   color: var(--text-color);
-  background-color: rgba(210, 103, 138, 0.01);
 }
 
 .editor-heading-h5 {
-  font-size: 1.2em;
-  font-weight: bold;
+  font-size: 1.15em;
+  line-height: var(--heading-tight);
+  font-weight: 600;
+  letter-spacing: var(--type-letterspace-tight);
   color: var(--text-color);
-  background-color: rgba(210, 103, 138, 0.01);
 }
 
 .editor-heading-h6 {
   font-size: 1.1em;
-  font-weight: bold;
+  line-height: var(--heading-tight);
+  font-weight: 600;
+  letter-spacing: var(--type-letterspace-tight);
   color: var(--text-color);
-  background-color: rgba(210, 103, 138, 0.01);
 }
 
 .editor-blockquote {
   font-style: italic;
   color: var(--low-contrast-text-color);
+  line-height: var(--type-leading);
+  letter-spacing: var(--type-letterspace);
   background-color: rgba(255, 255, 255, 0.03);
   border-left: 3px solid var(--low-contrast-text-color);
   padding-left: 20px;
@@ -339,12 +370,24 @@
 
 .editor-link {
   color: var(--link-color);
-  text-decoration: none;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+
+/* Inline code styling */
+.editor-text-code {
+  font-family: var(--font-mono);
+  font-size: 0.95em;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
 }
 
 .codeHighlight {
   background-color: rgb(41, 40, 38);
-  font-family: Menlo, Consolas, Monaco, monospace;
+  font-family: var(--font-mono);
   display: block;
   padding: 8px 8px 8px 52px;
   line-height: 1.53;
@@ -407,6 +450,91 @@
 .codeHighlight .editor-tokenPunctuation {
   color: #f8f8f2;
 } /* Punctuation */
+
+/* Reading Mode overrides: simplify blocks for comfortable reading */
+.story-editor-container.reading-mode .editor-paragraph,
+.story-editor-container.reading-mode .editor-heading-h1,
+.story-editor-container.reading-mode .editor-heading-h2,
+.story-editor-container.reading-mode .editor-heading-h3,
+.story-editor-container.reading-mode .editor-heading-h4,
+.story-editor-container.reading-mode .editor-heading-h5,
+.story-editor-container.reading-mode .editor-heading-h6,
+.story-editor-container.reading-mode .editor-blockquote,
+.story-editor-container.reading-mode .editor-list-ol,
+.story-editor-container.reading-mode .editor-list-ul,
+.story-editor-container.reading-mode .codeHighlight {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Reading mode — typographic comfort */
+.story-editor-container.reading-mode .editor-paragraph {
+  font-size: 1.12em;
+  line-height: var(--type-leading-relaxed);
+  letter-spacing: var(--type-letterspace);
+}
+.story-editor-container.reading-mode .editor-heading-h1,
+.story-editor-container.reading-mode .editor-heading-h2,
+.story-editor-container.reading-mode .editor-heading-h3,
+.story-editor-container.reading-mode .editor-heading-h4,
+.story-editor-container.reading-mode .editor-heading-h5,
+.story-editor-container.reading-mode .editor-heading-h6 {
+  text-wrap: balance;
+}
+.story-editor-container.reading-mode .editor-blockquote {
+  line-height: var(--type-leading-relaxed);
+}
+
+/* Neutralize hover affordances on blocks */
+.story-editor-container.reading-mode .editor-paragraph:hover,
+.story-editor-container.reading-mode .editor-heading-h1:hover,
+.story-editor-container.reading-mode .editor-heading-h2:hover,
+.story-editor-container.reading-mode .editor-heading-h3:hover,
+.story-editor-container.reading-mode .editor-heading-h4:hover,
+.story-editor-container.reading-mode .editor-heading-h5:hover,
+.story-editor-container.reading-mode .editor-heading-h6:hover,
+.story-editor-container.reading-mode .editor-blockquote:hover,
+.story-editor-container.reading-mode .editor-list-ol:hover,
+.story-editor-container.reading-mode .editor-list-ul:hover,
+.story-editor-container.reading-mode .codeHighlight:hover {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Remove special heading tinting and quote decorations */
+.story-editor-container.reading-mode .editor-heading-h1,
+.story-editor-container.reading-mode .editor-heading-h2,
+.story-editor-container.reading-mode .editor-heading-h3,
+.story-editor-container.reading-mode .editor-heading-h4,
+.story-editor-container.reading-mode .editor-heading-h5,
+.story-editor-container.reading-mode .editor-heading-h6,
+.story-editor-container.reading-mode .editor-quote {
+  background-color: transparent !important;
+}
+.story-editor-container.reading-mode .editor-quote {
+  border-left: none !important;
+}
+.story-editor-container.reading-mode .editor-quote::before {
+  content: none !important;
+}
+
+/* Lists: reduce left padding used for edit affordances */
+.story-editor-container.reading-mode .editor-list-ol,
+.story-editor-container.reading-mode .editor-list-ul {
+  padding-left: 1.5rem !important;
+}
+
+/* Code blocks: remove gutter and labels for a cleaner look */
+.story-editor-container.reading-mode .codeHighlight {
+  padding: 8px 12px !important;
+}
+.story-editor-container.reading-mode .codeHighlight:before,
+.story-editor-container.reading-mode .codeHighlight:after {
+  display: none !important;
+  content: none !important;
+}
 
 /* Vertical Navigation Bars */
 .vertical-nav-bar {

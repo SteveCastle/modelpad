@@ -324,7 +324,9 @@ export function StoryEditor({
     <LexicalComposer initialConfig={editorConfig}>
       {isActive && <Toolbar />}
       <div
-        className="story-editor-container"
+        className={`story-editor-container${
+          viewSettings.readingMode ? " reading-mode" : ""
+        }`}
         style={{
           display: isActive ? "flex" : "none",
           width: "100%",
@@ -336,25 +338,23 @@ export function StoryEditor({
           fontSize: `${viewSettings.zoom}em`,
         }}
       >
-        {/* Table of Contents Panel - Hidden in reading mode */}
-        {!viewSettings.readingMode && (
-          <div
-            className="toc-panel"
-            style={{
-              width: "250px",
-              minWidth: "250px",
-              height: "100%",
-              overflowY: "auto",
-              padding: "20px 16px",
-            }}
-          >
-            <TableOfContentsPlugin>
-              {(tableOfContents) => (
-                <TableOfContents tableOfContents={tableOfContents} />
-              )}
-            </TableOfContentsPlugin>
-          </div>
-        )}
+        {/* Table of Contents Panel - Always visible */}
+        <div
+          className="toc-panel"
+          style={{
+            width: "250px",
+            minWidth: "250px",
+            height: "100%",
+            overflowY: "auto",
+            padding: "20px 16px",
+          }}
+        >
+          <TableOfContentsPlugin>
+            {(tableOfContents) => (
+              <TableOfContents tableOfContents={tableOfContents} />
+            )}
+          </TableOfContentsPlugin>
+        </div>
 
         {/* Editor Content */}
         <div
