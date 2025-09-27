@@ -199,39 +199,47 @@ function extractPromptContext(
       selectionText = selection.getTextContent() || "";
     }
 
-    // Extract context before/after active node if we have a target node
+    // Prefer explicit target node when provided and still attached
+    const computeAroundTopLevelKey = (topLevelKey: string) => {
+      const allChildren = root.getChildren();
+      const targetIndex = allChildren.findIndex(
+        (child) => child.getKey() === topLevelKey
+      );
+      if (targetIndex === -1) return;
+      const target = allChildren[targetIndex];
+      activeNodeText = target.getTextContent() || "";
+      const beforeNodes = allChildren.slice(0, targetIndex);
+      textBeforeActiveNode = beforeNodes
+        .map((node) => node.getTextContent() || "")
+        .join("\n");
+      const afterNodes = allChildren.slice(targetIndex + 1);
+      textAfterActiveNode = afterNodes
+        .map((node) => node.getTextContent() || "")
+        .join("\n");
+    };
+
     if (options.targetNodeKey) {
       const targetNode = $getNodeByKey(options.targetNodeKey);
       if (targetNode) {
-        const allChildren = root.getChildren();
-        const targetIndex = allChildren.findIndex(
-          (child) => child.getKey() === options.targetNodeKey
-        );
+        // Use the provided top-level key directly
+        computeAroundTopLevelKey(options.targetNodeKey);
+      }
+    }
 
-        if (targetIndex !== -1) {
-          // Get text of the target node
-          const targetNodeText = targetNode.getTextContent() || "";
-          activeNodeText = targetNodeText;
-
-          // Get text before the target node
-          const beforeNodes = allChildren.slice(0, targetIndex);
-          textBeforeActiveNode = beforeNodes
-            .map((node) => node.getTextContent() || "")
-            .join("\n");
-
-          // Get text after the target node
-          const afterNodes = allChildren.slice(targetIndex + 1);
-          textAfterActiveNode = afterNodes
-            .map((node) => node.getTextContent() || "")
-            .join("\n");
-        }
+    // If we couldn't resolve via targetNodeKey, fall back to selection's top-level element
+    if (!activeNodeText) {
+      const maybeSelection = $getSelection();
+      if ($isRangeSelection(maybeSelection)) {
+        const topLevel = maybeSelection.anchor
+          .getNode()
+          .getTopLevelElementOrThrow();
+        computeAroundTopLevelKey(topLevel.getKey());
       }
     }
   } catch (error) {
     console.error("Error in extractPromptContext:", error);
   }
-  console.log(textBeforeActiveNode);
-  console.log("activeNodeText", activeNodeText);
+
   return {
     activeNodeText: activeNodeText || "",
     selectionText: selectionText || "",
@@ -710,51 +718,50 @@ export function useAIGeneration() {
     const { startCallback, tokenCallback, completedCallback } =
       createActionCallbacks(promptId, strategy);
 
-    editor.update(() => {
-      // Extract context information using the new helper function
-      const baseContext = extractPromptContext(editor, options, tabContext);
-      const promptContext = { ...baseContext };
-
-      // Fallback to last known selection when current selection is empty (e.g., focus lost)
+    // Read the freshest editor state snapshot for prompt building
+    const promptContext = editor.getEditorState().read(() => {
+      const ctx = extractPromptContext(editor, options, tabContext);
+      // Fallback to last known selection only for selectionText; do not override active node text
       if (
-        (!promptContext.selectionText ||
-          promptContext.selectionText.length === 0) &&
+        (!ctx.selectionText || ctx.selectionText.length === 0) &&
         lastSelectionTextRef.current
       ) {
-        promptContext.selectionText = lastSelectionTextRef.current;
-        promptContext.activeNodeText = lastSelectionTextRef.current;
+        return { ...ctx, selectionText: lastSelectionTextRef.current };
       }
+      return ctx;
+    });
 
-      // Build prompt using the new flexible prompt builder
-      const { prompt, systemPrompt } = buildPrompt(promptContext, {
-        promptTemplate,
-      });
+    // Build prompt outside of any write update
+    const { prompt, systemPrompt } = buildPrompt(promptContext, {
+      promptTemplate,
+    });
 
-      setGenerationState("loading");
+    setGenerationState("loading");
 
-      // If not targeting a specific node via promptId, ensure we have a clean paragraph to stream into at end
-      if (!promptId) {
+    // Optionally prepare an insertion point at end for non-targeted generations
+    if (!promptId) {
+      editor.update(() => {
         const root = $getRoot();
         const newParagraphNode = $createParagraphNode();
         root.append(newParagraphNode);
-      }
+      });
+    }
 
-      provider.generateText(
-        prompt,
-        systemPrompt,
-        startCallback,
-        tokenCallback,
-        completedCallback,
-        {
-          host,
-          model,
-          abortSignal: abortController.signal,
-          context: [],
-          modelSettings,
-          useRag,
-        }
-      );
-    });
+    provider.generateText(
+      prompt,
+      systemPrompt,
+      startCallback,
+      tokenCallback,
+      completedCallback,
+      {
+        host,
+        model,
+        abortSignal: abortController.signal,
+        context: [],
+        modelSettings,
+        useRag,
+      }
+    );
   };
 
   // Cancel generation function

@@ -24,7 +24,9 @@ export default function ContextMenu({ hide }: Props) {
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
   const promptTemplates = useStore((state) => state.promptTemplates);
-  const activePromptTemplateId = useStore((state) => state.activePromptTemplateId);
+  const activePromptTemplateId = useStore(
+    (state) => state.activePromptTemplateId
+  );
   const { generate, canGenerate } = useAIGeneration();
 
   // Initialize selected prompt with active template
@@ -69,7 +71,10 @@ export default function ContextMenu({ hide }: Props) {
   const handleGenerate = (promptTemplateId: string) => {
     if (!canGenerate) return;
 
-    generate(promptTemplateId, customPrompt);
+    // The hook builds prompt context from the editor; customPrompt text is already
+    // included in the selected template. If you want to wire this as an editor's note,
+    // store it separately in the global store and the hook will pull it in.
+    generate(promptTemplateId);
     // Clear the custom prompt after submitting
     setCustomPrompt("");
   };
@@ -95,14 +100,23 @@ export default function ContextMenu({ hide }: Props) {
         </div>
         <div className={"button-area"}>
           {promptTemplates.map((template, index) => {
-            const isActive = selectedPromptId === template.id || (!selectedPromptId && activePromptTemplateId === template.id);
-            const IconComponent = index === 0 ? SparklesIcon : index === 1 ? ArrowPathIcon : ArrowsPointingInIcon;
-            
+            const isActive =
+              selectedPromptId === template.id ||
+              (!selectedPromptId && activePromptTemplateId === template.id);
+            const IconComponent =
+              index === 0
+                ? SparklesIcon
+                : index === 1
+                ? ArrowPathIcon
+                : ArrowsPointingInIcon;
+
             return (
               <button
                 key={template.id}
                 type="button"
-                className={`prompt-button ${template.id}-button ${isActive ? "active" : ""}`}
+                className={`prompt-button ${template.id}-button ${
+                  isActive ? "active" : ""
+                }`}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();

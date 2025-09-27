@@ -17,7 +17,7 @@ export function KeyboardShortcutsPlugin({
   // Ctrl+Space to generate new scene - only when this story is active
   useCtrlHotkey(() => {
     if (canGenerate && isActive) {
-      generate(activePromptTemplateId, "");
+      generate(activePromptTemplateId);
     }
   }, " ");
 
