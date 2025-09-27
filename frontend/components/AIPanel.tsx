@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import CreatableSelect from "react-select/creatable";
 import { useQuery } from "react-query";
 import { useStore } from "../store";
@@ -24,6 +24,11 @@ export default function AIPanel({
   onTabClick,
 }: AIPanelProps) {
   const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+  const systemPromptRef = useRef<HTMLTextAreaElement | null>(null);
+  const mainPromptRef = useRef<HTMLTextAreaElement | null>(null);
+  const [activePromptField, setActivePromptField] = useState<"system" | "main">(
+    "main"
+  );
   const emojiOptions = [
     "✨",
     "⚡",
@@ -106,16 +111,63 @@ export default function AIPanel({
     }
   }, [activePromptTemplateId, promptTemplates, setActivePromptTemplate]);
 
-  // Safety check: if promptTemplates is not an array, return early with error message
-  if (!Array.isArray(promptTemplates)) {
-    return (
-      <div className="ai-tab-component">
-        <div className="error-message">
-          Error: Please refresh the page to migrate your prompt templates.
-        </div>
-      </div>
-    );
-  }
+  // If templates are not yet migrated, we will render an inline error in the UI below
+
+  const insertTemplateVar = useCallback(
+    (token: string) => {
+      if (!activePromptTemplateId) return;
+      const currentTemplate = Array.isArray(promptTemplates)
+        ? promptTemplates.find((t) => t.id === activePromptTemplateId)
+        : undefined;
+      if (!currentTemplate) return;
+
+      if (activePromptField === "system") {
+        const ref = systemPromptRef.current;
+        const value = currentTemplate.systemPrompt || "";
+        const start = ref ? ref.selectionStart ?? value.length : value.length;
+        const end = ref ? ref.selectionEnd ?? start : start;
+        const next = value.slice(0, start) + token + value.slice(end);
+        updatePromptTemplate(activePromptTemplateId, { systemPrompt: next });
+        setTimeout(() => {
+          if (ref) {
+            const pos = start + token.length;
+            ref.focus();
+            try {
+              ref.selectionStart = pos;
+              ref.selectionEnd = pos;
+            } catch {
+              void 0;
+            }
+          }
+        }, 0);
+      } else {
+        const ref = mainPromptRef.current;
+        const value = currentTemplate.mainPrompt || "";
+        const start = ref ? ref.selectionStart ?? value.length : value.length;
+        const end = ref ? ref.selectionEnd ?? start : start;
+        const next = value.slice(0, start) + token + value.slice(end);
+        updatePromptTemplate(activePromptTemplateId, { mainPrompt: next });
+        setTimeout(() => {
+          if (ref) {
+            const pos = start + token.length;
+            ref.focus();
+            try {
+              ref.selectionStart = pos;
+              ref.selectionEnd = pos;
+            } catch {
+              void 0;
+            }
+          }
+        }, 0);
+      }
+    },
+    [
+      activePromptField,
+      activePromptTemplateId,
+      promptTemplates,
+      updatePromptTemplate,
+    ]
+  );
 
   const renderModelSettings = () => (
     <div className="model-settings-content">
@@ -436,6 +488,8 @@ export default function AIPanel({
                   <label className="prompt-label">System Prompt</label>
                   <textarea
                     className="prompt-textarea custom-scrollbar"
+                    ref={systemPromptRef}
+                    onFocus={() => setActivePromptField("system")}
                     value={currentTemplate.systemPrompt}
                     onChange={(e) => {
                       updatePromptTemplate(activePromptTemplateId, {
@@ -449,6 +503,8 @@ export default function AIPanel({
                   <label className="prompt-label">Main Prompt Template</label>
                   <textarea
                     className="prompt-textarea custom-scrollbar"
+                    ref={mainPromptRef}
+                    onFocus={() => setActivePromptField("main")}
                     value={currentTemplate.mainPrompt}
                     onChange={(e) => {
                       updatePromptTemplate(activePromptTemplateId, {
@@ -560,21 +616,78 @@ export default function AIPanel({
                 </div>
                 <div className="prompt-info">
                   <strong>Template Variables:</strong>
-                  <br />• <code>&lt;text&gt;</code> - Current/active node text
-                  <br />• <code>&lt;selection&gt;</code> - Selected text (if
-                  any)
-                  <br />• <code>&lt;contextDocuments&gt;</code> - Context from
-                  other tabs
-                  <br />• <code>&lt;currentDocument&gt;</code> - Full current
-                  document
-                  <br />• <code>&lt;textBefore&gt;</code> - Text before current
-                  section
-                  <br />• <code>&lt;textAfter&gt;</code> - Text after current
-                  section
-                  <br />• <code>&lt;documentContext&gt;</code> - Combined
-                  before/after context
-                  <br />• <code>&lt;editorsNote&gt;</code> - Editor's note or
-                  guidance
+                  <br />•{" "}
+                  <code
+                    style={{ cursor: "pointer" }}
+                    title="Insert <text>"
+                    onClick={() => insertTemplateVar("<text>")}
+                  >
+                    &lt;text&gt;
+                  </code>{" "}
+                  - Current/active node text
+                  <br />•{" "}
+                  <code
+                    style={{ cursor: "pointer" }}
+                    title="Insert <selection>"
+                    onClick={() => insertTemplateVar("<selection>")}
+                  >
+                    &lt;selection&gt;
+                  </code>{" "}
+                  - Selected text (if any)
+                  <br />•{" "}
+                  <code
+                    style={{ cursor: "pointer" }}
+                    title="Insert <contextDocuments>"
+                    onClick={() => insertTemplateVar("<contextDocuments>")}
+                  >
+                    &lt;contextDocuments&gt;
+                  </code>{" "}
+                  - Context from other tabs
+                  <br />•{" "}
+                  <code
+                    style={{ cursor: "pointer" }}
+                    title="Insert <currentDocument>"
+                    onClick={() => insertTemplateVar("<currentDocument>")}
+                  >
+                    &lt;currentDocument&gt;
+                  </code>{" "}
+                  - Full current document
+                  <br />•{" "}
+                  <code
+                    style={{ cursor: "pointer" }}
+                    title="Insert <textBefore>"
+                    onClick={() => insertTemplateVar("<textBefore>")}
+                  >
+                    &lt;textBefore&gt;
+                  </code>{" "}
+                  - Text before current section
+                  <br />•{" "}
+                  <code
+                    style={{ cursor: "pointer" }}
+                    title="Insert <textAfter>"
+                    onClick={() => insertTemplateVar("<textAfter>")}
+                  >
+                    &lt;textAfter&gt;
+                  </code>{" "}
+                  - Text after current section
+                  <br />•{" "}
+                  <code
+                    style={{ cursor: "pointer" }}
+                    title="Insert <documentContext>"
+                    onClick={() => insertTemplateVar("<documentContext>")}
+                  >
+                    &lt;documentContext&gt;
+                  </code>{" "}
+                  - Combined before/after context
+                  <br />•{" "}
+                  <code
+                    style={{ cursor: "pointer" }}
+                    title="Insert <editorsNote>"
+                    onClick={() => insertTemplateVar("<editorsNote>")}
+                  >
+                    &lt;editorsNote&gt;
+                  </code>{" "}
+                  - Editor's note or guidance
                   <br />
                   <br />
                 </div>
