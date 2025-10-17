@@ -192,6 +192,7 @@ type State = {
   stories: Story[];
   activeStoryId: string;
   activePromptTemplateId: string;
+  lastUsedPromptTemplateId: string | null;
   promptTemplates: PromptTemplate[];
   editorsNote: string;
   abortController?: AbortController;
@@ -224,6 +225,7 @@ type State = {
   updatePromptTemplate: (id: string, updates: Partial<PromptTemplate>) => void;
   deletePromptTemplate: (id: string) => void;
   setActivePromptTemplate: (id: string) => void;
+  setLastUsedPromptTemplate: (id: string) => void;
   getPromptTemplate: (id: string) => PromptTemplate | undefined;
   setEditorsNote: (note: string) => void;
   toggleReadingMode: () => void;
@@ -368,6 +370,7 @@ export const useStore = create<State>()(
       model: null,
       modelSettings: ollamaSettings,
       activePromptTemplateId: "newScene",
+      lastUsedPromptTemplateId: "newScene",
       promptTemplates: defaultPromptTemplates,
       editorsNote: "",
       activeStoryId: initialStories[0].id,
@@ -536,10 +539,14 @@ export const useStore = create<State>()(
             (template) => template.id !== id
           );
           const activeId = get().activePromptTemplateId;
+          const lastUsedId = get().lastUsedPromptTemplateId;
+          const fallbackId = newTemplates[0]?.id || null;
           return {
             promptTemplates: newTemplates,
             activePromptTemplateId:
               activeId === id ? newTemplates[0].id : activeId,
+            lastUsedPromptTemplateId:
+              lastUsedId === id ? fallbackId : lastUsedId,
           };
         });
       },
@@ -550,6 +557,15 @@ export const useStore = create<State>()(
             activePromptTemplateId: id,
           }));
           // Update last used time
+          get().updatePromptTemplate(id, {
+            lastUsedAt: new Date().toISOString(),
+          });
+        }
+      },
+      setLastUsedPromptTemplate: (id: string) => {
+        const template = get().promptTemplates.find((t) => t.id === id);
+        if (template) {
+          set(() => ({ lastUsedPromptTemplateId: id }));
           get().updatePromptTemplate(id, {
             lastUsedAt: new Date().toISOString(),
           });
@@ -1048,6 +1064,7 @@ export const useStore = create<State>()(
         availableServers: state.availableServers,
         sideBarOpen: state.sideBarOpen,
         activePromptTemplateId: state.activePromptTemplateId,
+        lastUsedPromptTemplateId: state.lastUsedPromptTemplateId,
         promptTemplates: state.promptTemplates,
         editorsNote: state.editorsNote,
         tags: state.tags,

@@ -27,13 +27,15 @@ export default function ContextMenu({ hide }: Props) {
   const activePromptTemplateId = useStore(
     (state) => state.activePromptTemplateId
   );
+  const lastUsedPromptTemplateId = useStore(
+    (state) => state.lastUsedPromptTemplateId
+  );
   const { generate, canGenerate } = useAIGeneration();
 
-  // Initialize selected prompt with active template
+  // Initialize selected prompt with last used or active template
   useState(() => {
-    if (!selectedPromptId && activePromptTemplateId) {
-      setSelectedPromptId(activePromptTemplateId);
-    }
+    const initialId = lastUsedPromptTemplateId || activePromptTemplateId || "";
+    if (!selectedPromptId && initialId) setSelectedPromptId(initialId);
   });
 
   // Get context pills showing what's included in the prompt
@@ -68,13 +70,18 @@ export default function ContextMenu({ hide }: Props) {
     return pills;
   };
 
-  const handleGenerate = (promptTemplateId: string) => {
+  const handleGenerate = (promptTemplateId?: string) => {
     if (!canGenerate) return;
 
     // The hook builds prompt context from the editor; customPrompt text is already
     // included in the selected template. If you want to wire this as an editor's note,
     // store it separately in the global store and the hook will pull it in.
-    generate(promptTemplateId);
+    // If no explicit id, use generate() default (last used)
+    if (promptTemplateId) {
+      generate(promptTemplateId);
+    } else {
+      generate();
+    }
     // Clear the custom prompt after submitting
     setCustomPrompt("");
   };
@@ -93,7 +100,11 @@ export default function ContextMenu({ hide }: Props) {
               if (e.key === "Enter") {
                 e.preventDefault();
                 hide();
-                handleGenerate(selectedPromptId || activePromptTemplateId);
+                handleGenerate(
+                  selectedPromptId ||
+                    lastUsedPromptTemplateId ||
+                    activePromptTemplateId
+                );
               }
             }}
           />
@@ -102,7 +113,9 @@ export default function ContextMenu({ hide }: Props) {
           {promptTemplates.map((template, index) => {
             const isActive =
               selectedPromptId === template.id ||
-              (!selectedPromptId && activePromptTemplateId === template.id);
+              (!selectedPromptId &&
+                (lastUsedPromptTemplateId === template.id ||
+                  activePromptTemplateId === template.id));
             const IconComponent =
               index === 0
                 ? SparklesIcon
@@ -133,7 +146,11 @@ export default function ContextMenu({ hide }: Props) {
             className="generate-button"
             onClick={() => {
               hide();
-              handleGenerate(selectedPromptId || activePromptTemplateId);
+              handleGenerate(
+                selectedPromptId ||
+                  lastUsedPromptTemplateId ||
+                  activePromptTemplateId
+              );
             }}
           >
             <span className="generate-text">Generate</span>

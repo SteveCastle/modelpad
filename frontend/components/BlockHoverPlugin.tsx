@@ -68,8 +68,18 @@ function BlockControls({
     strategy: menuStrategy,
     refs: menuRefs,
   } = useFloating({
-    placement: "right-start",
-    middleware: [offset(4), flip(), shift({ padding: 8 })],
+    placement: "top-end",
+    strategy: "fixed",
+    middleware: [
+      offset({
+        mainAxis: 4,
+        crossAxis: -8,
+      }),
+      shift({
+        padding: { top: 84, right: 8, bottom: 8, left: 8 },
+        crossAxis: true,
+      }),
+    ],
     whileElementsMounted: autoUpdate,
   });
   // Floating UI for the Editor's Note flyout, anchored to the block controls
@@ -79,8 +89,16 @@ function BlockControls({
     strategy: noteStrategy,
     refs: noteRefs,
   } = useFloating({
-    placement: "left-start",
-    middleware: [offset(8), flip(), shift({ padding: 8 })],
+    placement: "bottom-start",
+    strategy: "fixed",
+    middleware: [
+      offset(8),
+      flip(),
+      shift({
+        padding: { top: 80, right: 8, bottom: 8, left: 8 },
+        crossAxis: true,
+      }),
+    ],
     whileElementsMounted: autoUpdate,
   });
 

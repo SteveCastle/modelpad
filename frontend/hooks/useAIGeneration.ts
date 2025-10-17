@@ -276,6 +276,7 @@ export function useAIGeneration() {
     model,
     modelSettings,
     activePromptTemplateId,
+    lastUsedPromptTemplateId,
     getPromptTemplate,
     useRag,
     addPromptGeneration,
@@ -286,6 +287,10 @@ export function useAIGeneration() {
     (state) => state.availableServers[state.serverKey]
   );
   const { setGenerationState, updateContext } = useStore((state) => state);
+  const setLastUsedPromptTemplate = useStore(
+    (state) => state.setLastUsedPromptTemplate
+  );
+  const promptTemplates = useStore((state) => state.promptTemplates);
   const stories = useStore((state) => state.stories);
   const activeStoryId = useStore((state) => state.activeStoryId);
 
@@ -632,19 +637,29 @@ export function useAIGeneration() {
   };
 
   const generate = (
-    promptTemplateId: string = activePromptTemplateId,
+    promptTemplateId?: string,
     options: UseAIGenerationOptions = {}
   ) => {
     if (!abortController || !model) return;
 
     let promptId: string | undefined;
 
+    // Determine which template to use: explicit -> lastUsed -> active -> first available
+    const resolvedTemplateId =
+      promptTemplateId ||
+      lastUsedPromptTemplateId ||
+      activePromptTemplateId ||
+      (promptTemplates.length > 0 ? promptTemplates[0].id : "");
+
     // Resolve prompt template early for insertion strategy decisions
-    const promptTemplate = getPromptTemplate(promptTemplateId);
+    const promptTemplate = getPromptTemplate(resolvedTemplateId);
     if (!promptTemplate) {
-      console.error(`Prompt template with id ${promptTemplateId} not found`);
+      console.error(`Prompt template with id ${resolvedTemplateId} not found`);
       return;
     }
+
+    // Record most recently used template
+    setLastUsedPromptTemplate(resolvedTemplateId);
 
     // Create generation tracking when we have a specific target node
     if (options.targetNodeKey) {
