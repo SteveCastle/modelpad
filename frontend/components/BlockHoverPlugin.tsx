@@ -21,6 +21,7 @@ import {
   shift,
   autoUpdate,
 } from "@floating-ui/react";
+import { useIsDesktop } from "../hooks/useIsDesktop";
 
 import "./BlockHoverPlugin.css";
 
@@ -59,8 +60,12 @@ function BlockControls({
 }: BlockControlsProps) {
   const editorsNote = useStore((state) => state.editorsNote);
   const setEditorsNote = useStore((state) => state.setEditorsNote);
+  const generationState = useStore((state) => state.generationState);
+  const cancelGeneration = useStore((state) => state.cancelGeneration);
   const [noteOpen, setNoteOpen] = useState(false);
   // Removed rewrite input; templates handle strategies
+
+  const isDesktop = useIsDesktop();
 
   const {
     x: menuX,
@@ -73,10 +78,10 @@ function BlockControls({
     middleware: [
       offset({
         mainAxis: 4,
-        crossAxis: -8,
+        crossAxis: 0,
       }),
       shift({
-        padding: { top: 84, right: 8, bottom: 8, left: 8 },
+        padding: { top: isDesktop ? 84 : 0, right: 8, bottom: 8, left: 8 },
         crossAxis: true,
       }),
     ],
@@ -95,7 +100,7 @@ function BlockControls({
       offset(8),
       flip(),
       shift({
-        padding: { top: 80, right: 8, bottom: 8, left: 8 },
+        padding: { top: isDesktop ? 80 : 0, right: 8, bottom: 8, left: 8 },
         crossAxis: true,
       }),
     ],
@@ -177,7 +182,30 @@ function BlockControls({
           </div>
           {/* Separator between custom prompts and common actions */}
           <div className="block-controls-separator" aria-hidden="true" />
-          {/* Removed standalone rewrite button */}
+
+          {/* Generation status + cancel */}
+          <button
+            className="gen-cancel-button"
+            onClick={() => {
+              if (generationState === "generating") cancelGeneration();
+            }}
+            disabled={generationState !== "generating"}
+            aria-label={
+              generationState === "generating"
+                ? "Cancel generation"
+                : `Generation state: ${generationState}`
+            }
+            title={
+              generationState === "generating"
+                ? "Cancel generation"
+                : `State: ${generationState}`
+            }
+          >
+            <span className={`gen-status ${generationState}`}></span>
+            {generationState === "generating" ? "Cancel" : null}
+          </button>
+
+          {/* Common actions */}
           <button
             className="block-control-btn convert-markdown-btn"
             onClick={onConvertMarkdown}

@@ -313,3 +313,51 @@
 .block-controls * {
   pointer-events: auto;
 }
+
+.block-controls .gen-cancel-button {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-color);
+  font-size: 12px;
+}
+
+.block-controls .gen-cancel-button:hover:not(:disabled) {
+  background: var(--hovered-button-bg-color);
+}
+
+.block-controls .gen-cancel-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.block-controls .gen-status {
+  height: 10px;
+  width: 10px;
+  border-radius: 50%;
+}
+
+.block-controls .gen-status.ready {
+  background-color: rgb(63, 200, 74);
+}
+
+.block-controls .gen-status.loading {
+  background-color: rgb(166, 200, 63);
+}
+
+.block-controls .gen-status.generating {
+  background-color: rgb(200, 63, 63);
+}
+
+.block-controls .gen-status.no-connection {
+  background-color: rgb(200, 63, 63);
+}
+
+.block-controls .gen-status.error {
+  background-color: rgb(200, 63, 63);
+}
