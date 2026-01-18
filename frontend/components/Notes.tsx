@@ -44,6 +44,12 @@ import { LoadingSpinner } from "./LoadingSpinner";
 
 type NoteReponse = {
   notes: Note[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    has_more: boolean;
+  };
 };
 
 type TreeNote = Note & {
@@ -221,11 +227,26 @@ function flattenTagTree(treeTags: TreeTag[]): TreeTag[] {
 }
 
 async function getStories({ queryKey }): Promise<NoteReponse> {
-  const searchQuery = queryKey[1].searchQuery;
+  const { searchQuery, page = 1, limit = 50 } = queryKey[1];
   const response = await fetch(
     `${
       import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
-    }/api/notes?search=${searchQuery}`
+    }/api/notes?search=${searchQuery}&parent=&page=${page}&limit=${limit}`,
+    {
+      credentials: "include",
+    }
+  );
+  return response.json();
+}
+
+async function getNoteChildren(parentId: string): Promise<NoteReponse> {
+  const response = await fetch(
+    `${
+      import.meta.env.VITE_AUTH_API_DOMAIN || "https://modelpad.app"
+    }/api/notes/${parentId}/children`,
+    {
+      credentials: "include",
+    }
   );
   return response.json();
 }
@@ -237,6 +258,7 @@ async function deleteStory(id: string) {
     }/api/notes/${id}`,
     {
       method: "DELETE",
+      credentials: "include",
     }
   );
 }
@@ -267,6 +289,7 @@ async function updateNoteParent(id: string, parentId: string | null) {
     }/api/notes/${id}/parent`,
     {
       method: "PATCH",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -290,6 +313,10 @@ const Notes = ({ onTabClick }: NotesProps) => {
   const [overId, setOverId] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("recent");
   const [nestingEnabled, setNestingEnabled] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [allNotes, setAllNotes] = useState<Note[]>([]);
+  const [loadingChildren, setLoadingChildren] = useState<Set<string>>(new Set());
+  const [loadedChildrenMap, setLoadedChildrenMap] = useState<Map<string, Note[]>>(new Map());
   const queryClient = useQueryClient();
 
   // Get persistent state from store
@@ -308,11 +335,21 @@ const Notes = ({ onTabClick }: NotesProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedCallback(() => {
     setSearchQuery(searchText);
+    setCurrentPage(1); // Reset to first page on search
+    setAllNotes([]); // Clear accumulated notes
   }, 300);
-  const { data } = useQuery({
-    queryKey: ["stories", { searchQuery }],
+  
+  const { data, isLoading } = useQuery({
+    queryKey: ["stories", { searchQuery, page: currentPage, limit: 50 }],
     queryFn: getStories,
     refetchOnWindowFocus: true,
+    onSuccess: (newData) => {
+      if (currentPage === 1) {
+        setAllNotes(newData.notes);
+      } else {
+        setAllNotes((prev) => [...prev, ...newData.notes]);
+      }
+    },
   });
 
   const sensors = useSensors(
@@ -334,8 +371,26 @@ const Notes = ({ onTabClick }: NotesProps) => {
     }
   );
 
-  const toggleExpanded = (noteId: string) => {
+  const toggleExpanded = async (noteId: string) => {
+    const isCurrentlyCollapsed = collapsedNoteIds.has(noteId);
     toggleNoteCollapsed(noteId);
+    
+    // If expanding and children not loaded yet, fetch them
+    if (isCurrentlyCollapsed && !loadedChildrenMap.has(noteId)) {
+      setLoadingChildren((prev) => new Set(prev).add(noteId));
+      try {
+        const childrenData = await getNoteChildren(noteId);
+        setLoadedChildrenMap((prev) => new Map(prev).set(noteId, childrenData.notes));
+      } catch (error) {
+        console.error("Failed to load children:", error);
+      } finally {
+        setLoadingChildren((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(noteId);
+          return newSet;
+        });
+      }
+    }
   };
 
   function handleDragStart(event: DragStartEvent) {
@@ -405,53 +460,101 @@ const Notes = ({ onTabClick }: NotesProps) => {
     });
   }
 
-  // Build tree structure and flatten for display (when nesting is enabled)
-  const displayNotes =
-    data?.notes && nestingEnabled
-      ? (() => {
-          const compare = (a: TreeNote, b: TreeNote) => {
-            if (sortMode === "alpha") {
-              return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+  // Build tree structure with lazy-loaded children and flatten for display (when nesting is enabled)
+  const displayNotes = useMemo(() => {
+    if (!nestingEnabled) return [];
+    if (!allNotes || allNotes.length === 0) return [];
+    
+    const compare = (a: TreeNote, b: TreeNote) => {
+      if (sortMode === "alpha") {
+        return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
+      }
+      // recent
+      const aTime = new Date(a.updated_at || a.created_at).getTime();
+      const bTime = new Date(b.updated_at || b.created_at).getTime();
+      return bTime - aTime;
+    };
+
+    const sortRecursive = (nodes: TreeNote[]): TreeNote[] => {
+      return nodes
+        .slice()
+        .sort(compare)
+        .map((n) => ({ ...n, children: sortRecursive(n.children) }));
+    };
+
+    // Build tree from root notes (allNotes) and loaded children
+    const buildTreeWithChildren = (notes: Note[]): TreeNote[] => {
+      const noteMap = new Map<string, TreeNote>();
+      const rootNotes: TreeNote[] = [];
+
+      // First pass: create TreeNote objects for root notes
+      notes.forEach((note) => {
+        noteMap.set(note.id, {
+          ...note,
+          children: [],
+          level: 0,
+          isExpanded: true,
+        });
+      });
+
+      // Add loaded children recursively
+      const addChildren = (parentId: string, level: number) => {
+        const children = loadedChildrenMap.get(parentId);
+        if (children) {
+          children.forEach((child) => {
+            if (!noteMap.has(child.id)) {
+              const treeChild: TreeNote = {
+                ...child,
+                children: [],
+                level: level,
+                isExpanded: true,
+              };
+              noteMap.set(child.id, treeChild);
+              const parent = noteMap.get(parentId);
+              if (parent) {
+                parent.children.push(treeChild);
+              }
+              // Recursively add children of this child
+              addChildren(child.id, level + 1);
             }
-            // recent
-            const aTime = new Date(a.updated_at || a.created_at).getTime();
-            const bTime = new Date(b.updated_at || b.created_at).getTime();
-            return bTime - aTime;
-          };
+          });
+        }
+      };
 
-          const sortRecursive = (nodes: TreeNote[]): TreeNote[] => {
-            return nodes
-              .slice()
-              .sort(compare)
-              .map((n) => ({ ...n, children: sortRecursive(n.children) }));
-          };
+      // Build tree structure
+      notes.forEach((note) => {
+        rootNotes.push(noteMap.get(note.id)!);
+        addChildren(note.id, 1);
+      });
 
-          const treeNotes = sortRecursive(buildNoteTree(data.notes));
+      return rootNotes;
+    };
 
-          // Initialize expanded state for all parent notes on first load
-          if (!initializedExpansion && treeNotes.length > 0) {
-            // All notes start expanded by default (not in collapsed set)
-            setInitializedExpansion(true);
-          }
+    const treeNotes = sortRecursive(buildTreeWithChildren(allNotes));
 
-          // Update expanded state for tree notes
-          const updateExpandedState = (notes: TreeNote[]): TreeNote[] => {
-            return notes.map((note) => ({
-              ...note,
-              isExpanded: !collapsedNoteIds.has(note.id),
-              children: updateExpandedState(note.children),
-            }));
-          };
+    // Initialize expanded state for all parent notes on first load
+    if (!initializedExpansion && treeNotes.length > 0) {
+      // All notes start expanded by default (not in collapsed set)
+      setInitializedExpansion(true);
+    }
 
-          const expandedTreeNotes = updateExpandedState(treeNotes);
-          return flattenTree(expandedTreeNotes);
-        })()
-      : [];
+    // Update expanded state for tree notes
+    const updateExpandedState = (notes: TreeNote[]): TreeNote[] => {
+      return notes.map((note) => ({
+        ...note,
+        isExpanded: !collapsedNoteIds.has(note.id),
+        children: updateExpandedState(note.children),
+      }));
+    };
+
+    const expandedTreeNotes = updateExpandedState(treeNotes);
+    return flattenTree(expandedTreeNotes);
+  }, [allNotes, loadedChildrenMap, collapsedNoteIds, sortMode, nestingEnabled, initializedExpansion]);
 
   // Flat list for when nesting is disabled
   const flatNotes = useMemo(() => {
-    if (!data?.notes) return [] as Note[];
-    const notesCopy = data.notes.slice();
+    if (!allNotes) return [] as Note[];
+    const notesCopy = allNotes.slice();
     notesCopy.sort((a, b) => {
       if (sortMode === "alpha") {
         return a.title.toLowerCase().localeCompare(b.title.toLowerCase());
@@ -461,7 +564,7 @@ const Notes = ({ onTabClick }: NotesProps) => {
       return bTime - aTime;
     });
     return notesCopy;
-  }, [data, sortMode]);
+  }, [allNotes, sortMode]);
 
   const draggedNote =
     nestingEnabled && activeId
@@ -620,52 +723,80 @@ const Notes = ({ onTabClick }: NotesProps) => {
       {data ? (
         nestingEnabled ? (
           displayNotes.length > 0 ? (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-            >
-              <ul className="note-list">
-                <RootDropZone id="root-drop-top" />
-                {displayNotes.map((note, index) => (
-                  <Fragment key={note.id}>
-                    {index > 0 && (
-                      <RootDropZone id={`root-drop-between-${note.id}`} />
-                    )}
-                    <TreeNoteItem
-                      note={note}
-                      onToggleExpanded={toggleExpanded}
-                      isDragging={activeId === note.id}
-                      isDropTarget={overId === note.id}
-                    />
-                  </Fragment>
-                ))}
-                <RootDropZone id="root-drop-bottom" />
-              </ul>
-              <DragOverlay>
-                {draggedNote ? (
-                  <div className="drag-overlay-item">
-                    <TreeNoteItem
-                      note={draggedNote}
-                      onToggleExpanded={() => {}}
-                      isDragging={true}
-                      isDropTarget={false}
-                    />
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
+            <>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+              >
+                <ul className="note-list">
+                  <RootDropZone id="root-drop-top" />
+                  {displayNotes.map((note, index) => (
+                    <Fragment key={note.id}>
+                      {index > 0 && (
+                        <RootDropZone id={`root-drop-between-${note.id}`} />
+                      )}
+                      <TreeNoteItem
+                        note={note}
+                        onToggleExpanded={toggleExpanded}
+                        isDragging={activeId === note.id}
+                        isDropTarget={overId === note.id}
+                        isLoadingChildren={loadingChildren.has(note.id)}
+                      />
+                    </Fragment>
+                  ))}
+                  <RootDropZone id="root-drop-bottom" />
+                </ul>
+                <DragOverlay>
+                  {draggedNote ? (
+                    <div className="drag-overlay-item">
+                      <TreeNoteItem
+                        note={draggedNote}
+                        onToggleExpanded={() => {}}
+                        isDragging={true}
+                        isDropTarget={false}
+                        isLoadingChildren={false}
+                      />
+                    </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+              {data.pagination?.has_more && (
+                <div className="load-more-container">
+                  <button
+                    className="load-more-button"
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? "Loading..." : "Load More"}
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <EmptyState />
           )
         ) : flatNotes.length > 0 ? (
-          <ul className="note-list">
-            {flatNotes.map((note) => (
-              <FlatNoteItem key={note.id} note={note} />
-            ))}
-          </ul>
+          <>
+            <ul className="note-list">
+              {flatNotes.map((note) => (
+                <FlatNoteItem key={note.id} note={note} />
+              ))}
+            </ul>
+            {data.pagination?.has_more && (
+              <div className="load-more-container">
+                <button
+                  className="load-more-button"
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Loading..." : "Load More"}
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <EmptyState />
         )
@@ -731,11 +862,13 @@ const TreeNoteItem = ({
   onToggleExpanded,
   isDragging,
   isDropTarget,
+  isLoadingChildren,
 }: {
   note: TreeNote;
   onToggleExpanded: (id: string) => void;
   isDragging: boolean;
   isDropTarget: boolean;
+  isLoadingChildren: boolean;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -856,15 +989,18 @@ const TreeNoteItem = ({
           }}
         >
           <div className="note-title-container">
-            {note.children.length > 0 && (
+            {(note.children.length > 0 || note.has_children) && (
               <button
                 className="expand-button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onToggleExpanded(note.id);
                 }}
+                disabled={isLoadingChildren}
               >
-                {note.isExpanded ? (
+                {isLoadingChildren ? (
+                  <div className="spinner-small" />
+                ) : note.isExpanded ? (
                   <ChevronDownIcon className="expand-icon" />
                 ) : (
                   <ChevronRightIcon className="expand-icon" />

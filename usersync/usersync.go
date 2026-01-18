@@ -7,7 +7,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	uuid "github.com/satori/go.uuid"
-	"github.com/supertokens/supertokens-golang/recipe/session"
 )
 
 //Schema
@@ -29,8 +28,7 @@ type Sync struct {
 }
 
 func GetSync(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
+	userID := c.GetString("user_id")
 	sync := Sync{}
 
 	db := c.MustGet("db").(*pgxpool.Pool)
@@ -43,8 +41,7 @@ func GetSync(c *gin.Context) {
 }
 
 func SetSync(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
+	userID := c.GetString("user_id")
 	sync := Sync{}
 	c.BindJSON(&sync)
 
@@ -58,8 +55,7 @@ func SetSync(c *gin.Context) {
 }
 
 func DeleteSync(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
+	userID := c.GetString("user_id")
 	db := c.MustGet("db").(*pgxpool.Pool)
 	_, err := db.Exec(context.Background(), "DELETE FROM sync WHERE user_id = $1", userID)
 	if err != nil {

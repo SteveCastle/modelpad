@@ -1029,3 +1029,49 @@
   width: 14px;
   height: 14px;
 }
+
+/* Load More Button */
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  margin-top: 8px;
+}
+
+.load-more-button {
+  padding: 10px 24px;
+  background-color: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.load-more-button:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.load-more-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Small spinner for expand buttons */
+.spinner-small {
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(255, 255, 255, 0.8);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

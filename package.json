@@ -37,8 +37,6 @@
     "react-query": "^3.39.3",
     "react-resizable-panels": "^3.0.3",
     "react-select": "^5.10.2",
-    "supertokens-auth-react": "^0.48.0",
-    "supertokens-web-js": "^0.14.0",
     "ulid": "^2.3.0",
     "use-debounce": "^10.0.4",
     "uuid": "^9.0.1",

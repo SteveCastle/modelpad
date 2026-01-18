@@ -112,6 +112,8 @@ export type Note = {
   includeInContext?: boolean;
   is_shared?: boolean;
   tags?: { id: string; path: string[] }[];
+  has_children?: boolean;
+  children_loaded?: boolean;
 };
 
 // Helper function to extract tags from lexical state JSON
