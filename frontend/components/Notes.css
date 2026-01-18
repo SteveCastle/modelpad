@@ -344,6 +344,25 @@
   min-width: 0; /* Allow text to shrink */
 }
 
+.embedding-indicator {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.embedding-icon {
+  width: 12px;
+  height: 12px;
+  color: rgba(74, 222, 128, 0.7);
+  opacity: 0.8;
+}
+
+.note-item:hover .embedding-icon {
+  opacity: 1;
+  color: rgba(74, 222, 128, 0.9);
+}
+
 .note-date {
   font-size: 12px;
   color: var(--low-contrast-text-color);

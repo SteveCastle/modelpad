@@ -114,6 +114,7 @@ export type Note = {
   tags?: { id: string; path: string[] }[];
   has_children?: boolean;
   children_loaded?: boolean;
+  has_embedding?: boolean;
 };
 
 // Helper function to extract tags from lexical state JSON

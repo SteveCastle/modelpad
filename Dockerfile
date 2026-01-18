@@ -4,7 +4,7 @@ COPY . .
 RUN yarn install
 RUN yarn build
 
-FROM golang:1.21.4 as go-build
+FROM golang:1.24 as go-build
 WORKDIR /app
 COPY --from=build /app /app
 RUN go build -o /app/server /app/main.go

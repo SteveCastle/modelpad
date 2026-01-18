@@ -34,6 +34,7 @@ import {
   BarsArrowDownIcon,
   ListBulletIcon,
   RectangleStackIcon,
+  CircleStackIcon,
 } from "@heroicons/react/24/solid";
 import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
@@ -985,6 +986,11 @@ const TreeNoteItem = ({
               </button>
             )}
             <div className="note-title">{note.title}</div>
+            {note.has_embedding && (
+              <span className="embedding-indicator" title="Indexed for AI search">
+                <CircleStackIcon className="embedding-icon" />
+              </span>
+            )}
           </div>
           <div className="note-date">{prettyDate(note.updated_at)}</div>
         </div>

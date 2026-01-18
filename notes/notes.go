@@ -42,18 +42,19 @@ type NoteTag struct {
 }
 
 type Note struct {
-	ID          uuid.UUID       `json:"id"`
-	Title       string          `json:"title"`
-	Body        string          `json:"body"`
-	Embedding   pgvector.Vector `json:"embedding"`
-	UserId      uuid.UUID       `json:"user_id"`
-	Parent      *uuid.UUID      `json:"parent"`
-	CreatedAt   time.Time       `json:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"`
-	Distance    float64         `json:"distance"`
-	IsShared    bool            `json:"is_shared"`
-	Tags        []NoteTag       `json:"tags,omitempty"`
-	HasChildren bool            `json:"has_children"`
+	ID           uuid.UUID       `json:"id"`
+	Title        string          `json:"title"`
+	Body         string          `json:"body"`
+	Embedding    pgvector.Vector `json:"-"`
+	UserId       uuid.UUID       `json:"user_id"`
+	Parent       *uuid.UUID      `json:"parent"`
+	CreatedAt    time.Time       `json:"created_at"`
+	UpdatedAt    time.Time       `json:"updated_at"`
+	Distance     float64         `json:"distance"`
+	IsShared     bool            `json:"is_shared"`
+	Tags         []NoteTag       `json:"tags,omitempty"`
+	HasChildren  bool            `json:"has_children"`
+	HasEmbedding bool            `json:"has_embedding"`
 }
 
 type PaginationInfo struct {
@@ -120,7 +121,8 @@ func RagSearch(text string, userID string, distance float64, parentFilter *strin
 				       embedding <-> $2 as distance, 
 				       COALESCE(is_shared, false) as is_shared, 
 				       COALESCE(tags, '[]'::jsonb) as tags,
-				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children,
+				       embedding IS NOT NULL as has_embedding
 				FROM notes 
 				WHERE user_id = $1 AND parent IS NULL AND embedding <-> $2 < $3 
 				ORDER BY embedding <-> $2
@@ -132,7 +134,8 @@ func RagSearch(text string, userID string, distance float64, parentFilter *strin
 				       embedding <-> $3 as distance, 
 				       COALESCE(is_shared, false) as is_shared, 
 				       COALESCE(tags, '[]'::jsonb) as tags,
-				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children,
+				       embedding IS NOT NULL as has_embedding
 				FROM notes 
 				WHERE user_id = $1 AND parent = $2 AND embedding <-> $3 < $4 
 				ORDER BY embedding <-> $3
@@ -144,7 +147,8 @@ func RagSearch(text string, userID string, distance float64, parentFilter *strin
 				       embedding <-> $2 as distance, 
 				       COALESCE(is_shared, false) as is_shared, 
 				       COALESCE(tags, '[]'::jsonb) as tags,
-				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children,
+				       embedding IS NOT NULL as has_embedding
 				FROM notes 
 				WHERE user_id = $1 AND embedding <-> $2 < $3 
 				ORDER BY embedding <-> $2
@@ -158,7 +162,8 @@ func RagSearch(text string, userID string, distance float64, parentFilter *strin
 				       0 as distance, 
 				       COALESCE(is_shared, false) as is_shared, 
 				       COALESCE(tags, '[]'::jsonb) as tags,
-				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children,
+				       embedding IS NOT NULL as has_embedding
 				FROM notes 
 				WHERE user_id = $1 AND parent IS NULL 
 				ORDER BY updated_at DESC
@@ -170,7 +175,8 @@ func RagSearch(text string, userID string, distance float64, parentFilter *strin
 				       0 as distance, 
 				       COALESCE(is_shared, false) as is_shared, 
 				       COALESCE(tags, '[]'::jsonb) as tags,
-				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children,
+				       embedding IS NOT NULL as has_embedding
 				FROM notes 
 				WHERE user_id = $1 AND parent = $2 
 				ORDER BY updated_at DESC
@@ -182,7 +188,8 @@ func RagSearch(text string, userID string, distance float64, parentFilter *strin
 				       0 as distance, 
 				       COALESCE(is_shared, false) as is_shared, 
 				       COALESCE(tags, '[]'::jsonb) as tags,
-				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children,
+				       embedding IS NOT NULL as has_embedding
 				FROM notes 
 				WHERE user_id = $1 
 				ORDER BY updated_at DESC
@@ -198,7 +205,7 @@ func RagSearch(text string, userID string, distance float64, parentFilter *strin
 	for rows.Next() {
 		var note Note
 		var tagsJSON []byte
-		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared, &tagsJSON, &note.HasChildren)
+		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared, &tagsJSON, &note.HasChildren, &note.HasEmbedding)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -270,19 +277,22 @@ func GetNote(c *gin.Context) {
 	db := c.MustGet("db").(*pgxpool.Pool)
 	var tagsJSON []byte
 	var hasChildren bool
+	var hasEmbedding bool
 	err := db.QueryRow(context.Background(), `
 		SELECT id, title, body, user_id, parent, created_at, updated_at, 
 		       COALESCE(is_shared, false) as is_shared, 
 		       COALESCE(tags, '[]'::jsonb) as tags,
-		       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children 
+		       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children,
+		       embedding IS NOT NULL as has_embedding
 		FROM notes 
-		WHERE id = $1 AND user_id = $2`, noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.IsShared, &tagsJSON, &hasChildren)
+		WHERE id = $1 AND user_id = $2`, noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.IsShared, &tagsJSON, &hasChildren, &hasEmbedding)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
 	
 	note.HasChildren = hasChildren
+	note.HasEmbedding = hasEmbedding
 
 	// Unmarshal tags from JSON
 	if err := json.Unmarshal(tagsJSON, &note.Tags); err != nil {
@@ -319,7 +329,8 @@ func GetNoteChildren(c *gin.Context) {
 		       0 as distance,
 		       COALESCE(is_shared, false) as is_shared,
 		       COALESCE(tags, '[]'::jsonb) as tags,
-		       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+		       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children,
+		       embedding IS NOT NULL as has_embedding
 		FROM notes
 		WHERE user_id = $1 AND parent = $2
 		ORDER BY updated_at DESC`, userID, noteID)
@@ -334,7 +345,7 @@ func GetNoteChildren(c *gin.Context) {
 	for rows.Next() {
 		var note Note
 		var tagsJSON []byte
-		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared, &tagsJSON, &note.HasChildren)
+		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared, &tagsJSON, &note.HasChildren, &note.HasEmbedding)
 		if err != nil {
 			c.JSON(500, gin.H{"error": err.Error()})
 			return
