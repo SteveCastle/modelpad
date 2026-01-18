@@ -463,6 +463,7 @@ const Notes = ({ onTabClick }: NotesProps) => {
   // Build tree structure with lazy-loaded children and flatten for display (when nesting is enabled)
   const displayNotes = useMemo(() => {
     if (!nestingEnabled) return [];
+    if (!allNotes || allNotes.length === 0) return [];
     
     const compare = (a: TreeNote, b: TreeNote) => {
       if (sortMode === "alpha") {

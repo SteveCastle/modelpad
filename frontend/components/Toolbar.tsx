@@ -14,10 +14,7 @@ import "./Toolbar.css";
 import ServerSelect from "./ServerSelect";
 import ToolBarPlugin from "./ToolBarPlugin";
 import { DEFAULT_TRANSFORMERS } from "./LexicalMarkdownShortcutPlugin";
-import {
-  useSessionContext,
-  signOut,
-} from "supertokens-auth-react/recipe/session";
+import { useAuth } from "../hooks/useAuth";
 import useCtrlHotkey from "../hooks/useCtrlHotkey";
 import { CloudArrowUpIcon } from "@heroicons/react/24/solid";
 
@@ -49,7 +46,7 @@ export function Toolbar() {
   const [isEditMenuOpen, setIsEditMenuOpen] = useState(false);
   const [isViewMenuOpen, setIsViewMenuOpen] = useState(false);
 
-  const session = useSessionContext();
+  const { user, logout } = useAuth();
 
   // Floating UI setup for File menu
   const {
@@ -135,7 +132,7 @@ export function Toolbar() {
       queryClient.invalidateQueries("stories");
       updateSyncState(activeStoryId, true);
     }
-    if (session.loading === false && session.userId) {
+    if (user) {
       save();
     }
   };
@@ -286,8 +283,8 @@ export function Toolbar() {
   };
 
   async function onLogout() {
-    await signOut();
-    window.location.href = "/"; // or to wherever your logic page is
+    await logout();
+    window.location.href = "/";
   }
 
   return (
@@ -339,7 +336,7 @@ export function Toolbar() {
                 : "Cancel "
             }${generationState}`}
           </button>
-          {session.loading === false && session.userId ? (
+          {user ? (
             <button onClick={onLogout} className="logout">
               Sign Out
             </button>
@@ -348,7 +345,7 @@ export function Toolbar() {
               Sign In
             </a>
           )}
-          {session.loading === false && session.userId ? (
+          {user ? (
             <button
               className="save"
               onClick={() => {
