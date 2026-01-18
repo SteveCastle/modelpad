@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/solid";
 import { useQuery } from "react-query";
-import { EmailPasswordPreBuiltUI } from "supertokens-auth-react/recipe/emailpassword/prebuiltui";
-import { canHandleRoute, getRoutingComponent } from "supertokens-auth-react/ui";
 import {
   PanelGroup,
   Panel,
@@ -14,9 +12,10 @@ import { StoryEditor } from "./components/StoryEditor";
 import { Tab } from "./components/Tab";
 import { providers } from "./providers";
 import "./App.css";
-import { useSessionContext } from "supertokens-auth-react/recipe/session";
+import { useAuth } from "./hooks/useAuth";
 import Notes from "./components/Notes";
 import AIPanel from "./components/AIPanel";
+import Auth from "./components/Auth";
 
 type Model = {
   name: string;
@@ -163,7 +162,7 @@ function App() {
     generationState,
     migrateTags,
   } = useStore((state) => state);
-  const session = useSessionContext();
+  const { user, isLoading: authLoading } = useAuth();
   const { providerKey, host } = useStore(
     (state) => state.availableServers[state.serverKey]
   );
@@ -226,23 +225,23 @@ function App() {
     },
   });
 
-  if (canHandleRoute([EmailPasswordPreBuiltUI])) {
-    // This renders the login UI on the /auth route
-    return getRoutingComponent([EmailPasswordPreBuiltUI]);
+  // Show auth screen if not authenticated
+  if (authLoading) {
+    return <div className="App">Loading...</div>;
+  }
+
+  if (!user) {
+    return <Auth />;
   }
 
   return (
     <div className="App">
       <PanelGroup
         direction="horizontal"
-        autoSaveId={`modelpad-layout-${
-          session.loading === false && session.userId
-            ? session.userId
-            : "anonymous"
-        }`}
+        autoSaveId={`modelpad-layout-${user?.id || "anonymous"}`}
       >
         {/* Left Sidebar Panel */}
-        {session.loading === false && session.userId && !isMobile ? (
+        {!isMobile ? (
           <>
             <Panel
               id="left-sidebar"
@@ -279,9 +278,7 @@ function App() {
         {/* Main Content Panel */}
         <Panel
           id="main-content"
-          defaultSize={
-            session.loading === false && session.userId && !isMobile ? 60 : 100
-          }
+          defaultSize={!isMobile ? 60 : 100}
           minSize={40}
           maxSize={100}
           order={2}

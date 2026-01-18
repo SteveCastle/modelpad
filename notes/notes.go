@@ -12,7 +12,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/stevecastle/modelpad/embeddings"
 	"github.com/stevecastle/modelpad/markdown"
-	"github.com/supertokens/supertokens-golang/recipe/session"
 )
 
 //Schema
@@ -43,86 +42,247 @@ type NoteTag struct {
 }
 
 type Note struct {
-	ID        uuid.UUID       `json:"id"`
-	Title     string          `json:"title"`
-	Body      string          `json:"body"`
-	Embedding pgvector.Vector `json:"embedding"`
-	UserId    uuid.UUID       `json:"user_id"`
-	Parent    *uuid.UUID      `json:"parent"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
-	Distance  float64         `json:"distance"`
-	IsShared  bool            `json:"is_shared"`
-	Tags      []NoteTag       `json:"tags,omitempty"`
+	ID          uuid.UUID       `json:"id"`
+	Title       string          `json:"title"`
+	Body        string          `json:"body"`
+	Embedding   pgvector.Vector `json:"embedding"`
+	UserId      uuid.UUID       `json:"user_id"`
+	Parent      *uuid.UUID      `json:"parent"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+	Distance    float64         `json:"distance"`
+	IsShared    bool            `json:"is_shared"`
+	Tags        []NoteTag       `json:"tags,omitempty"`
+	HasChildren bool            `json:"has_children"`
 }
 
-func RagSearch(text string, userID string, distance float64, c *gin.Context) []Note {
+type PaginationInfo struct {
+	Page    int  `json:"page"`
+	Limit   int  `json:"limit"`
+	Total   int  `json:"total"`
+	HasMore bool `json:"has_more"`
+}
+
+func RagSearch(text string, userID string, distance float64, parentFilter *string, page int, limit int, c *gin.Context) ([]Note, int, error) {
 	var vector pgvector.Vector
 	var notes []Note
 	if text != "" {
 		embedding, err := embeddings.CreateEmbedding(text)
 		if err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
-			return nil
+			return nil, 0, err
 		}
 		vector = pgvector.NewVector(embedding.Embedding)
 	}
 	db := c.MustGet("db").(*pgxpool.Pool)
+	
+	// Calculate offset
+	offset := (page - 1) * limit
+	
+	// Get total count
+	var totalCount int
+	var countErr error
+	if text != "" {
+		if parentFilter != nil && *parentFilter == "" {
+			// Root notes only
+			countErr = db.QueryRow(context.Background(), "SELECT COUNT(*) FROM notes WHERE user_id = $1 AND parent IS NULL AND embedding <-> $2 < $3", userID, vector, distance).Scan(&totalCount)
+		} else if parentFilter != nil {
+			// Specific parent
+			countErr = db.QueryRow(context.Background(), "SELECT COUNT(*) FROM notes WHERE user_id = $1 AND parent = $2 AND embedding <-> $3 < $4", userID, parentFilter, vector, distance).Scan(&totalCount)
+		} else {
+			// All notes
+			countErr = db.QueryRow(context.Background(), "SELECT COUNT(*) FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3", userID, vector, distance).Scan(&totalCount)
+		}
+	} else {
+		if parentFilter != nil && *parentFilter == "" {
+			// Root notes only
+			countErr = db.QueryRow(context.Background(), "SELECT COUNT(*) FROM notes WHERE user_id = $1 AND parent IS NULL", userID).Scan(&totalCount)
+		} else if parentFilter != nil {
+			// Specific parent
+			countErr = db.QueryRow(context.Background(), "SELECT COUNT(*) FROM notes WHERE user_id = $1 AND parent = $2", userID, parentFilter).Scan(&totalCount)
+		} else {
+			// All notes
+			countErr = db.QueryRow(context.Background(), "SELECT COUNT(*) FROM notes WHERE user_id = $1", userID).Scan(&totalCount)
+		}
+	}
+	
+	if countErr != nil {
+		return nil, 0, countErr
+	}
+	
+	// Query notes with has_children flag
 	var rows pgx.Rows
 	var err error
 	if text != "" {
-		rows, err = db.Query(context.Background(), "SELECT id,title, body, parent, created_at,updated_at, embedding <-> $2 as distance, COALESCE(is_shared, false) as is_shared, COALESCE(tags, '[]'::jsonb) as tags FROM notes WHERE user_id = $1 AND embedding <-> $2 < $3 ORDER BY embedding <-> $2", userID, vector, distance)
+		if parentFilter != nil && *parentFilter == "" {
+			// Root notes only with search
+			rows, err = db.Query(context.Background(), `
+				SELECT id, title, body, parent, created_at, updated_at, 
+				       embedding <-> $2 as distance, 
+				       COALESCE(is_shared, false) as is_shared, 
+				       COALESCE(tags, '[]'::jsonb) as tags,
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				FROM notes 
+				WHERE user_id = $1 AND parent IS NULL AND embedding <-> $2 < $3 
+				ORDER BY embedding <-> $2
+				LIMIT $4 OFFSET $5`, userID, vector, distance, limit, offset)
+		} else if parentFilter != nil {
+			// Specific parent with search
+			rows, err = db.Query(context.Background(), `
+				SELECT id, title, body, parent, created_at, updated_at, 
+				       embedding <-> $3 as distance, 
+				       COALESCE(is_shared, false) as is_shared, 
+				       COALESCE(tags, '[]'::jsonb) as tags,
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				FROM notes 
+				WHERE user_id = $1 AND parent = $2 AND embedding <-> $3 < $4 
+				ORDER BY embedding <-> $3
+				LIMIT $5 OFFSET $6`, userID, parentFilter, vector, distance, limit, offset)
+		} else {
+			// All notes with search
+			rows, err = db.Query(context.Background(), `
+				SELECT id, title, body, parent, created_at, updated_at, 
+				       embedding <-> $2 as distance, 
+				       COALESCE(is_shared, false) as is_shared, 
+				       COALESCE(tags, '[]'::jsonb) as tags,
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				FROM notes 
+				WHERE user_id = $1 AND embedding <-> $2 < $3 
+				ORDER BY embedding <-> $2
+				LIMIT $4 OFFSET $5`, userID, vector, distance, limit, offset)
+		}
 	} else {
-		rows, err = db.Query(context.Background(), "SELECT id,title, body, parent, created_at,updated_at, 0 as distance, COALESCE(is_shared, false) as is_shared, COALESCE(tags, '[]'::jsonb) as tags FROM notes WHERE user_id = $1 ORDER BY updated_at DESC", userID)
+		if parentFilter != nil && *parentFilter == "" {
+			// Root notes only without search
+			rows, err = db.Query(context.Background(), `
+				SELECT id, title, body, parent, created_at, updated_at, 
+				       0 as distance, 
+				       COALESCE(is_shared, false) as is_shared, 
+				       COALESCE(tags, '[]'::jsonb) as tags,
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				FROM notes 
+				WHERE user_id = $1 AND parent IS NULL 
+				ORDER BY updated_at DESC
+				LIMIT $2 OFFSET $3`, userID, limit, offset)
+		} else if parentFilter != nil {
+			// Specific parent without search
+			rows, err = db.Query(context.Background(), `
+				SELECT id, title, body, parent, created_at, updated_at, 
+				       0 as distance, 
+				       COALESCE(is_shared, false) as is_shared, 
+				       COALESCE(tags, '[]'::jsonb) as tags,
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				FROM notes 
+				WHERE user_id = $1 AND parent = $2 
+				ORDER BY updated_at DESC
+				LIMIT $3 OFFSET $4`, userID, parentFilter, limit, offset)
+		} else {
+			// All notes without search
+			rows, err = db.Query(context.Background(), `
+				SELECT id, title, body, parent, created_at, updated_at, 
+				       0 as distance, 
+				       COALESCE(is_shared, false) as is_shared, 
+				       COALESCE(tags, '[]'::jsonb) as tags,
+				       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+				FROM notes 
+				WHERE user_id = $1 
+				ORDER BY updated_at DESC
+				LIMIT $2 OFFSET $3`, userID, limit, offset)
+		}
 	}
+	
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
-		return nil
+		return nil, 0, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var note Note
 		var tagsJSON []byte
-		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared, &tagsJSON)
+		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared, &tagsJSON, &note.HasChildren)
 		if err != nil {
-			c.JSON(500, gin.H{"error": err.Error()})
-			return nil
+			return nil, 0, err
 		}
 
 		// Unmarshal tags from JSON
 		if err := json.Unmarshal(tagsJSON, &note.Tags); err != nil {
-			c.JSON(500, gin.H{"error": "Failed to unmarshal tags: " + err.Error()})
-			return nil
+			return nil, 0, err
 		}
 
 		notes = append(notes, note)
 	}
-	return notes
+	
+	return notes, totalCount, nil
 }
 
 func ListNotes(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
+	userID := c.GetString("user_id")
 	searchParam := c.Query("search")
+	parentParam := c.Query("parent")
+	
+	// Parse pagination parameters
+	page := 1
+	if pageStr := c.Query("page"); pageStr != "" {
+		if p, err := json.Number(pageStr).Int64(); err == nil && p > 0 {
+			page = int(p)
+		}
+	}
+	
+	limit := 50
+	if limitStr := c.Query("limit"); limitStr != "" {
+		if l, err := json.Number(limitStr).Int64(); err == nil && l > 0 && l <= 200 {
+			limit = int(l)
+		}
+	}
+	
 	distance := .8
-	notes := RagSearch(searchParam, userID, distance, c)
-
-	c.JSON(200, gin.H{"notes": notes})
+	
+	// Handle parent filter
+	var parentFilter *string
+	if c.Query("parent") != "" {
+		// Empty string means root notes
+		parentFilter = &parentParam
+	}
+	
+	notes, totalCount, err := RagSearch(searchParam, userID, distance, parentFilter, page, limit, c)
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	
+	hasMore := page*limit < totalCount
+	
+	c.JSON(200, gin.H{
+		"notes": notes,
+		"pagination": PaginationInfo{
+			Page:    page,
+			Limit:   limit,
+			Total:   totalCount,
+			HasMore: hasMore,
+		},
+	})
 }
 
 func GetNote(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
+	userID := c.GetString("user_id")
 	noteID := c.Param("id")
 	note := Note{}
 
 	db := c.MustGet("db").(*pgxpool.Pool)
 	var tagsJSON []byte
-	err := db.QueryRow(context.Background(), "SELECT id, title, body, user_id, parent, created_at, updated_at, COALESCE(is_shared, false) as is_shared, COALESCE(tags, '[]'::jsonb) as tags FROM notes WHERE id = $1 AND user_id = $2", noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.IsShared, &tagsJSON)
+	var hasChildren bool
+	err := db.QueryRow(context.Background(), `
+		SELECT id, title, body, user_id, parent, created_at, updated_at, 
+		       COALESCE(is_shared, false) as is_shared, 
+		       COALESCE(tags, '[]'::jsonb) as tags,
+		       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children 
+		FROM notes 
+		WHERE id = $1 AND user_id = $2`, noteID, userID).Scan(&note.ID, &note.Title, &note.Body, &note.UserId, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.IsShared, &tagsJSON, &hasChildren)
 	if err != nil {
 		c.JSON(500, gin.H{"error": err.Error()})
 		return
 	}
+	
+	note.HasChildren = hasChildren
 
 	// Unmarshal tags from JSON
 	if err := json.Unmarshal(tagsJSON, &note.Tags); err != nil {
@@ -133,9 +293,67 @@ func GetNote(c *gin.Context) {
 	c.JSON(200, gin.H{"note": note})
 }
 
+// GetNoteChildren returns immediate children of a given note
+func GetNoteChildren(c *gin.Context) {
+	userID := c.GetString("user_id")
+	noteID := c.Param("id")
+	
+	// Verify the parent note exists and belongs to the user
+	db := c.MustGet("db").(*pgxpool.Pool)
+	var noteExists bool
+	err := db.QueryRow(context.Background(), 
+		"SELECT EXISTS(SELECT 1 FROM notes WHERE id = $1 AND user_id = $2)", 
+		noteID, userID).Scan(&noteExists)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Failed to verify parent note"})
+		return
+	}
+	if !noteExists {
+		c.JSON(404, gin.H{"error": "Parent note not found or you don't have permission to access it"})
+		return
+	}
+	
+	// Get children of the specified parent
+	rows, err := db.Query(context.Background(), `
+		SELECT id, title, body, parent, created_at, updated_at,
+		       0 as distance,
+		       COALESCE(is_shared, false) as is_shared,
+		       COALESCE(tags, '[]'::jsonb) as tags,
+		       EXISTS(SELECT 1 FROM notes c WHERE c.parent = notes.id) as has_children
+		FROM notes
+		WHERE user_id = $1 AND parent = $2
+		ORDER BY updated_at DESC`, userID, noteID)
+	
+	if err != nil {
+		c.JSON(500, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+	
+	var notes []Note
+	for rows.Next() {
+		var note Note
+		var tagsJSON []byte
+		err := rows.Scan(&note.ID, &note.Title, &note.Body, &note.Parent, &note.CreatedAt, &note.UpdatedAt, &note.Distance, &note.IsShared, &tagsJSON, &note.HasChildren)
+		if err != nil {
+			c.JSON(500, gin.H{"error": err.Error()})
+			return
+		}
+
+		// Unmarshal tags from JSON
+		if err := json.Unmarshal(tagsJSON, &note.Tags); err != nil {
+			c.JSON(500, gin.H{"error": "Failed to unmarshal tags: " + err.Error()})
+			return
+		}
+
+		notes = append(notes, note)
+	}
+	
+	c.JSON(200, gin.H{"notes": notes})
+}
+
 func UpsertNote(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
+	userID := c.GetString("user_id")
 	note := Note{}
 	note.UserId = uuid.FromStringOrNil(userID)
 	err := c.BindJSON(&note)
@@ -199,8 +417,7 @@ func UpsertNote(c *gin.Context) {
 }
 
 func DeleteNote(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
+	userID := c.GetString("user_id")
 	noteID := c.Param("id")
 
 	db := c.MustGet("db").(*pgxpool.Pool)

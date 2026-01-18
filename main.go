@@ -14,35 +14,34 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/russross/blackfriday/v2"
 	uuid "github.com/satori/go.uuid"
+	"github.com/stevecastle/modelpad/auth"
 	"github.com/stevecastle/modelpad/markdown"
 	"github.com/stevecastle/modelpad/models"
 	"github.com/stevecastle/modelpad/notes"
 	"github.com/stevecastle/modelpad/streaming"
 	"github.com/stevecastle/modelpad/usersync"
-	"github.com/supertokens/supertokens-golang/recipe/dashboard"
-	"github.com/supertokens/supertokens-golang/recipe/emailpassword"
-	"github.com/supertokens/supertokens-golang/recipe/session"
-	"github.com/supertokens/supertokens-golang/recipe/session/sessmodels"
-	"github.com/supertokens/supertokens-golang/supertokens"
 )
 
-func verifySession(options *sessmodels.VerifySessionOptions) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		session.VerifySession(options, func(rw http.ResponseWriter, r *http.Request) {
-			c.Request = c.Request.WithContext(r.Context())
-			c.Next()
-		})(c.Writer, c.Request)
-		// we call Abort so that the next handler in the chain is not called, unless we call Next explicitly
-		c.Abort()
-	}
-}
-
 func me(c *gin.Context) {
-	// retrieve the session object as shown below
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
+	// Get user ID from context (set by AuthRequired middleware)
+	userID := c.GetString("user_id")
+	if userID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"message": "Unauthorized",
+		})
+		return
+	}
 
-	userID := sessionContainer.GetUserID()
-	userInfo, err := emailpassword.GetUserByID(userID)
+	db := c.MustGet("db").(*pgxpool.Pool)
+
+	// Fetch user from database
+	var user struct {
+		ID    uuid.UUID `json:"id"`
+		Email string    `json:"email"`
+	}
+	err := db.QueryRow(context.Background(),
+		"SELECT id, email FROM users WHERE id = $1",
+		userID).Scan(&user.ID, &user.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Error getting user info",
@@ -51,11 +50,8 @@ func me(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user": userInfo,
-	},
-	)
-
-	fmt.Println(userID)
+		"user": user,
+	})
 }
 
 // HTML template for document viewing
@@ -295,8 +291,7 @@ func ViewDocument(c *gin.Context) {
 
 // ShareNote toggles the is_shared status of a note
 func ShareNote(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
+	userID := c.GetString("user_id")
 	noteID := c.Param("id")
 
 	// Parse the note ID
@@ -349,8 +344,7 @@ func ShareNote(c *gin.Context) {
 
 // UpdateNoteParent updates the parent relationship of a note
 func UpdateNoteParent(c *gin.Context) {
-	sessionContainer := session.GetSessionFromRequestContext(c.Request.Context())
-	userID := sessionContainer.GetUserID()
+	userID := c.GetString("user_id")
 	noteID := c.Param("id")
 
 	// Parse the note ID
@@ -469,31 +463,6 @@ func main() {
 	}
 	defer dbpool.Close()
 
-	apiBasePath := "/api/auth"
-	websiteBasePath := "/auth"
-	err = supertokens.Init(supertokens.TypeInput{
-		Supertokens: &supertokens.ConnectionInfo{
-			ConnectionURI: os.Getenv("SUPERTOKENS_CONNECTION_URI"),
-			APIKey:        os.Getenv("SUPERTOKENS_API_KEY"),
-		},
-		AppInfo: supertokens.AppInfo{
-			AppName:         "ModelPad",
-			APIDomain:       os.Getenv("AUTH_API_DOMAIN"),
-			WebsiteDomain:   os.Getenv("AUTH_FRONT_END_DOMAIN"),
-			APIBasePath:     &apiBasePath,
-			WebsiteBasePath: &websiteBasePath,
-		},
-		RecipeList: []supertokens.Recipe{
-			emailpassword.Init(nil),
-			dashboard.Init(nil),
-			session.Init(nil), // initializes session features
-		},
-	})
-
-	if err != nil {
-		panic(err.Error())
-	}
-
 	//Adding postgres connection to the context
 	r.Use(func(c *gin.Context) {
 		c.Set("db", dbpool)
@@ -502,22 +471,11 @@ func main() {
 
 	// Adding the CORS middleware
 	r.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"https://modelpad.app", "http://localhost:5173", "http://localhost:5174"},
-		AllowMethods: []string{"GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"},
-		AllowHeaders: append([]string{"content-type"},
-			supertokens.GetAllCORSHeaders()...),
+		AllowOrigins:     []string{"https://modelpad.app", "http://localhost:5173", "http://localhost:5174"},
+		AllowMethods:     []string{"GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"},
+		AllowHeaders:     []string{"content-type"},
 		AllowCredentials: true,
 	}))
-
-	// Adding the SuperTokens middleware
-	r.Use(func(c *gin.Context) {
-		supertokens.Middleware(http.HandlerFunc(
-			func(rw http.ResponseWriter, r *http.Request) {
-				c.Next()
-			})).ServeHTTP(c.Writer, c.Request)
-		// we call Abort so that the next handler in the chain is not called, unless we call Next explicitly
-		c.Abort()
-	})
 
 	// Static File Endpoints
 	r.Static("/assets", "/app/dist/assets")
@@ -525,21 +483,31 @@ func main() {
 	r.StaticFile("/auth", "/app/dist/index.html")
 	r.StaticFile("/modelpad.svg", "/app/dist/modelpad.svg")
 
+	// Auth Endpoints
+	r.POST("/api/auth/register", auth.Register)
+	r.POST("/api/auth/login", auth.Login)
+	r.POST("/api/auth/refresh", auth.Refresh)
+	r.POST("/api/auth/logout", auth.Logout)
+	r.GET("/api/auth/me", auth.AuthRequired(), auth.Me)
+
+	// Legacy me endpoint (kept for compatibility)
+	r.GET("/api/me", auth.AuthRequired(), me)
+
 	// Note Endpoints
-	r.GET("/api/me", verifySession(&sessmodels.VerifySessionOptions{}), me)
-	r.GET("/api/notes", verifySession(&sessmodels.VerifySessionOptions{}), notes.ListNotes)
-	r.PUT("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.UpsertNote)
-	r.DELETE("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.DeleteNote)
-	r.GET("/api/notes/:id", verifySession(&sessmodels.VerifySessionOptions{}), notes.GetNote)
-	r.PATCH("/api/notes/:id/share", verifySession(&sessmodels.VerifySessionOptions{}), ShareNote)
-	r.PATCH("/api/notes/:id/parent", verifySession(&sessmodels.VerifySessionOptions{}), UpdateNoteParent)
+	r.GET("/api/notes", auth.AuthRequired(), notes.ListNotes)
+	r.PUT("/api/notes/:id", auth.AuthRequired(), notes.UpsertNote)
+	r.DELETE("/api/notes/:id", auth.AuthRequired(), notes.DeleteNote)
+	r.GET("/api/notes/:id", auth.AuthRequired(), notes.GetNote)
+	r.GET("/api/notes/:id/children", auth.AuthRequired(), notes.GetNoteChildren)
+	r.PATCH("/api/notes/:id/share", auth.AuthRequired(), ShareNote)
+	r.PATCH("/api/notes/:id/parent", auth.AuthRequired(), UpdateNoteParent)
 
 	// Document viewing endpoint (public, no authentication required)
 	r.GET("/doc/:id", ViewDocument)
 
 	// Sync Endpoints
-	r.GET("/api/sync/get", verifySession(&sessmodels.VerifySessionOptions{}), usersync.GetSync)
-	r.POST("/api/sync/set", verifySession(&sessmodels.VerifySessionOptions{}), usersync.SetSync)
+	r.GET("/api/sync/get", auth.AuthRequired(), usersync.GetSync)
+	r.POST("/api/sync/set", auth.AuthRequired(), usersync.SetSync)
 
 	// These endpoints match the ollama API
 	r.GET("/api/tags", models.ListModels)
