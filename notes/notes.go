@@ -244,9 +244,10 @@ func ListNotes(c *gin.Context) {
 	distance := .8
 	
 	// Handle parent filter
+	// Check if 'parent' parameter exists in the query (even if empty)
 	var parentFilter *string
-	if c.Query("parent") != "" {
-		// Empty string means root notes
+	if _, exists := c.GetQuery("parent"); exists {
+		// Empty string means root notes, non-empty means specific parent
 		parentFilter = &parentParam
 	}
 	

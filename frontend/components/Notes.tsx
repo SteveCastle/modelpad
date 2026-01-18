@@ -40,7 +40,7 @@ import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
 
 import "./Notes.css";
-import { useState, useMemo, Fragment, useEffect } from "react";
+import { useState, useMemo, Fragment, useEffect, useRef } from "react";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { LoadingSpinner } from "./LoadingSpinner";
 
@@ -298,12 +298,14 @@ const Notes = ({ onTabClick }: NotesProps) => {
     activeNotesTab,
     setActiveNotesTab,
     collapsedNoteIds,
+    setCollapsedNoteIds,
     toggleNoteCollapsed,
   } = useStore(
     useShallow((state) => ({
       activeNotesTab: state.activeNotesTab,
       setActiveNotesTab: state.setActiveNotesTab,
       collapsedNoteIds: state.collapsedNoteIds,
+      setCollapsedNoteIds: state.setCollapsedNoteIds,
       toggleNoteCollapsed: state.toggleNoteCollapsed,
     }))
   );
@@ -327,6 +329,36 @@ const Notes = ({ onTabClick }: NotesProps) => {
       setNotesByPage((prev) => new Map(prev).set(currentPage, data.notes));
     }
   }, [data, currentPage]);
+
+  // Track which notes have had their initial collapsed state set
+  const initializedNotesRef = useRef<Set<string>>(new Set());
+
+  // Initialize notes with has_children as collapsed (so first click expands them)
+  useEffect(() => {
+    if (!data?.notes) return;
+    
+    const notesWithChildren = data.notes.filter(
+      (note) => note.has_children && !initializedNotesRef.current.has(String(note.id))
+    );
+    
+    if (notesWithChildren.length > 0) {
+      const newCollapsed = new Set(collapsedNoteIds);
+      let hasChanges = false;
+      
+      notesWithChildren.forEach((note) => {
+        const noteId = String(note.id);
+        if (!newCollapsed.has(noteId)) {
+          newCollapsed.add(noteId);
+          hasChanges = true;
+        }
+        initializedNotesRef.current.add(noteId);
+      });
+      
+      if (hasChanges) {
+        setCollapsedNoteIds(newCollapsed);
+      }
+    }
+  }, [data?.notes, collapsedNoteIds, setCollapsedNoteIds]);
 
   // Derive allNotes from notesByPage - collected in page order
   const allNotes = useMemo(() => {
@@ -353,50 +385,71 @@ const Notes = ({ onTabClick }: NotesProps) => {
   const { mutate: updateParentMutation } = useMutation({
     mutationFn: ({ id, parentId }: { id: string; parentId: string | null }) =>
       updateNoteParent(id, parentId),
-    onSuccess: () => {
+    onSuccess: async (_data, variables) => {
+      const { id, parentId } = variables;
+      const stringId = String(id);
+      const stringParentId = parentId ? String(parentId) : null;
+      
+      // Remove the moved note from any old parent's children cache
+      setLoadedChildrenMap((prev) => {
+        const newMap = new Map(prev);
+        prev.forEach((children, parentKey) => {
+          const filteredChildren = children.filter((c) => String(c.id) !== stringId);
+          if (filteredChildren.length !== children.length) {
+            newMap.set(parentKey, filteredChildren);
+          }
+        });
+        // Also clear the new parent's cache so we'll fetch fresh data
+        if (stringParentId) {
+          newMap.delete(stringParentId);
+        }
+        return newMap;
+      });
+      
+      // If moving under a parent, expand it and load its children
+      if (stringParentId) {
+        // Mark the parent as initialized so the init effect won't collapse it
+        initializedNotesRef.current.add(stringParentId);
+        
+        // Ensure the parent is expanded
+        if (collapsedNoteIds.has(stringParentId)) {
+          toggleNoteCollapsed(stringParentId);
+        }
+        
+        // Fetch the parent's children to include the moved note
+        try {
+          const childrenData = await getNoteChildren(stringParentId);
+          setLoadedChildrenMap((prev) => new Map(prev).set(stringParentId, childrenData.notes));
+        } catch (error) {
+          console.error("Failed to load children after move:", error);
+        }
+      }
+      
+      // Refetch root notes
       queryClient.invalidateQueries({ queryKey: ["stories"] });
     },
   });
 
   const toggleExpanded = async (noteId: string) => {
+    const stringNoteId = String(noteId);
     const isCurrentlyCollapsed = collapsedNoteIds.has(noteId);
-    const childrenLoaded = loadedChildrenMap.has(noteId);
+    const childrenLoaded = loadedChildrenMap.has(stringNoteId);
     
-    // Special case: if note appears "expanded" (not in collapsed set) but children
-    // aren't loaded yet, this is the first click - load children without toggling
-    // so the children appear (the note is already in expanded state)
-    if (!isCurrentlyCollapsed && !childrenLoaded) {
-      setLoadingChildren((prev) => new Set(prev).add(noteId));
-      try {
-        const childrenData = await getNoteChildren(noteId);
-        setLoadedChildrenMap((prev) => new Map(prev).set(noteId, childrenData.notes));
-      } catch (error) {
-        console.error("Failed to load children:", error);
-      } finally {
-        setLoadingChildren((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(noteId);
-          return newSet;
-        });
-      }
-      return; // Don't toggle - just load children
-    }
-    
-    // Normal toggle behavior
+    // Always toggle the collapsed state
     toggleNoteCollapsed(noteId);
     
-    // If expanding (was collapsed, now expanded) and children not loaded, fetch them
+    // After toggle: if we're now expanding (was collapsed) and children not loaded, fetch them
     if (isCurrentlyCollapsed && !childrenLoaded) {
-      setLoadingChildren((prev) => new Set(prev).add(noteId));
+      setLoadingChildren((prev) => new Set(prev).add(stringNoteId));
       try {
         const childrenData = await getNoteChildren(noteId);
-        setLoadedChildrenMap((prev) => new Map(prev).set(noteId, childrenData.notes));
+        setLoadedChildrenMap((prev) => new Map(prev).set(stringNoteId, childrenData.notes));
       } catch (error) {
         console.error("Failed to load children:", error);
       } finally {
         setLoadingChildren((prev) => {
           const newSet = new Set(prev);
-          newSet.delete(noteId);
+          newSet.delete(stringNoteId);
           return newSet;
         });
       }
@@ -497,10 +550,15 @@ const Notes = ({ onTabClick }: NotesProps) => {
       const noteMap = new Map<string, TreeNote>();
       const rootNotes: TreeNote[] = [];
 
+      // Filter to only include actual root notes (no parent)
+      const actualRootNotes = notes.filter((note) => !note.parent);
+
       // First pass: create TreeNote objects for root notes
-      notes.forEach((note) => {
-        noteMap.set(note.id, {
+      actualRootNotes.forEach((note) => {
+        const noteId = String(note.id);
+        noteMap.set(noteId, {
           ...note,
+          id: noteId,
           children: [],
           level: 0,
           isExpanded: true,
@@ -509,32 +567,35 @@ const Notes = ({ onTabClick }: NotesProps) => {
 
       // Add loaded children recursively
       const addChildren = (parentId: string, level: number) => {
-        const children = loadedChildrenMap.get(parentId);
-        if (children) {
+        const children = loadedChildrenMap.get(String(parentId));
+        if (children && children.length > 0) {
           children.forEach((child) => {
-            if (!noteMap.has(child.id)) {
+            const childId = String(child.id);
+            if (!noteMap.has(childId)) {
               const treeChild: TreeNote = {
                 ...child,
+                id: childId,
                 children: [],
                 level: level,
                 isExpanded: true,
               };
-              noteMap.set(child.id, treeChild);
-              const parent = noteMap.get(parentId);
+              noteMap.set(childId, treeChild);
+              const parent = noteMap.get(String(parentId));
               if (parent) {
                 parent.children.push(treeChild);
               }
               // Recursively add children of this child
-              addChildren(child.id, level + 1);
+              addChildren(childId, level + 1);
             }
           });
         }
       };
 
       // Build tree structure
-      notes.forEach((note) => {
-        rootNotes.push(noteMap.get(note.id)!);
-        addChildren(note.id, 1);
+      actualRootNotes.forEach((note) => {
+        const noteId = String(note.id);
+        rootNotes.push(noteMap.get(noteId)!);
+        addChildren(noteId, 1);
       });
 
       return rootNotes;
@@ -1011,7 +1072,7 @@ const TreeNoteItem = ({
               >
                 {isLoadingChildren ? (
                   <div className="spinner-small" />
-                ) : note.isExpanded && note.children.length > 0 ? (
+                ) : note.isExpanded ? (
                   <ChevronDownIcon className="expand-icon" />
                 ) : (
                   <ChevronRightIcon className="expand-icon" />
