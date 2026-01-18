@@ -67,36 +67,6 @@ type TreeTag = Tag & {
 type SortMode = "recent" | "alpha";
 
 // Utility functions for tree structure
-function buildNoteTree(notes: Note[]): TreeNote[] {
-  const noteMap = new Map<string, TreeNote>();
-  const rootNotes: TreeNote[] = [];
-
-  // First pass: create TreeNote objects
-  notes.forEach((note) => {
-    noteMap.set(note.id, {
-      ...note,
-      children: [],
-      level: 0,
-      isExpanded: true,
-    });
-  });
-
-  // Second pass: build parent-child relationships
-  notes.forEach((note) => {
-    const treeNote = noteMap.get(note.id)!;
-
-    if (note.parent && noteMap.has(note.parent)) {
-      const parent = noteMap.get(note.parent)!;
-      parent.children.push(treeNote);
-      treeNote.level = parent.level + 1;
-    } else {
-      rootNotes.push(treeNote);
-    }
-  });
-
-  return rootNotes;
-}
-
 function flattenTree(treeNotes: TreeNote[]): TreeNote[] {
   const result: TreeNote[] = [];
 
