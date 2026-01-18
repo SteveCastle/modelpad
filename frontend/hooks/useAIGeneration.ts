@@ -12,6 +12,7 @@ import {
   LexicalNode,
 } from "lexical";
 import { useStore, PromptGeneration } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import { providers } from "../providers";
 import { convertJSONToMarkdown } from "../convertJSONToMarkdown";
 
@@ -284,7 +285,7 @@ export function useAIGeneration() {
   } = useStore((state) => state);
 
   const { host, providerKey } = useStore(
-    (state) => state.availableServers[state.serverKey]
+    useShallow((state) => state.availableServers[state.serverKey])
   );
   const { setGenerationState, updateContext } = useStore((state) => state);
   const setLastUsedPromptTemplate = useStore(

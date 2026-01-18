@@ -1,4 +1,4 @@
-import { ComponentProps } from "react";
+import { ComponentProps, JSX } from "react";
 import "./IconButton.css";
 import cx from "classnames";
 

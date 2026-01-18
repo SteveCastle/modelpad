@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQueryClient } from "react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { UNDO_COMMAND, REDO_COMMAND, CUT_COMMAND, COPY_COMMAND } from "lexical";
 import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
@@ -118,6 +118,7 @@ export function Toolbar() {
         }/api/notes/${activeStoryId}`,
         {
           method: "PUT",
+          credentials: "include",
           headers: {
             "Content-Type": "application/json",
           },
@@ -129,7 +130,7 @@ export function Toolbar() {
           }),
         }
       );
-      queryClient.invalidateQueries("stories");
+      queryClient.invalidateQueries({ queryKey: ["stories"] });
       updateSyncState(activeStoryId, true);
     }
     if (user) {
@@ -323,7 +324,7 @@ export function Toolbar() {
             onClick={() => {
               generationState === "no-connection"
                 ? () => {
-                    queryClient.refetchQueries("models");
+                    queryClient.refetchQueries({ queryKey: ["models"] });
                   }
                 : cancelGeneration();
             }}

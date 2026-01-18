@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PlusIcon } from "@heroicons/react/24/solid";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   PanelGroup,
   Panel,
@@ -8,6 +8,7 @@ import {
   ImperativePanelHandle,
 } from "react-resizable-panels";
 import { useStore, Story } from "./store";
+import { useShallow } from "zustand/react/shallow";
 import { StoryEditor } from "./components/StoryEditor";
 import { Tab } from "./components/Tab";
 import { providers } from "./providers";
@@ -54,10 +55,12 @@ interface RightNavBarProps {
 
 // Vertical Navigation Components (defined outside App to prevent re-creation)
 const LeftNavBar = ({ leftPanelRef, leftPanelCollapsed }: LeftNavBarProps) => {
-  const { activeNotesTab, setActiveNotesTab } = useStore((state) => ({
-    activeNotesTab: state.activeNotesTab,
-    setActiveNotesTab: state.setActiveNotesTab,
-  }));
+  const { activeNotesTab, setActiveNotesTab } = useStore(
+    useShallow((state) => ({
+      activeNotesTab: state.activeNotesTab,
+      setActiveNotesTab: state.setActiveNotesTab,
+    }))
+  );
 
   return (
     <div className="vertical-nav-bar left multiple-buttons">
@@ -164,7 +167,7 @@ function App() {
   } = useStore((state) => state);
   const { user, isLoading: authLoading } = useAuth();
   const { providerKey, host } = useStore(
-    (state) => state.availableServers[state.serverKey]
+    useShallow((state) => state.availableServers[state.serverKey])
   );
   const provider = providers[providerKey];
   const activeStoryId = useStore((state) => state.activeStoryId);
@@ -212,18 +215,29 @@ function App() {
     migrateTags();
   }, [migrateTags]);
 
-  useQuery({
+  interface ResponseData {
+    models: Model[];
+  }
+
+  const { data, error, isError } = useQuery<ResponseData>({
     queryKey: ["models", host],
     queryFn: provider.getModels(host),
-    onError: () => {
+  });
+
+  // Handle query success/error with effects
+  useEffect(() => {
+    if (isError) {
       setGenerationState("no-connection");
       setAvailableModels([]);
-    },
-    onSuccess: (data) => {
+    }
+  }, [isError, error, setGenerationState, setAvailableModels]);
+
+  useEffect(() => {
+    if (data) {
       const modelNames = data.models.map((model: Model) => model.name);
       setAvailableModels(modelNames);
-    },
-  });
+    }
+  }, [data, setAvailableModels]);
 
   // Show auth screen if not authenticated
   if (authLoading) {

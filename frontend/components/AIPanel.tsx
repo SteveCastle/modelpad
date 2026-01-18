@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import CreatableSelect from "react-select/creatable";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import { providers } from "../providers";
 import { modelPrettyNameMap } from "../modelPrettyNameMap";
 import RangeSlider from "./RangeSlider";
@@ -78,14 +79,13 @@ export default function AIPanel({
   } = useStore((state) => state);
 
   const { providerKey, host } = useStore(
-    (state) => state.availableServers[state.serverKey]
+    useShallow((state) => state.availableServers[state.serverKey])
   );
 
   const provider = providers[providerKey];
   useQuery({
     queryKey: ["model", host, model],
     queryFn: provider.getModelSettings(host, model),
-    onSuccess: () => {},
   });
 
   const [modelsExpanded, setModelsExpanded] = useState(false);

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface User {
   id: string;
@@ -81,38 +81,33 @@ async function logoutUser(): Promise<void> {
 export function useAuth() {
   const queryClient = useQueryClient();
 
-  const { data: user, isLoading, error } = useQuery<User | null>(
-    "auth-user",
-    fetchMe,
-    {
-      retry: false,
-      refetchOnWindowFocus: false,
-    }
-  );
+  const { data: user, isLoading, error } = useQuery<User | null>({
+    queryKey: ["auth-user"],
+    queryFn: fetchMe,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
 
-  const loginMutation = useMutation(
-    ({ email, password }: { email: string; password: string }) =>
+  const loginMutation = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
       loginUser(email, password),
-    {
-      onSuccess: (user) => {
-        queryClient.setQueryData("auth-user", user);
-      },
-    }
-  );
+    onSuccess: (user) => {
+      queryClient.setQueryData(["auth-user"], user);
+    },
+  });
 
-  const registerMutation = useMutation(
-    ({ email, password }: { email: string; password: string }) =>
+  const registerMutation = useMutation({
+    mutationFn: ({ email, password }: { email: string; password: string }) =>
       registerUser(email, password),
-    {
-      onSuccess: (user) => {
-        queryClient.setQueryData("auth-user", user);
-      },
-    }
-  );
+    onSuccess: (user) => {
+      queryClient.setQueryData(["auth-user"], user);
+    },
+  });
 
-  const logoutMutation = useMutation(logoutUser, {
+  const logoutMutation = useMutation({
+    mutationFn: logoutUser,
     onSuccess: () => {
-      queryClient.setQueryData("auth-user", null);
+      queryClient.setQueryData(["auth-user"], null);
       queryClient.clear(); // Clear all cached data on logout
     },
   });
@@ -125,10 +120,9 @@ export function useAuth() {
     login: loginMutation.mutateAsync,
     register: registerMutation.mutateAsync,
     logout: logoutMutation.mutateAsync,
-    isLoggingIn: loginMutation.isLoading,
-    isRegistering: registerMutation.isLoading,
+    isLoggingIn: loginMutation.isPending,
+    isRegistering: registerMutation.isPending,
     loginError: loginMutation.error as Error | null,
     registerError: registerMutation.error as Error | null,
   };
 }
-

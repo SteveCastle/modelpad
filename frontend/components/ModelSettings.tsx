@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { offset, shift } from "@floating-ui/dom";
-import { useQuery } from "react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 
 import "./ModelSettings.css";
@@ -23,14 +24,13 @@ export default function ModelSettings({ model }: { model: string }) {
   } = useStore((state) => state);
 
   const { providerKey, host } = useStore(
-    (state) => state.availableServers[state.serverKey]
+    useShallow((state) => state.availableServers[state.serverKey])
   );
 
   const provider = providers[providerKey];
   useQuery({
     queryKey: ["model", host, model],
     queryFn: provider.getModelSettings(host, model),
-    onSuccess: () => {},
   });
 
   const [isOpen, setIsOpen] = useState(false);

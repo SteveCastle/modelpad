@@ -1,4 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useShallow } from "zustand/react/shallow";
 import { Note, Tag, useStore } from "../store";
 import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
@@ -38,7 +39,7 @@ import { ArrowTopRightOnSquareIcon } from "@heroicons/react/24/outline";
 import { useDebouncedCallback } from "use-debounce";
 
 import "./Notes.css";
-import { useState, useMemo, Fragment } from "react";
+import { useState, useMemo, Fragment, useEffect } from "react";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { LoadingSpinner } from "./LoadingSpinner";
 
@@ -240,6 +241,7 @@ async function shareNote(id: string, isShared: boolean) {
     }/api/notes/${id}/share`,
     {
       method: "PATCH",
+      credentials: "include",
       headers: {
         "Content-Type": "application/json",
       },
@@ -295,12 +297,14 @@ const Notes = ({ onTabClick }: NotesProps) => {
     setActiveNotesTab,
     collapsedNoteIds,
     toggleNoteCollapsed,
-  } = useStore((state) => ({
-    activeNotesTab: state.activeNotesTab,
-    setActiveNotesTab: state.setActiveNotesTab,
-    collapsedNoteIds: state.collapsedNoteIds,
-    toggleNoteCollapsed: state.toggleNoteCollapsed,
-  }));
+  } = useStore(
+    useShallow((state) => ({
+      activeNotesTab: state.activeNotesTab,
+      setActiveNotesTab: state.setActiveNotesTab,
+      collapsedNoteIds: state.collapsedNoteIds,
+      toggleNoteCollapsed: state.toggleNoteCollapsed,
+    }))
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedCallback(() => {
@@ -309,18 +313,22 @@ const Notes = ({ onTabClick }: NotesProps) => {
     setAllNotes([]); // Clear accumulated notes
   }, 300);
   
-  const { data, isLoading } = useQuery({
+  const { data, isLoading } = useQuery<NoteReponse>({
     queryKey: ["stories", { searchQuery, page: currentPage, limit: 50 }],
     queryFn: getStories,
     refetchOnWindowFocus: true,
-    onSuccess: (newData) => {
-      if (currentPage === 1) {
-        setAllNotes(newData.notes);
-      } else {
-        setAllNotes((prev) => [...prev, ...newData.notes]);
-      }
-    },
   });
+
+  // Handle query success with effect
+  useEffect(() => {
+    if (data) {
+      if (currentPage === 1) {
+        setAllNotes(data.notes);
+      } else {
+        setAllNotes((prev) => [...prev, ...data.notes]);
+      }
+    }
+  }, [data, currentPage]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -331,15 +339,13 @@ const Notes = ({ onTabClick }: NotesProps) => {
     useSensor(KeyboardSensor)
   );
 
-  const { mutate: updateParentMutation } = useMutation(
-    ({ id, parentId }: { id: string; parentId: string | null }) =>
+  const { mutate: updateParentMutation } = useMutation({
+    mutationFn: ({ id, parentId }: { id: string; parentId: string | null }) =>
       updateNoteParent(id, parentId),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("stories");
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stories"] });
+    },
+  });
 
   const toggleExpanded = async (noteId: string) => {
     const isCurrentlyCollapsed = collapsedNoteIds.has(noteId);
@@ -575,11 +581,13 @@ const Notes = ({ onTabClick }: NotesProps) => {
   const VocabularyContent = () => {
     const [initializedTagExpansion, setInitializedTagExpansion] =
       useState(false);
-    const { tags, collapsedTagIds, toggleTagCollapsed } = useStore((state) => ({
-      tags: state.tags,
-      collapsedTagIds: state.collapsedTagIds,
-      toggleTagCollapsed: state.toggleTagCollapsed,
-    }));
+    const { tags, collapsedTagIds, toggleTagCollapsed } = useStore(
+      useShallow((state) => ({
+        tags: state.tags,
+        collapsedTagIds: state.collapsedTagIds,
+        toggleTagCollapsed: state.toggleTagCollapsed,
+      }))
+    );
 
     const toggleTagExpanded = (tagId: string) => {
       toggleTagCollapsed(tagId);
@@ -865,21 +873,20 @@ const TreeNoteItem = ({
     setDropNodeRef(element);
   };
 
-  const { mutate } = useMutation(deleteStory, {
+  const { mutate } = useMutation({
+    mutationFn: deleteStory,
     onSuccess: () => {
-      queryClient.invalidateQueries("stories");
+      queryClient.invalidateQueries({ queryKey: ["stories"] });
     },
   });
 
-  const { mutate: shareNoteMutation } = useMutation(
-    ({ id, isShared }: { id: string; isShared: boolean }) =>
+  const { mutate: shareNoteMutation } = useMutation({
+    mutationFn: ({ id, isShared }: { id: string; isShared: boolean }) =>
       shareNote(id, isShared),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries("stories");
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stories"] });
+    },
+  });
 
   const shareUrl = `${window.location.origin}/doc/${note.id}`;
 
@@ -1113,10 +1120,12 @@ const TreeTagItem = ({
   tag: TreeTag;
   onToggleExpanded: (id: string) => void;
 }) => {
-  const { getTagUsageCounts, deleteTag } = useStore((state) => ({
-    getTagUsageCounts: state.getTagUsageCounts,
-    deleteTag: state.deleteTag,
-  }));
+  const { getTagUsageCounts, deleteTag } = useStore(
+    useShallow((state) => ({
+      getTagUsageCounts: state.getTagUsageCounts,
+      deleteTag: state.deleteTag,
+    }))
+  );
   const tagUsageCounts = getTagUsageCounts();
   const usageCount = tagUsageCounts[tag.id] || 0;
 

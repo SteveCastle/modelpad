@@ -2,6 +2,7 @@ import { useState } from "react";
 import { offset, shift } from "@floating-ui/dom";
 import { useFloating, useInteractions, useClick } from "@floating-ui/react";
 import { useStore } from "../store";
+import { useShallow } from "zustand/react/shallow";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { PencilIcon } from "@heroicons/react/24/solid";
 
@@ -13,7 +14,7 @@ export default function ServerSelect() {
     useStore((state) => state);
 
   const { host, name } = useStore(
-    (state) => state.availableServers[state.serverKey]
+    useShallow((state) => state.availableServers[state.serverKey])
   );
 
   const [isOpen, setIsOpen] = useState(false);

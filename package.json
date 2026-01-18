@@ -29,31 +29,31 @@
     "@lexical/selection": "^0.33.1",
     "@lexical/table": "^0.33.1",
     "@lexical/utils": "^0.33.1",
+    "@tanstack/react-query": "^5.90.19",
     "@types/filesystem": "^0.0.35",
     "classnames": "^2.5.1",
     "lexical": "^0.33.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-query": "^3.39.3",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-resizable-panels": "^3.0.3",
     "react-select": "^5.10.2",
     "ulid": "^2.3.0",
     "use-debounce": "^10.0.4",
     "uuid": "^9.0.1",
-    "zustand": "^4.5.5"
+    "zustand": "^5.0.10"
   },
   "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
-    "@vitejs/plugin-react": "^4.3.3",
+    "@vitejs/plugin-react": "^5.1.2",
     "concurrently": "^8.2.2",
     "eslint": "^8.57.1",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.14",
     "typescript": "^5.6.3",
-    "vite": "^5.4.10"
+    "vite": "^7.3.1"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
