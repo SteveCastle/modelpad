@@ -287,7 +287,8 @@ const Notes = ({ onTabClick }: NotesProps) => {
   const [sortMode, setSortMode] = useState<SortMode>("recent");
   const [nestingEnabled, setNestingEnabled] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [allNotes, setAllNotes] = useState<Note[]>([]);
+  // Store notes by page to prevent duplicates on refetch
+  const [notesByPage, setNotesByPage] = useState<Map<number, Note[]>>(new Map());
   const [loadingChildren, setLoadingChildren] = useState<Set<string>>(new Set());
   const [loadedChildrenMap, setLoadedChildrenMap] = useState<Map<string, Note[]>>(new Map());
   const queryClient = useQueryClient();
@@ -311,7 +312,7 @@ const Notes = ({ onTabClick }: NotesProps) => {
   const debouncedSearch = useDebouncedCallback(() => {
     setSearchQuery(searchText);
     setCurrentPage(1); // Reset to first page on search
-    setAllNotes([]); // Clear accumulated notes
+    setNotesByPage(new Map()); // Clear all pages on search
   }, 300);
   
   const { data, isLoading } = useQuery<NoteReponse>({
@@ -320,16 +321,25 @@ const Notes = ({ onTabClick }: NotesProps) => {
     refetchOnWindowFocus: true,
   });
 
-  // Handle query success with effect
+  // Handle query success - store notes by page (prevents duplicates on refetch)
   useEffect(() => {
     if (data) {
-      if (currentPage === 1) {
-        setAllNotes(data.notes);
-      } else {
-        setAllNotes((prev) => [...prev, ...data.notes]);
-      }
+      setNotesByPage((prev) => new Map(prev).set(currentPage, data.notes));
     }
   }, [data, currentPage]);
+
+  // Derive allNotes from notesByPage - collected in page order
+  const allNotes = useMemo(() => {
+    const notes: Note[] = [];
+    const sortedPages = Array.from(notesByPage.keys()).sort((a, b) => a - b);
+    for (const page of sortedPages) {
+      const pageNotes = notesByPage.get(page);
+      if (pageNotes) {
+        notes.push(...pageNotes);
+      }
+    }
+    return notes;
+  }, [notesByPage]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -350,10 +360,33 @@ const Notes = ({ onTabClick }: NotesProps) => {
 
   const toggleExpanded = async (noteId: string) => {
     const isCurrentlyCollapsed = collapsedNoteIds.has(noteId);
+    const childrenLoaded = loadedChildrenMap.has(noteId);
+    
+    // Special case: if note appears "expanded" (not in collapsed set) but children
+    // aren't loaded yet, this is the first click - load children without toggling
+    // so the children appear (the note is already in expanded state)
+    if (!isCurrentlyCollapsed && !childrenLoaded) {
+      setLoadingChildren((prev) => new Set(prev).add(noteId));
+      try {
+        const childrenData = await getNoteChildren(noteId);
+        setLoadedChildrenMap((prev) => new Map(prev).set(noteId, childrenData.notes));
+      } catch (error) {
+        console.error("Failed to load children:", error);
+      } finally {
+        setLoadingChildren((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(noteId);
+          return newSet;
+        });
+      }
+      return; // Don't toggle - just load children
+    }
+    
+    // Normal toggle behavior
     toggleNoteCollapsed(noteId);
     
-    // If expanding and children not loaded yet, fetch them
-    if (isCurrentlyCollapsed && !loadedChildrenMap.has(noteId)) {
+    // If expanding (was collapsed, now expanded) and children not loaded, fetch them
+    if (isCurrentlyCollapsed && !childrenLoaded) {
       setLoadingChildren((prev) => new Set(prev).add(noteId));
       try {
         const childrenData = await getNoteChildren(noteId);
@@ -978,7 +1011,7 @@ const TreeNoteItem = ({
               >
                 {isLoadingChildren ? (
                   <div className="spinner-small" />
-                ) : note.isExpanded ? (
+                ) : note.isExpanded && note.children.length > 0 ? (
                   <ChevronDownIcon className="expand-icon" />
                 ) : (
                   <ChevronRightIcon className="expand-icon" />
